@@ -1,3 +1,13 @@
+# read in configuration file and extract necessary simulation variables/constants
+options, remainder = getopt.getopt(sys.argv[1:], '', ["dataX="])
+# GPU arguments
+dataX = "../data/baby_mnist/babyX.npy"
+for opt, arg in options:
+    if opt in ("--dataX"):
+        dataX = arg.strip()
+
+
+
 from snn_model import DC_SNN_Model as Model
 from jax import numpy as jnp, random
 import sys, getopt, optparse
@@ -6,14 +16,6 @@ import sys, getopt, optparse
 from ngclearn.utils.viz.raster import create_raster_plot
 from ngclearn.utils.patch_utils import generate_patch_set
 
-
-# read in configuration file and extract necessary simulation variables/constants
-options, remainder = getopt.getopt(sys.argv[1:], '', ["dataX="])
-# GPU arguments
-dataX = "../data/baby_mnist/babyX.npy"
-for opt, arg in options:
-    if opt in ("--dataX"):
-        dataX = arg.strip()
 
 ## load dataset
 _X = jnp.load(dataX)
