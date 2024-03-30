@@ -11,7 +11,7 @@ experiment. <!--Datasets should not be stored in this repo but instead reference
 to their source locations.-->
 
 The only file we specifically require in an exhibition's folder is a single
-markdown file -- `INFO.md` -- containing information about the specific model,
+markdown file -- `README.md` -- containing information about the specific model,
 agent, or system publicly offered. Specifically, this markdown file should
 start with:
 ```markdown

@@ -12,7 +12,7 @@ The contents of each exhibitor sub-directory may be organized and structured
 however the exhibitor requires, though it is recommended that each sub-directory
 within an exhibitor's folder pertains to a single paper/publication or
 application. The only file we require in an exhibitor's folder is a single
-markdown file -- `INFO.md` -- containing information about the exhibitor and a
+markdown file -- `README.md` -- containing information about the exhibitor and a
 header containing the name of the exhibitor, e.g., the researcher, organization,
 company, or research group/lab, as follows:
 ```markdown
