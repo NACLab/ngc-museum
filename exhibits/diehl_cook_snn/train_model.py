@@ -8,7 +8,7 @@ from ngclearn.utils.patch_utils import generate_patch_set
 
 
 # read in configuration file and extract necessary simulation variables/constants
-options, remainder = getopt.getopt(sys.argv[1:], '', ["config=","gpu_id=","n_trials="])
+options, remainder = getopt.getopt(sys.argv[1:], '', ["dataX="])
 # GPU arguments
 dataX = "../data/baby_mnist/babyX.npy"
 for opt, arg in options:
