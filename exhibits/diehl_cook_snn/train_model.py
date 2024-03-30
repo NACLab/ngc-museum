@@ -1,13 +1,22 @@
 from snn_model import DC_SNN_Model as Model
 from jax import numpy as jnp, random
-import sys
+import sys, getopt, optparse
 
 ## bring in ngc-learn analysis tools
 from ngclearn.utils.viz.raster import create_raster_plot
 from ngclearn.utils.patch_utils import generate_patch_set
 
-_X = jnp.load("../data/baby_mnist/babyX.npy")
-_Y = jnp.load("../data/baby_mnist/babyY.npy")
+
+# read in configuration file and extract necessary simulation variables/constants
+options, remainder = getopt.getopt(sys.argv[1:], '', ["config=","gpu_id=","n_trials="])
+# GPU arguments
+dataX = "../data/baby_mnist/babyX.npy"
+for opt, arg in options:
+    if opt in ("--dataX"):
+        dataX = arg.strip()
+
+## load dataset
+_X = jnp.load(dataX)
 n_batches = _X.shape[0]
 
 viz_mod = 1
@@ -40,7 +49,6 @@ for i in range(n_iter):
     dkey, *subkeys = random.split(dkey, 2)
     ptrs = random.permutation(subkeys[0],_X.shape[0])
     X = _X[ptrs,:]
-    Y = _Y[ptrs,:]
 
     n_samps_seen = 0
     for j in range(n_batches):

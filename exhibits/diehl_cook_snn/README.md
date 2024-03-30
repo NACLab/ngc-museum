@@ -9,6 +9,18 @@ Diehl, Peter U., and Matthew Cook. "Unsupervised learning of digit recognition
 using spike-timing-dependent plasticity." Frontiers in computational
 neuroscience 9 (2015): 99.
 
+## Running the Model's Simulation
+
+To train this implementation of Diehl and Cook's model, simply run:
+
+```console
+$ python train_model.py --dataX="../data/baby_mnist/babyX.npy"
+```
+
+Note that you can point the training script to other datasets besides the
+default MNIST, just ensure that the target for `dataX` is a numpy array of
+shape `(Number data points x Pattern Dimensionality)`.
+
 ## Description
 
 This model is effectively made up of three layers -- a sensory input layer made up
