@@ -26,7 +26,7 @@
   },
   {
     "absolute_path": "ngcsimlib.bundle_rules",
-    "attributes": [{"name": "overwrite"}, {"name":  "additive"}]
+    "attributes": [{"name": "overwrite"}]
   },
   {
     "absolute_path": "custom.bundle_rules",

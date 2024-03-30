@@ -89,7 +89,7 @@ class DC_SNN_Model():
         circuit.connect(z1i.name, z1i.outputCompartmentName(),
                         W1ie.name, W1ie.inputCompartmentName()) ## z1i -> W1ie
         circuit.connect(W1ie.name, W1ie.outputCompartmentName(),
-                        z1e.name, z1e.inputCompartmentName(), bundle="additive") ## W1ie -> z1e
+                        z1e.name, z1e.inputCompartmentName(), bundle="fast_add") ## W1ie -> z1e
         circuit.connect(z1e.name, z1e.outputCompartmentName(),
                         W1ei.name, W1ei.inputCompartmentName()) ## z1e -> W1ei
         circuit.connect(W1ei.name, W1ei.outputCompartmentName(),
