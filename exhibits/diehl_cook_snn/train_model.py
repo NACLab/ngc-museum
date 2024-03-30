@@ -1,4 +1,6 @@
-# read in configuration file and extract necessary simulation variables/constants
+import sys, getopt, optparse
+
+# read in general program arguments
 options, remainder = getopt.getopt(sys.argv[1:], '', ["dataX="])
 # GPU arguments
 dataX = "../data/baby_mnist/babyX.npy"
@@ -10,7 +12,6 @@ for opt, arg in options:
 
 from snn_model import DC_SNN_Model as Model
 from jax import numpy as jnp, random
-import sys, getopt, optparse
 
 ## bring in ngc-learn analysis tools
 from ngclearn.utils.viz.raster import create_raster_plot
