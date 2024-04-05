@@ -46,6 +46,8 @@ This model requires the following hyperparameters, tuned to produce results much
 to that of the original Diehl and Cook model:
 
 ```
+T = 200 (number of discrete time steps to simulate)
+dt = 1 ms (integration time constant)
 ## Note: resistance scale values set to 1
 tau_m_e = 100.500896468 ms (excitatory membrane time constant)
 tau_m_i = 100.500896468 ms (inhibitory membrane time constant)

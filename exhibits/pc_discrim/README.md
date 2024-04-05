@@ -23,22 +23,21 @@ shape `(Number data points x Pattern Dimensionality)`.
 
 ## Description
 
-This model is effectively made up of three layers -- a sensory input layer made up
-of Poisson encoding neuronal cells, a hidden layer of excitatory leaky integrators,
-and another layer of inhibitory leaky integrators. The sensory layer connects to
-excitatory layer with a synaptic cable that is adapted with traced-based
-spike-timing-dependent plasticity. The excitatory layer connects to the inhibitory
-layer with a fixed identity matrix/cable (all excitatory neurons map one-to-one to
-inhibitory ones) while the inhibitory layers connects to the excitatory layer
-via a fixed, negatively scaled hollow matrix/cable.
+This model is effectively made up of four layers -- a sensory input layer,
+two internal/hidden layers of graded rate-cells, and one output layer
+for reading out predictions of target values, e.g., one-hot encodings of
+label values. Each layer connects to the next via a simple two-factor
+Hebbian synapse (pre-synaptic term is the post-activation values of
+layer below and post-synaptic term is the error neuron post-activation
+values of the current layer); the entire model is a simple x-to-y
+hierarchical discriminative model. Feedback/error message passing pathways
+are not learned and each synaptic cable's set of weight values is set to be
+equal to the transpose of the corresponding forward synaptic cable's set of
+weight values.
 
-The dynamics that result from the above structure is a form of sensory input-driven
-leaky integrator dynamics that are recurrently inhibited by the laterally-wired
-inhibitory leaky integrators.
-
-<i>Task</i>: This model engages in unsupervised representation learning and simply
-learns sparse spike train patterns that correlate with different input digit patterns
-sampled from the MNIST database.
+<i>Task</i>: This model engages in supervised/discriminative adaptation, learning
+to predict the labels of different input digit patterns sampled from the MNIST
+database.
 
 ## Hyperparameters
 
@@ -46,37 +45,16 @@ This model requires the following hyperparameters, tuned to produce results much
 to that of the original Diehl and Cook model:
 
 ```
-## Note: resistance scale values set to 1
-tau_m_e = 100.500896468 ms (excitatory membrane time constant)
-tau_m_i = 100.500896468 ms (inhibitory membrane time constant)
-tau_tr= 20. ms (trace time constant)
-## STDP hyper-parameters
-Aplus = 1e-2 (LTD learning rate (STDP); or "nu1" in literature)
-Aminus = 1e-4 (LTD learning rate (STDP); or "nu0" in literature)
-w_norm = 78.4 (L1 norm constraint)
-norm_T = 200 ms (time to enforce norm constraint)
-factor = 22.5 (excitatory-to-inhibitory synapse scale factor)
-factor = -120 (inhibitory-to-excitatory synapse scale factor)
-## excitatory dynamics (with adaptive threshold)
-thr = -52 mv
-v_rest = -65 mv
-v_reset = -60 mv
-tau_theta = 1e7
-theta_plus = 0.05
-## inhibitory dynamics (with NO adaptive threshold)
-thr = -40 mv
-v_rest = -60 mv
-v_reset = -45 mv
+T = 10 (number of time steps to simulate, or number of E-steps to take)
+dt = 0.1 ms (integration time constant)
+## synaptic update meta-parameters
+eta = 0.001 (learning rate of Adam optimizer embedded w/in each synaptic cable for the M-step)
+w_norm = 1. (L2 norm constraint)
 ```
 
-In effect, the model enforces a synaptic re-scaling based on an L1 norm
-at the end of `200` milliseconds (ms) -- this re-scaling step is maintained
-by the particular STDP synapse used in our implementation of Diehl and Cook's
-model as every component have access to the simulation object's clock.
+<!-- In effect, the model enforces a synaptic re-scaling based on an L2 norm
+at the end of `T * dt` milliseconds (ms) -- this re-scaling step is maintained
+by the particular Hebbian synapse used in our implementation of Whittington's
+PC model. -->
 
-<i>Model Simplification</i>: The original Diehl and Cook model also incorporated
-synaptic conductance, i.e., electrical currents were modeled by differential
-equations as well, whereas our exhibit implements currents as point-wise
-injections. However, if synaptic conductance is desired, one could extend the
-model to use electrical currents built with ngc-learn `RateCell`s, which offer
-the machinery needed for (leaky) graded/continuous valued dynamics.
+<i>Model Simplification</i>: TODO
