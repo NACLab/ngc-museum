@@ -15,7 +15,7 @@ patch_shape = (int(jnp.sqrt(x_dim)), int(jnp.sqrt(x_dim)))
 y_dim = _Y.shape[1]
 
 n_iter = 40 #100
-mb_size = 200 # 256
+mb_size = 250 # 256
 # std of init - 0.025
 n_batches = int(_X.shape[0]/mb_size)
 
@@ -24,7 +24,7 @@ dkey, *subkeys = random.split(dkey, 10)
 
 # hid-dims = 128
 ## build model
-model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=500, hid2_dim=500, T=15, # T=20 #hid=500
+model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=512, hid2_dim=512, T=15, # T=20 #hid=500
             dt=1., tau_m=10., act_fx="sigmoid", eta=0.001, exp_dir="exp", model_name="pcn")
 
 def eval_model(model, Xdev, Ydev, mb_size):
