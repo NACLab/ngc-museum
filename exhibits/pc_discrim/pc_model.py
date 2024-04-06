@@ -42,7 +42,7 @@ class PCN():
         model_name: unique model name to stamp the output files/dirs with
     """
     def __init__(self, dkey, in_dim, out_dim, hid1_dim=128, hid2_dim=64, T=10,
-                 dt=1., tau_m=10., act_fx = "tanh", exp_dir="exp",
+                 dt=1., tau_m=10., act_fx = "tanh", eta=0.001, exp_dir="exp",
                  model_name="pc_disc", **kwargs):
         self.exp_dir = exp_dir
         makedir(exp_dir)
@@ -56,7 +56,7 @@ class PCN():
         #tau_m = 10.
         #act_fx = "tanh"
         optim_type = "adam"
-        eta = 0.002
+        #eta = 0.002
         wlb = -0.3
         wub = 0.3
 
