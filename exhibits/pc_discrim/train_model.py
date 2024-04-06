@@ -30,7 +30,6 @@ def eval_model(model, Xtest, Ytest, mb_size):
     nll = 0. ## negative Categorical log liklihood
     acc = 0. ## accuracy
     for j in range(n_batches):
-        dkey, *subkeys = random.split(dkey, 2)
         ## extract data block/batch
         idx = j * mb_size
         Xb = Xtest[idx: idx + mb_size,:]
