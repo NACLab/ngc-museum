@@ -64,15 +64,17 @@ class PCN():
         model = Controller()
         ## construct core generative model
         z0 = model.add_component("rate", name="z0", n_units=in_dim, tau_m=0.,
-                                 act_fx="identity", leakRate=0., key=subkeys[0])
+                                 act_fx="identity", key=subkeys[0])
         z1 = model.add_component("rate", name="z1", n_units=hid1_dim, tau_m=tau_m,
-                                 act_fx=act_fx, leakRate=0., key=subkeys[1])
+                                 act_fx=act_fx, prior=("gaussian",0.), 
+                                 integration_type="euler", key=subkeys[1])
         e1 = model.add_component("error", name="e1", n_units=hid1_dim)
         z2 = model.add_component("rate", name="z2", n_units=hid2_dim, tau_m=tau_m,
-                                 act_fx=act_fx, leakRate=0., key=subkeys[2])
+                                 act_fx=act_fx, prior=("gaussian", 0.), 
+                                 integration_type="euler", key=subkeys[2])
         e2 = model.add_component("error", name="e2", n_units=hid2_dim)
         z3 = model.add_component("rate", name="z3", n_units=out_dim, tau_m=0.,
-                                 act_fx="identity", leakRate=0., key=subkeys[3])
+                                 act_fx="identity", key=subkeys[3])
         e3 = model.add_component("error", name="e3", n_units=out_dim)
         ### set up generative/forward synapses
         W1 = model.add_component("hebbian", name="W1", shape=(in_dim, hid1_dim),
@@ -231,6 +233,7 @@ class PCN():
             #print("mu: ",self.circuit.components["e3"].compartments["mu"])
             #print(" y: ",self.circuit.components["e3"].compartments["target"])
             #print("---")
+            #print(self.circuit.components["z2"].compartments["z"]
             y_mu = self.circuit.components["e3"].compartments["mu"] ## get settled prediction
             
             ## Perform (optional) M-step (scheduled synaptic updates)
