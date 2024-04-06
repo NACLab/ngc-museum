@@ -11,6 +11,7 @@ _Y = jnp.load("../data/mnist/trainY.npy")
 Xdev = jnp.load("../data/mnist/testX.npy")
 Ydev = jnp.load("../data/mnist/testY.npy")
 x_dim = _X.shape[1]
+patch_shape = (int(jnp.sqrt(x_dim)), int(jnp.sqrt(x_dim)))
 y_dim = _Y.shape[1]
 
 n_iter = 40 #100
