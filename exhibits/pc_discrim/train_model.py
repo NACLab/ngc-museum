@@ -4,26 +4,29 @@ import sys
 from pc_model import PCN
 from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
 
-_X = jnp.load("../data/baby_mnist/babyX.npy")
-_Y = jnp.load("../data/baby_mnist/babyY.npy")
-# _X = jnp.load("/home/ago/Research/spiking-pff-learning/data/mnist/trainX.npy")
-# _Y = jnp.load("/home/ago/Research/spiking-pff-learning/data/mnist/trainY.npy")
+#_X = jnp.load("../data/baby_mnist/babyX.npy")
+#_Y = jnp.load("../data/baby_mnist/babyY.npy")
+_X = jnp.load("../data/mnist/trainX.npy")
+_Y = jnp.load("../data/mnist/trainY.npy")
+Xdev = jnp.load("../data/mnist/testX.npy")
+Ydev = jnp.load("../data/mnist/testY.npy")
 x_dim = _X.shape[1]
 y_dim = _Y.shape[1]
 
 n_iter = 20 #100
-mb_size = 10 #200 # 256
+mb_size = 200 # 256
 # std of init - 0.025
 n_batches = int(_X.shape[0]/mb_size)
 
 dkey = random.PRNGKey(1234)
 dkey, *subkeys = random.split(dkey, 10)
 
+# hid-dims = 128
 ## build model
-model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=128, hid2_dim=128, T=10, # T=20 #hid=500
-            dt=1., tau_m=10., act_fx="sigmoid", exp_dir="exp", model_name="pcn")
+model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=500, hid2_dim=500, T=10, # T=20 #hid=500
+            dt=1., tau_m=10., act_fx="sigmoid", eta=0.001, exp_dir="exp", model_name="pcn")
 
-def eval_model(model, Xtest, Ytest, mb_size):
+def eval_model(model, Xdev, Ydev, mb_size):
     n_batches = int(Xtest.shape[0]/mb_size)
 
     n_samp_seen = 0
@@ -32,8 +35,8 @@ def eval_model(model, Xtest, Ytest, mb_size):
     for j in range(n_batches):
         ## extract data block/batch
         idx = j * mb_size
-        Xb = Xtest[idx: idx + mb_size,:]
-        Yb = Ytest[idx: idx + mb_size,:]
+        Xb = Xdev[idx: idx + mb_size,:]
+        Yb = Ydev[idx: idx + mb_size,:]
         ## run model inference
         yMu_0, yMu = model.process(obs=Xb, lab=Yb, adapt_synapses=False)
         ## record metric measurements
@@ -46,11 +49,11 @@ def eval_model(model, Xtest, Ytest, mb_size):
         print("\r {} processed ".format(nll/(n_samp_seen *1.), acc/(n_samp_seen *1.),
                                         n_samp_seen), end="")
     print()
-    nll = nll/(Xtest.shape[0]) ## calc full dev-set nll
-    acc = acc/(Xtest.shape[0]) ## calc full dev-set acc
+    nll = nll/(Xdev.shape[0]) ## calc full dev-set nll
+    acc = acc/(Xdev.shape[0]) ## calc full dev-set acc
     return nll, acc
 
-nll, acc = eval_model(model, _X, _Y, mb_size)
+nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
 print("-1: Acc = {}  NLL = {}".format(acc, nll))
 for i in range(n_iter):
     ## shuffle data (to ensure i.i.d. assumption holds)
@@ -74,5 +77,5 @@ for i in range(n_iter):
     print()
 
     ## evaluate current progress of model on dev-set
-    nll, acc = eval_model(model, _X, _Y, mb_size)
+    nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
     print("{}: Acc = {}  NLL = {}".format(i, acc, nll))
