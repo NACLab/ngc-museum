@@ -37,8 +37,8 @@ def eval_model(model, Xtest, Ytest, mb_size):
         ## run model inference
         yMu_0, yMu = model.process(obs=Xb, lab=Yb, adapt_synapses=False)
         ## record metric measurements
-        _nll = measure_CatNLL(yMu_0, _Y) * Xb.shape[0] ## un-normalize score
-        _acc = measure_ACC(yMu_0, _Y) * Yb.shape[0] ## un-normalize score
+        _nll = measure_CatNLL(yMu_0, Yb) * Xb.shape[0] ## un-normalize score
+        _acc = measure_ACC(yMu_0, Yb) * Yb.shape[0] ## un-normalize score
         nll += _nll
         acc += _acc
 
