@@ -23,35 +23,57 @@ dkey, *subkeys = random.split(dkey, 10)
 model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=128, hid2_dim=128, T=10, # T=20 #hid=500
             dt=1., tau_m=10., act_fx="sigmoid", exp_dir="exp", model_name="pcn")
 
-yMu_0, yMu = model.process(obs=_X, lab=_Y, adapt_synapses=False)
-nll = measure_CatNLL(yMu_0, _Y)
-acc = measure_ACC(yMu_0, _Y)
+def eval_model(model, Xtest, Ytest, mb_size):
+    n_batches = int(Xtest.shape[0]/mb_size)
+
+    n_samp_seen = 0
+    nll = 0. ## negative Categorical log liklihood
+    acc = 0. ## accuracy
+    for j in range(n_batches):
+        dkey, *subkeys = random.split(dkey, 2)
+        ## extract data block/batch
+        idx = j * mb_size
+        Xb = Xtest[idx: idx + mb_size,:]
+        Yb = Ytest[idx: idx + mb_size,:]
+        ## run model inference
+        yMu_0, yMu = model.process(obs=Xb, lab=Yb, adapt_synapses=False)
+        ## record metric measurements
+        _nll = measure_CatNLL(yMu_0, _Y) * Xb.shape[0] ## un-normalize score
+        _acc = measure_ACC(yMu_0, _Y) * Yb.shape[0] ## un-normalize score
+        nll += _nll
+        acc += _acc
+
+        n_samp_seen += Yb.shape[0]
+        print("\r {} processed ".format(nll/(n_samp_seen *1.), acc/(n_samp_seen *1.),
+                                        n_samp_seen), end="")
+    print()
+    nll = nll/(Xtest.shape[0]) ## calc full dev-set nll
+    acc = acc/(Xtest.shape[0]) ## calc full dev-set acc
+    return nll, acc
+
+nll, acc = eval_model(model, _X, _y, mb_size)
 print("-1: Acc = {}  NLL = {}".format(acc, nll))
 for i in range(n_iter):
+    ## shuffle data (to ensure i.i.d. assumption holds)
     dkey, *subkeys = random.split(dkey, 2)
     ptrs = random.permutation(subkeys[0],_X.shape[0])
     X = _X[ptrs,:]
     Y = _Y[ptrs,:]
 
-    ## begin epoch
-    #Y_mu = []
+    ## begin a single epoch
     n_samp_seen = 0
     for j in range(n_batches):
         dkey, *subkeys = random.split(dkey, 2)
-
+        ## sample mini-batch of patterns
         idx = j * mb_size #j % 2 # 1
         Xb = X[idx: idx + mb_size,:]
         Yb = Y[idx: idx + mb_size,:]
-
+        ## perform a step of inference/learning
         yMu_0, yMu = model.process(obs=Xb, lab=Yb, adapt_synapses=True)
-        #Y_mu.append(yMu_0)
         n_samp_seen += Yb.shape[0]
         print("\r {} processed ".format(n_samp_seen), end="")
     print()
-    
-    #Y_mu = jnp.concatenate(Y_mu, axis=0)
-    yMu_0, yMu = model.process(obs=_X, lab=_Y, adapt_synapses=False)
-    Y_mu = yMu_0
-    nll = measure_CatNLL(Y_mu, _Y)
-    acc = measure_ACC(Y_mu, _Y)
+
+    ## evaluate current progress of model on dev-set
+    nll, acc = eval_model(model, _X, _y, mb_size)
     print("{}: Acc = {}  NLL = {}".format(i, acc, nll))
