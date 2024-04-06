@@ -13,7 +13,7 @@ Ydev = jnp.load("../data/mnist/testY.npy")
 x_dim = _X.shape[1]
 y_dim = _Y.shape[1]
 
-n_iter = 20 #100
+n_iter = 40 #100
 mb_size = 200 # 256
 # std of init - 0.025
 n_batches = int(_X.shape[0]/mb_size)
@@ -46,9 +46,10 @@ def eval_model(model, Xdev, Ydev, mb_size):
         acc += _acc
 
         n_samp_seen += Yb.shape[0]
-        print("\r {} processed ".format(nll/(n_samp_seen *1.), acc/(n_samp_seen *1.),
-                                        n_samp_seen), end="")
-    print()
+        #print("\r nll: {} acc: {} for {} samps ".format(nll/(n_samp_seen *1.), 
+        #                                                acc/(n_samp_seen *1.),
+        #                                                n_samp_seen), end="")
+    #print()
     nll = nll/(Xdev.shape[0]) ## calc full dev-set nll
     acc = acc/(Xdev.shape[0]) ## calc full dev-set acc
     return nll, acc

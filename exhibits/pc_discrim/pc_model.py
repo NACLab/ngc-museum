@@ -197,6 +197,7 @@ class PCN():
         self.circuit = model # embed model construct to agent "circuit"
 
     def process(self, obs, lab, adapt_synapses=True):
+        _lab = jnp.clip(lab, 0.01, 0.99)
         self.circuit.reset(do_reset=True)
         ## pin inference synapses to be exactly equal to the forward ones
         self.circuit.components["Q1"].weights = (self.circuit.components["W1"].weights)
@@ -208,7 +209,7 @@ class PCN():
 
         ## Perform P-step (projection step)
         self.circuit.clamp_input(x=obs) ## clamp to q0 & z0 input compartments
-        self.circuit.clamp_infer_target(target=lab)
+        self.circuit.clamp_infer_target(target=_lab)
         self.circuit.project(t=0, dt=0.) ## do projection/inference
         ## initialize dynamics of generative model latents to projected states
         self.circuit.components["z1"].compartments["z"] = self.circuit.components["q1"].compartments["z"]
@@ -227,7 +228,7 @@ class PCN():
             for ts in range(0, self.T):
                 #print("###################### {} #########################".format(ts))
                 self.circuit.clamp_input(x=obs) ## clamp data to z0 & q0 input compartments
-                self.circuit.clamp_target(target=lab) ## clamp data to e3.target
+                self.circuit.clamp_target(target=_lab) ## clamp data to e3.target
                 #print("e0.comp = ",model.components["e0"].compartments)
                 self.circuit.runCycle(t=ts*self.dt, dt=self.dt)
             #print("mu: ",self.circuit.components["e3"].compartments["mu"])
@@ -239,4 +240,5 @@ class PCN():
             ## Perform (optional) M-step (scheduled synaptic updates)
             if adapt_synapses == True:
                 self.circuit.evolve(t=self.T, dt=self.dt)
+        ## skip E/M steps if just doing test-time inference
         return y_mu_inf, y_mu
