@@ -51,7 +51,7 @@ def eval_model(model, Xtest, Ytest, mb_size):
     acc = acc/(Xtest.shape[0]) ## calc full dev-set acc
     return nll, acc
 
-nll, acc = eval_model(model, _X, _y, mb_size)
+nll, acc = eval_model(model, _X, _Y, mb_size)
 print("-1: Acc = {}  NLL = {}".format(acc, nll))
 for i in range(n_iter):
     ## shuffle data (to ensure i.i.d. assumption holds)
@@ -75,5 +75,5 @@ for i in range(n_iter):
     print()
 
     ## evaluate current progress of model on dev-set
-    nll, acc = eval_model(model, _X, _y, mb_size)
+    nll, acc = eval_model(model, _X, _Y, mb_size)
     print("{}: Acc = {}  NLL = {}".format(i, acc, nll))
