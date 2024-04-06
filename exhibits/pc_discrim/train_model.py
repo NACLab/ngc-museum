@@ -81,4 +81,5 @@ for i in range(n_iter):
     ## evaluate current progress of model on dev-set
     nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
     print("{}: Acc = {}  NLL = {}".format(i, acc, nll))
-    model.viz_receptive_fields(fname="recFields", field_shape=patch_shape)
+    model.viz_receptive_fields(fname="recFields", field_shape=patch_shape,
+                               show_stats=False)
