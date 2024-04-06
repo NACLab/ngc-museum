@@ -27,7 +27,7 @@ model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=500, hid2_dim=500, T=10, # T=20 #
             dt=1., tau_m=10., act_fx="sigmoid", eta=0.001, exp_dir="exp", model_name="pcn")
 
 def eval_model(model, Xdev, Ydev, mb_size):
-    n_batches = int(Xtest.shape[0]/mb_size)
+    n_batches = int(Xdev.shape[0]/mb_size)
 
     n_samp_seen = 0
     nll = 0. ## negative Categorical log liklihood
