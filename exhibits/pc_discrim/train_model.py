@@ -23,7 +23,7 @@ dkey, *subkeys = random.split(dkey, 10)
 
 # hid-dims = 128
 ## build model
-model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=500, hid2_dim=500, T=10, # T=20 #hid=500
+model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=500, hid2_dim=500, T=15, # T=20 #hid=500
             dt=1., tau_m=10., act_fx="sigmoid", eta=0.001, exp_dir="exp", model_name="pcn")
 
 def eval_model(model, Xdev, Ydev, mb_size):
@@ -46,7 +46,7 @@ def eval_model(model, Xdev, Ydev, mb_size):
         acc += _acc
 
         n_samp_seen += Yb.shape[0]
-        #print("\r nll: {} acc: {} for {} samps ".format(nll/(n_samp_seen *1.), 
+        #print("\r nll: {} acc: {} for {} samps ".format(nll/(n_samp_seen *1.),
         #                                                acc/(n_samp_seen *1.),
         #                                                n_samp_seen), end="")
     #print()
@@ -80,3 +80,4 @@ for i in range(n_iter):
     ## evaluate current progress of model on dev-set
     nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
     print("{}: Acc = {}  NLL = {}".format(i, acc, nll))
+    model.viz_receptive_fields(fname="recFields", field_shape=patch_shape)

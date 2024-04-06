@@ -66,11 +66,11 @@ class PCN():
         z0 = model.add_component("rate", name="z0", n_units=in_dim, tau_m=0.,
                                  act_fx="identity", key=subkeys[0])
         z1 = model.add_component("rate", name="z1", n_units=hid1_dim, tau_m=tau_m,
-                                 act_fx=act_fx, prior=("gaussian",0.), 
+                                 act_fx=act_fx, prior=("gaussian",0.),
                                  integration_type="euler", key=subkeys[1])
         e1 = model.add_component("error", name="e1", n_units=hid1_dim)
         z2 = model.add_component("rate", name="z2", n_units=hid2_dim, tau_m=tau_m,
-                                 act_fx=act_fx, prior=("gaussian", 0.), 
+                                 act_fx=act_fx, prior=("gaussian", 0.),
                                  integration_type="euler", key=subkeys[2])
         e2 = model.add_component("error", name="e2", n_units=hid2_dim)
         z3 = model.add_component("rate", name="z3", n_units=out_dim, tau_m=0.,
@@ -196,8 +196,30 @@ class PCN():
         model.save(dir=self.model_dir) ## save current parameter arrays
         self.circuit = model # embed model construct to agent "circuit"
 
+    def viz_receptive_fields(self, fname, field_shape, show_stats=True):
+        """
+        Generates and saves a plot of the receptive fields for the current state
+        of the model's synaptic efficacy values in W1.
+
+        Args:
+            fname: plot fname name (appended to end of experimental directory)
+
+            field_shape: 2-tuple specifying expected shape of receptive fields to plot
+
+            show_stats: display to I/O basic statistics of W1
+        """
+        _W1 = self.circuit.components.get("W1").weights
+        visualize([_W1], [field_shape], self.exp_dir + "/filters/{}".format(fname))
+        if show_stats == True:
+            msg = "W1:\n  min {} \n  max {} \n  mu {} \n  norm {}"
+            print(msg.format(jnp.amin(_W1),
+                             jnp.amax(_W1),
+                             jnp.mean(_W1),
+                             jnp.linalg.norm(_W1)))
+
     def process(self, obs, lab, adapt_synapses=True):
-        _lab = jnp.clip(lab, 0.01, 0.99)
+        eps = 0.001
+        _lab = jnp.clip(lab, eps, 1. - eps)
         self.circuit.reset(do_reset=True)
         ## pin inference synapses to be exactly equal to the forward ones
         self.circuit.components["Q1"].weights = (self.circuit.components["W1"].weights)
@@ -236,7 +258,7 @@ class PCN():
             #print("---")
             #print(self.circuit.components["z2"].compartments["z"]
             y_mu = self.circuit.components["e3"].compartments["mu"] ## get settled prediction
-            
+
             ## Perform (optional) M-step (scheduled synaptic updates)
             if adapt_synapses == True:
                 self.circuit.evolve(t=self.T, dt=self.dt)
