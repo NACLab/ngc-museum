@@ -219,20 +219,21 @@ class PCN():
 
         y_mu_inf = self.circuit.components["q3"].compartments["z"] ## get projected prediction
         #print("mu: ",self.circuit.components["q3"].compartments["z"])
-        ## Perform E-step
-        for ts in range(0, self.T):
-            #print("###################### {} #########################".format(ts))
-            self.circuit.clamp_input(x=obs) ## clamp data to z0 & q0 input compartments
-            self.circuit.clamp_target(target=lab) ## clamp data to e3.target
-            #print("e0.comp = ",model.components["e0"].compartments)
-            self.circuit.runCycle(t=ts*self.dt, dt=self.dt)
-        #print("mu: ",self.circuit.components["e3"].compartments["mu"])
-        #print(" y: ",self.circuit.components["e3"].compartments["target"])
-        #print("---")
-        y_mu = self.circuit.components["e3"].compartments["mu"] ## get settled prediction
-
-        ## Perform (optional) M-step (scheduled synaptic updates)
+        y_mu = 0.
         if adapt_synapses == True:
-            self.circuit.evolve(t=self.T, dt=self.dt)
-
+            ## Perform E-step
+            for ts in range(0, self.T):
+                #print("###################### {} #########################".format(ts))
+                self.circuit.clamp_input(x=obs) ## clamp data to z0 & q0 input compartments
+                self.circuit.clamp_target(target=lab) ## clamp data to e3.target
+                #print("e0.comp = ",model.components["e0"].compartments)
+                self.circuit.runCycle(t=ts*self.dt, dt=self.dt)
+            #print("mu: ",self.circuit.components["e3"].compartments["mu"])
+            #print(" y: ",self.circuit.components["e3"].compartments["target"])
+            #print("---")
+            y_mu = self.circuit.components["e3"].compartments["mu"] ## get settled prediction
+            
+            ## Perform (optional) M-step (scheduled synaptic updates)
+            if adapt_synapses == True:
+                self.circuit.evolve(t=self.T, dt=self.dt)
         return y_mu_inf, y_mu
