@@ -19,4 +19,7 @@ model = PCN(subkeys[1], in_dim, out_dim, hid1_dim=16, hid2_dim=16, T=20,
             dt=1., tau_m=20., act_fx="lrelu", exp_dir="exp", model_name="pcn")
 
 for i in range(n_iter):
-    model.process(obs=Xb, lab=Yb, adapt_synapses=True)
+    yMu_0, yMu = model.process(obs=Xb, lab=Yb, adapt_synapses=True)
+    print("---")
+    print("mu: ",yMu_0)
+    print(" y: ",Yb)

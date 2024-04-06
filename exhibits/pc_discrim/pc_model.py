@@ -6,9 +6,44 @@ from jax import numpy as jnp, random
 import time, sys
 
 class PCN():
+    """
+    Structure for constructing the predictive coding (network) in:
 
+    Whittington, James CR, and Rafal Bogacz. "An approximation of the error
+    backpropagation algorithm in a predictive coding network with local hebbian
+    synaptic plasticity." Neural computation 29.5 (2017): 1229-1262.
+
+    | Node Name Structure:
+    | z0 -(W1)-> e1, z1 -(W1)-> e2, z2 -(W3)-> e3;
+    | e2 -(E2)-> z1 <- e1, e3 -(E3)-> z2 <- e2
+    | Note: W1, W2, W3 -> Hebbian-adapted synapses
+
+    Args:
+        dkey: JAX seeding key
+
+        in_dim: input dimensionality
+
+        out_dim: output dimensionality
+
+        hid1_dim: dimensionality of 1st layer of internal neuronal cells
+
+        hid2_dim: dimensionality of 2nd layer of internal neuronal cells
+
+        T: number of discrete time steps to simulate neuronal dynamics
+
+        dt: integration time constant
+
+        tau_m: membrane time constant of hidden/internal neuronal layers
+
+        act_fx: activation function to use for internal neuronal layers
+
+        exp_dir: experimental directory to save model results
+
+        model_name: unique model name to stamp the output files/dirs with
+    """
     def __init__(self, dkey, in_dim, out_dim, hid1_dim=128, hid2_dim=64, T=10,
-                 dt=1., tau_m=10., act_fx = "tanh", exp_dir="exp", model_name="pc_disc", **kwargs):
+                 dt=1., tau_m=10., act_fx = "tanh", exp_dir="exp",
+                 model_name="pc_disc", **kwargs):
         self.exp_dir = exp_dir
         makedir(exp_dir)
         makedir(exp_dir + "/filters")
@@ -182,7 +217,8 @@ class PCN():
         self.circuit.components["e3"].compartments["dmu"] = self.circuit.components["eq3"].compartments["dmu"]
         self.circuit.components["e3"].compartments["dtarget"] = self.circuit.components["eq3"].compartments["dtarget"]
 
-        print("mu: ",self.circuit.components["q3"].compartments["z"])
+        y_mu_inf = self.circuit.components["q3"].compartments["z"] ## get projected prediction
+        #print("mu: ",self.circuit.components["q3"].compartments["z"])
         ## Perform E-step
         for ts in range(0, self.T):
             #print("###################### {} #########################".format(ts))
@@ -191,8 +227,12 @@ class PCN():
             #print("e0.comp = ",model.components["e0"].compartments)
             self.circuit.runCycle(t=ts*self.dt, dt=self.dt)
         #print("mu: ",self.circuit.components["e3"].compartments["mu"])
-        print(" y: ",self.circuit.components["e3"].compartments["target"])
-        print("---")
+        #print(" y: ",self.circuit.components["e3"].compartments["target"])
+        #print("---")
+        y_mu = self.circuit.components["e3"].compartments["mu"] ## get settled prediction
+
         ## Perform (optional) M-step (scheduled synaptic updates)
         if adapt_synapses == True:
             self.circuit.evolve(t=self.T, dt=self.dt)
+
+        return y_mu_inf, y_mu
