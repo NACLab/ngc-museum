@@ -202,6 +202,21 @@ class PCN():
         model.save(dir=self.model_dir) ## save current parameter arrays
         self.circuit = model # embed model construct to agent "circuit"
 
+    def save_to_disk(self):
+        """
+        Saves current model parameter values to disk
+        """
+        self.circuit.save(dir=self.model_dir) ## save current parameter arrays
+
+    def load_from_disk(self, model_directory="exp"):
+        """
+        Loads parameter/config values from disk to this model
+
+        Args:
+            model_directory: directory/path to saved model parameter/config values
+        """
+        self.circuit.load_from_dir(self, model_directory)
+
     def viz_receptive_fields(self, fname, field_shape, show_stats=True):
         """
         Generates and saves a plot of the receptive fields for the current state
@@ -223,7 +238,7 @@ class PCN():
                              jnp.mean(_W1),
                              jnp.linalg.norm(_W1)))
 
-    def print_norms(self):
+    def get_norm_string(self):
         _W1 = self.circuit.components.get("W1").weights
         _W2 = self.circuit.components.get("W2").weights
         _W3 = self.circuit.components.get("W3").weights
@@ -236,7 +251,7 @@ class PCN():
                                                                     jnp.linalg.norm(_b1),
                                                                     jnp.linalg.norm(_b2),
                                                                     jnp.linalg.norm(_b3))
-        print(_norms)
+        return _norms
 
     def process(self, obs, lab, adapt_synapses=True):
         eps = 0.001

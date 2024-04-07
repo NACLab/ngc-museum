@@ -1,11 +1,8 @@
-#from ngcsimlib.controller import Controller
 from jax import numpy as jnp, random, nn, jit
 import sys
 from pc_model import PCN
 from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
 
-#_X = jnp.load("../data/baby_mnist/babyX.npy")
-#_Y = jnp.load("../data/baby_mnist/babyY.npy")
 _X = jnp.load("../data/mnist/trainX.npy")
 _Y = jnp.load("../data/mnist/trainY.npy")
 Xdev = jnp.load("../data/mnist/testX.npy")
@@ -15,19 +12,17 @@ patch_shape = (int(jnp.sqrt(x_dim)), int(jnp.sqrt(x_dim)))
 y_dim = _Y.shape[1]
 
 n_iter = 100
-mb_size = 250 # 256
-# std of init - 0.025
+mb_size = 250
 n_batches = int(_X.shape[0]/mb_size)
 
 dkey = random.PRNGKey(1234)
 dkey, *subkeys = random.split(dkey, 10)
 
-# hid-dims = 128
-tau_m=10.
 ## build model
 model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=512, hid2_dim=512, T=20,
             dt=1., tau_m=20., act_fx="sigmoid", eta=0.001, exp_dir="exp",
             model_name="pcn")
+model.save_to_disk() # save final state of synapses to disk
 
 def eval_model(model, Xdev, Ydev, mb_size):
     n_batches = int(Xdev.shape[0]/mb_size)
@@ -51,10 +46,7 @@ def eval_model(model, Xdev, Ydev, mb_size):
         EFE += _EFE
 
         n_samp_seen += Yb.shape[0]
-        #print("\r nll: {} acc: {} for {} samps ".format(nll/(n_samp_seen *1.),
-        #                                                acc/(n_samp_seen *1.),
-        #                                                n_samp_seen), end="")
-    #print()
+
     nll = nll/(Xdev.shape[0]) ## calc full dev-set nll
     acc = acc/(Xdev.shape[0]) ## calc full dev-set acc
     EFE = EFE/(Xdev.shape[0]) ## calc full dev-set EFE
@@ -66,7 +58,7 @@ efe_set = []
 
 nll, acc, EFE = eval_model(model, Xdev, Ydev, mb_size=1000)
 print("-1: Acc = {}  NLL = {}  EFE = {}".format(acc, nll, EFE))
-model.print_norms()
+#print(model.get_norm_string())
 nll_set.append(nll)
 acc_set.append(acc)
 efe_set.append(EFE)
@@ -97,11 +89,12 @@ for i in range(n_iter):
 
     ## evaluate current progress of model on dev-set
     nll, acc, EFE = eval_model(model, Xdev, Ydev, mb_size=1000)
+    model.save_to_disk() # save final state of synapses to disk
     nll_set.append(nll)
     acc_set.append(acc)
     efe_set.append(EFE)
     print("{}: Acc = {}  NLL = {}  EFE = {}".format(i, acc, nll, EFE))
-    model.print_norms()
+    #print(model.get_norm_string())
     model.viz_receptive_fields(fname="recFields", field_shape=patch_shape,
                                show_stats=False)
 
