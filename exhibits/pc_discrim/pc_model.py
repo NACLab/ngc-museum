@@ -5,6 +5,31 @@ from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random
 import time, sys
 
+def tie_params(circuit, target, source, transpose_source=False, share_bias=False):
+    """
+    Ties/shares parameter values from a source component synaptic cable with a target
+    component synaptic cable (i.e., gives target a shallow copy of the source's
+    parameters).
+
+    Args:
+        circuit: controller object to perform tying on
+
+        target: target component to give shallow copy of params to
+
+        source: source component to draw param values from
+
+        transpose_source: should source "weights" parameters be transposed
+            before shallow copying (Default: False)
+
+        share_bias: should source "biases" be shared with target (Default: False)
+    """
+    source_W = circuit.components[source].weights
+    if transpose_source == True:
+        source_W = source_W.T
+    circuit.components[target].weights = source_W
+    if share_bias == True:
+        circuit.components[target].biases = circuit.components[source].biases
+
 class PCN():
     """
     Structure for constructing the predictive coding (network) in:
@@ -257,16 +282,22 @@ class PCN():
         eps = 0.001
         _lab = jnp.clip(lab, eps, 1. - eps)
         self.circuit.reset(do_reset=True)
+
         ## pin inference synapses to be exactly equal to the forward ones
-        self.circuit.components["Q1"].weights = (self.circuit.components["W1"].weights)
-        self.circuit.components["Q2"].weights = (self.circuit.components["W2"].weights)
-        self.circuit.components["Q3"].weights = (self.circuit.components["W3"].weights)
-        self.circuit.components["Q1"].biases = (self.circuit.components["W1"].biases)
-        self.circuit.components["Q2"].biases = (self.circuit.components["W2"].biases)
-        self.circuit.components["Q3"].biases = (self.circuit.components["W3"].biases)
+        # self.circuit.components["Q1"].weights = (self.circuit.components["W1"].weights)
+        # self.circuit.components["Q2"].weights = (self.circuit.components["W2"].weights)
+        # self.circuit.components["Q3"].weights = (self.circuit.components["W3"].weights)
+        # self.circuit.components["Q1"].biases = (self.circuit.components["W1"].biases)
+        # self.circuit.components["Q2"].biases = (self.circuit.components["W2"].biases)
+        # self.circuit.components["Q3"].biases = (self.circuit.components["W3"].biases)
+        tie_params(self.circuit, "Q1", "W1", transpose_source=False, share_bias=True)
+        tie_params(self.circuit, "Q2", "W2", transpose_source=False, share_bias=True)
+        tie_params(self.circuit, "Q3", "W3", transpose_source=False, share_bias=True)
         ## pin feedback synapses to transpose of forward ones
-        self.circuit.components["E2"].weights = (self.circuit.components["W2"].weights).T
-        self.circuit.components["E3"].weights = (self.circuit.components["W3"].weights).T
+        # self.circuit.components["E2"].weights = (self.circuit.components["W2"].weights).T
+        # self.circuit.components["E3"].weights = (self.circuit.components["W3"].weights).T
+        tie_params(self.circuit, "E2", "W2", transpose_source=True, share_bias=False)
+        tie_params(self.circuit, "E3", "W3", transpose_source=True, share_bias=False)
 
         ## Perform P-step (projection step)
         self.circuit.clamp_input(x=obs) ## clamp to q0 & z0 input compartments
