@@ -5,6 +5,8 @@ from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random
 import time, sys
 
+## PCN model  co-routines
+
 def tie_compartments(circuit, target, source, compartmentName):
     """
     Ties/shares parameter values from a source (cell) component's compartment with
@@ -48,6 +50,8 @@ def tie_parameters(circuit, target, source, transpose_source=False, share_bias=F
     if share_bias == True:
         circuit.components[target].biases = circuit.components[source].biases
 
+## Main PCN model object
+
 class PCN():
     """
     Structure for constructing the predictive coding (network) in:
@@ -90,16 +94,13 @@ class PCN():
         self.exp_dir = exp_dir
         makedir(exp_dir)
         makedir(exp_dir + "/filters")
-        #makedir(exp_dir + "/raster")
 
         dkey, *subkeys = random.split(dkey, 10)
 
         self.T = T
         self.dt = dt
-        #tau_m = 10.
-        #act_fx = "tanh"
+        ## hard-coded meta-parameters for this model
         optim_type = "adam"
-        #eta = 0.002
         wlb = -0.3
         wub = 0.3
 
@@ -281,31 +282,16 @@ class PCN():
                              jnp.mean(_W1),
                              jnp.linalg.norm(_W1)))
 
-    def get_norm_string(self):
-        _W1 = self.circuit.components.get("W1").weights
-        _W2 = self.circuit.components.get("W2").weights
-        _W3 = self.circuit.components.get("W3").weights
-        _b1 = self.circuit.components.get("W1").biases
-        _b2 = self.circuit.components.get("W2").biases
-        _b3 = self.circuit.components.get("W3").biases
-        _norms = "W1: {} W2: {} W3: {}\n b1: {} b2: {} b3: {}".format(jnp.linalg.norm(_W1),
-                                                                    jnp.linalg.norm(_W2),
-                                                                    jnp.linalg.norm(_W3),
-                                                                    jnp.linalg.norm(_b1),
-                                                                    jnp.linalg.norm(_b2),
-                                                                    jnp.linalg.norm(_b3))
-        return _norms
-
     def process(self, obs, lab, adapt_synapses=True):
         eps = 0.001
         _lab = jnp.clip(lab, eps, 1. - eps)
         self.circuit.reset(do_reset=True)
 
-        ## pin inference synapses to be exactly equal to the forward ones
+        ## pin/tie inference synapses to be exactly equal to the forward ones
         tie_parameters(self.circuit, "Q1", "W1", transpose_source=False, share_bias=True)
         tie_parameters(self.circuit, "Q2", "W2", transpose_source=False, share_bias=True)
         tie_parameters(self.circuit, "Q3", "W3", transpose_source=False, share_bias=True)
-        ## pin feedback synapses to transpose of forward ones
+        ## pin/tie feedback synapses to transpose of forward ones
         tie_parameters(self.circuit, "E2", "W2", transpose_source=True, share_bias=False)
         tie_parameters(self.circuit, "E3", "W3", transpose_source=True, share_bias=False)
 
@@ -313,17 +299,12 @@ class PCN():
         self.circuit.clamp_input(x=obs) ## clamp to q0 & z0 input compartments
         self.circuit.clamp_infer_target(target=_lab)
         self.circuit.project(t=0, dt=0.) ## do projection/inference
+
         ## initialize dynamics of generative model latents to projected states
-        #self.circuit.components["z1"].compartments["z"] = self.circuit.components["q1"].compartments["z"]
-        #self.circuit.components["z2"].compartments["z"] = self.circuit.components["q2"].compartments["z"]
-        ###self.circuit.components["z3"].compartments["z"] = self.circuit.components["q3"].compartments["z"]
         tie_compartments(self.circuit, "z1", "q1", compartmentName="z")
         tie_compartments(self.circuit, "z2", "q2", compartmentName="z")
         ###transfer_compartments(self.circuit, "z3", "q3", compartmentName="z")
-        ## pin projection statistics to main inference components
         ### Note: e1 = 0, e2 = 0 at initial conditions
-        # self.circuit.components["e3"].compartments["dmu"] = self.circuit.components["eq3"].compartments["dmu"]
-        # self.circuit.components["e3"].compartments["dtarget"] = self.circuit.components["eq3"].compartments["dtarget"]
         tie_compartments(self.circuit, "e3", "eq3", compartmentName="dmu")
         tie_compartments(self.circuit, "e3", "eq3", compartmentName="dtarget")
 
@@ -348,3 +329,18 @@ class PCN():
                 self.circuit.evolve(t=self.T, dt=self.dt)
         ## skip E/M steps if just doing test-time inference
         return y_mu_inf, y_mu, EFE
+
+    def _get_norm_string(self): ## debugging routine
+        _W1 = self.circuit.components.get("W1").weights
+        _W2 = self.circuit.components.get("W2").weights
+        _W3 = self.circuit.components.get("W3").weights
+        _b1 = self.circuit.components.get("W1").biases
+        _b2 = self.circuit.components.get("W2").biases
+        _b3 = self.circuit.components.get("W3").biases
+        _norms = "W1: {} W2: {} W3: {}\n b1: {} b2: {} b3: {}".format(jnp.linalg.norm(_W1),
+                                                                    jnp.linalg.norm(_W2),
+                                                                    jnp.linalg.norm(_W3),
+                                                                    jnp.linalg.norm(_b1),
+                                                                    jnp.linalg.norm(_b2),
+                                                                    jnp.linalg.norm(_b3))
+        return _norms

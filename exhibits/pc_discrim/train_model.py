@@ -80,7 +80,7 @@ efe_set = []
 
 nll, acc, EFE = eval_model(model, Xdev, Ydev, mb_size=1000)
 print("-1: Acc = {}  NLL = {}  EFE = {}".format(acc, nll, EFE))
-#print(model.get_norm_string())
+#print(model._get_norm_string())
 nll_set.append(nll)
 acc_set.append(acc)
 efe_set.append(EFE)
@@ -116,7 +116,7 @@ for i in range(n_iter):
     acc_set.append(acc)
     efe_set.append(EFE)
     print("{}: Acc = {}  NLL = {}  EFE = {}".format(i, acc, nll, EFE))
-    #print(model.get_norm_string())
+    #print(model._get_norm_string())
     model.viz_receptive_fields(fname="recFields", field_shape=patch_shape,
                                show_stats=False)
 
