@@ -42,8 +42,8 @@ dkey, *subkeys = random.split(dkey, 10)
 
 ## build model
 model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=512, hid2_dim=512, T=20,
-            dt=1., tau_m=20., act_fx="sigmoid", eta=0.001, exp_dir="exp",
-            model_name="pcn")
+            dt=1., tau_m=20., act_fx="sigmoid", eta=0.001, 
+            exp_dir="exp", model_name="pcn")
 model.save_to_disk() # save final state of synapses to disk
 
 def eval_model(model, Xdev, Ydev, mb_size):
@@ -80,7 +80,7 @@ efe_set = []
 
 nll, acc, EFE = eval_model(model, Xdev, Ydev, mb_size=1000)
 print("-1: Acc = {}  NLL = {}  EFE = {}".format(acc, nll, EFE))
-#print(model._get_norm_string())
+#print(model.get_norm_string())
 nll_set.append(nll)
 acc_set.append(acc)
 efe_set.append(EFE)
@@ -116,7 +116,7 @@ for i in range(n_iter):
     acc_set.append(acc)
     efe_set.append(EFE)
     print("{}: Acc = {}  NLL = {}  EFE = {}".format(i, acc, nll, EFE))
-    #print(model._get_norm_string())
+    #print(model.get_norm_string())
     model.viz_receptive_fields(fname="recFields", field_shape=patch_shape,
                                show_stats=False)
 
