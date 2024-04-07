@@ -5,7 +5,25 @@ from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random
 import time, sys
 
-def tie_params(circuit, target, source, transpose_source=False, share_bias=False):
+def tie_compartments(circuit, target, source, compartmentName):
+    """
+    Ties/shares parameter values from a source (cell) component's compartment with
+    another target (cell) component's compartment of the same name.
+
+    Args:
+        circuit: controller object to perform tying on
+
+        target: target component to give shallow copy of compartment value to
+
+        source: source component to draw compartment value from
+
+        compartmentName: name of compartment to tie/share values across source
+            and target (cell) components
+    """
+    _value = circuit.components[source].compartments[compartmentName]
+    circuit.components[target].compartments[compartmentName] = _value
+
+def tie_parameters(circuit, target, source, transpose_source=False, share_bias=False):
     """
     Ties/shares parameter values from a source component synaptic cable with a target
     component synaptic cable (i.e., gives target a shallow copy of the source's
@@ -284,36 +302,32 @@ class PCN():
         self.circuit.reset(do_reset=True)
 
         ## pin inference synapses to be exactly equal to the forward ones
-        # self.circuit.components["Q1"].weights = (self.circuit.components["W1"].weights)
-        # self.circuit.components["Q2"].weights = (self.circuit.components["W2"].weights)
-        # self.circuit.components["Q3"].weights = (self.circuit.components["W3"].weights)
-        # self.circuit.components["Q1"].biases = (self.circuit.components["W1"].biases)
-        # self.circuit.components["Q2"].biases = (self.circuit.components["W2"].biases)
-        # self.circuit.components["Q3"].biases = (self.circuit.components["W3"].biases)
-        tie_params(self.circuit, "Q1", "W1", transpose_source=False, share_bias=True)
-        tie_params(self.circuit, "Q2", "W2", transpose_source=False, share_bias=True)
-        tie_params(self.circuit, "Q3", "W3", transpose_source=False, share_bias=True)
+        tie_parameters(self.circuit, "Q1", "W1", transpose_source=False, share_bias=True)
+        tie_parameters(self.circuit, "Q2", "W2", transpose_source=False, share_bias=True)
+        tie_parameters(self.circuit, "Q3", "W3", transpose_source=False, share_bias=True)
         ## pin feedback synapses to transpose of forward ones
-        # self.circuit.components["E2"].weights = (self.circuit.components["W2"].weights).T
-        # self.circuit.components["E3"].weights = (self.circuit.components["W3"].weights).T
-        tie_params(self.circuit, "E2", "W2", transpose_source=True, share_bias=False)
-        tie_params(self.circuit, "E3", "W3", transpose_source=True, share_bias=False)
+        tie_parameters(self.circuit, "E2", "W2", transpose_source=True, share_bias=False)
+        tie_parameters(self.circuit, "E3", "W3", transpose_source=True, share_bias=False)
 
         ## Perform P-step (projection step)
         self.circuit.clamp_input(x=obs) ## clamp to q0 & z0 input compartments
         self.circuit.clamp_infer_target(target=_lab)
         self.circuit.project(t=0, dt=0.) ## do projection/inference
         ## initialize dynamics of generative model latents to projected states
-        self.circuit.components["z1"].compartments["z"] = self.circuit.components["q1"].compartments["z"]
-        self.circuit.components["z2"].compartments["z"] = self.circuit.components["q2"].compartments["z"]
+        #self.circuit.components["z1"].compartments["z"] = self.circuit.components["q1"].compartments["z"]
+        #self.circuit.components["z2"].compartments["z"] = self.circuit.components["q2"].compartments["z"]
         ###self.circuit.components["z3"].compartments["z"] = self.circuit.components["q3"].compartments["z"]
+        tie_compartments(circuit, "z1", "q1", compartmentName="z")
+        tie_compartments(circuit, "z2", "q2", compartmentName="z")
+        ###transfer_compartments(circuit, "z3", "q3", compartmentName="z")
         ## pin projection statistics to main inference components
         ### Note: e1 = 0, e2 = 0 at initial conditions
-        self.circuit.components["e3"].compartments["dmu"] = self.circuit.components["eq3"].compartments["dmu"]
-        self.circuit.components["e3"].compartments["dtarget"] = self.circuit.components["eq3"].compartments["dtarget"]
+        # self.circuit.components["e3"].compartments["dmu"] = self.circuit.components["eq3"].compartments["dmu"]
+        # self.circuit.components["e3"].compartments["dtarget"] = self.circuit.components["eq3"].compartments["dtarget"]
+        tie_compartments(circuit, "e3", "eq3", compartmentName="dmu")
+        tie_compartments(circuit, "e3", "eq3", compartmentName="dtarget")
 
         y_mu_inf = self.circuit.components["q3"].compartments["z"] ## get projected prediction
-        #print("mu: ",self.circuit.components["q3"].compartments["z"])
         EFE = 0. ## expected free energy
         y_mu = 0.
         if adapt_synapses == True:
@@ -322,12 +336,7 @@ class PCN():
                 #print("###################### {} #########################".format(ts))
                 self.circuit.clamp_input(x=obs) ## clamp data to z0 & q0 input compartments
                 self.circuit.clamp_target(target=_lab) ## clamp data to e3.target
-                #print("e0.comp = ",model.components["e0"].compartments)
                 self.circuit.runCycle(t=ts*self.dt, dt=self.dt)
-            #print("mu: ",self.circuit.components["e3"].compartments["mu"])
-            #print(" y: ",self.circuit.components["e3"].compartments["target"])
-            #print("---")
-            #print(self.circuit.components["z2"].compartments["z"]
             y_mu = self.circuit.components["e3"].compartments["mu"] ## get settled prediction
 
             L1 = self.circuit.components["e1"].compartments["L"]
