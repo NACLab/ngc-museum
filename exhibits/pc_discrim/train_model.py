@@ -42,11 +42,11 @@ dkey, *subkeys = random.split(dkey, 10)
 
 ## build model
 model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=512, hid2_dim=512, T=20,
-            dt=1., tau_m=20., act_fx="sigmoid", eta=0.001, 
-            exp_dir="exp", model_name="pcn")
+            dt=1., tau_m=20., act_fx="sigmoid", eta=0.001, exp_dir="exp",
+            model_name="pcn")
 model.save_to_disk() # save final state of synapses to disk
 
-def eval_model(model, Xdev, Ydev, mb_size):
+def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference performance
     n_batches = int(Xdev.shape[0]/mb_size)
 
     n_samp_seen = 0
@@ -80,7 +80,7 @@ efe_set = []
 
 nll, acc, EFE = eval_model(model, Xdev, Ydev, mb_size=1000)
 print("-1: Acc = {}  NLL = {}  EFE = {}".format(acc, nll, EFE))
-#print(model.get_norm_string())
+#print(model._get_norm_string())
 nll_set.append(nll)
 acc_set.append(acc)
 efe_set.append(EFE)
@@ -97,6 +97,7 @@ for i in range(n_iter):
 
     ## begin a single epoch
     n_samp_seen = 0
+    train_EFE = 0. ## track training free energy (online) estimate
     for j in range(n_batches):
         dkey, *subkeys = random.split(dkey, 2)
         ## sample mini-batch of patterns
@@ -104,9 +105,11 @@ for i in range(n_iter):
         Xb = X[idx: idx + mb_size,:]
         Yb = Y[idx: idx + mb_size,:]
         ## perform a step of inference/learning
-        yMu_0, yMu, _ = model.process(obs=Xb, lab=Yb, adapt_synapses=True)
+        yMu_0, yMu, _EFE = model.process(obs=Xb, lab=Yb, adapt_synapses=True)
+        train_EFE += _EFE * mb_size
         n_samp_seen += Yb.shape[0]
-        print("\r {} processed ".format(n_samp_seen), end="")
+        print("\r EFE = {} over {} samples ".format((train_EFE/n_samp_seen),
+                                                    n_samp_seen), end="")
     print()
 
     ## evaluate current progress of model on dev-set
@@ -116,7 +119,7 @@ for i in range(n_iter):
     acc_set.append(acc)
     efe_set.append(EFE)
     print("{}: Acc = {}  NLL = {}  EFE = {}".format(i, acc, nll, EFE))
-    #print(model.get_norm_string())
+    #print(model._get_norm_string())
     model.viz_receptive_fields(fname="recFields", field_shape=patch_shape,
                                show_stats=False)
 
