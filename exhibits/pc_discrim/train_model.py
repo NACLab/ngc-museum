@@ -66,6 +66,7 @@ efe_set = []
 
 nll, acc, EFE = eval_model(model, Xdev, Ydev, mb_size=1000)
 print("-1: Acc = {}  NLL = {}  EFE = {}".format(acc, nll, EFE))
+model.print_norms()
 nll_set.append(nll)
 acc_set.append(acc)
 efe_set.append(EFE)
@@ -98,8 +99,9 @@ for i in range(n_iter):
     nll, acc, EFE = eval_model(model, Xdev, Ydev, mb_size=1000)
     nll_set.append(nll)
     acc_set.append(acc)
-    efe_set.append(efe)
+    efe_set.append(EFE)
     print("{}: Acc = {}  NLL = {}  EFE = {}".format(i, acc, nll, EFE))
+    model.print_norms()
     model.viz_receptive_fields(fname="recFields", field_shape=patch_shape,
                                show_stats=False)
 

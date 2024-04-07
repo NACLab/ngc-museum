@@ -227,10 +227,10 @@ class PCN():
         _W1 = self.circuit.components.get("W1").weights
         _W2 = self.circuit.components.get("W2").weights
         _W3 = self.circuit.components.get("W3").weights
-        _b1 = self.circuit.components.get("b1").weights
-        _b2 = self.circuit.components.get("b2").weights
-        _b3 = self.circuit.components.get("b3").weights
-        _norms = "W1: {} W2: {} W3: {} b1: {} b2: {} b3: {}".format(jnp.linalg.norm(_W1),
+        _b1 = self.circuit.components.get("W1").biases
+        _b2 = self.circuit.components.get("W2").biases
+        _b3 = self.circuit.components.get("W3").biases
+        _norms = "W1: {} W2: {} W3: {}\n b1: {} b2: {} b3: {}".format(jnp.linalg.norm(_W1),
                                                                     jnp.linalg.norm(_W2),
                                                                     jnp.linalg.norm(_W3),
                                                                     jnp.linalg.norm(_b1),
