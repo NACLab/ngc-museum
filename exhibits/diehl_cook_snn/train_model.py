@@ -1,11 +1,10 @@
-from snn_model import DC_SNN_Model as Model
 from jax import numpy as jnp, random
-
+import sys, getopt as gopt, optparse
+## bring in model from museum
+from snn_model import DC_SNN_Model as Model
 ## bring in ngc-learn analysis tools
 from ngclearn.utils.viz.raster import create_raster_plot
 from ngclearn.utils.patch_utils import generate_patch_set
-
-import sys, getopt as gopt, optparse
 
 # read in general program arguments
 options, remainder = gopt.getopt(sys.argv[1:], '', ["dataX="])

@@ -1,12 +1,34 @@
 from jax import numpy as jnp, random, nn, jit
-import sys
+import sys, getopt as gopt, optparse
+## bring in model from museum
 from pc_model import PCN
+## bring in ngc-learn analysis tools
 from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
 
-_X = jnp.load("../data/mnist/trainX.npy")
-_Y = jnp.load("../data/mnist/trainY.npy")
-Xdev = jnp.load("../data/mnist/testX.npy")
-Ydev = jnp.load("../data/mnist/testY.npy")
+# read in general program arguments
+options, remainder = gopt.getopt(sys.argv[1:], '',
+                                 ["dataX=", "dataY=", "devX=", "devY="]
+                                 )
+# GPU arguments
+dataX = "../data/baby_mnist/babyX.npy"
+dataY = "../data/baby_mnist/babyY.npy"
+devX = dataX
+devY = dataY
+for opt, arg in options:
+    if opt in ("--dataX"):
+        dataX = arg.strip()
+    elif opt in ("--dataY"):
+        dataY = arg.strip()
+    elif opt in ("--devX"):
+        devX = arg.strip()
+    elif opt in ("--devY"):
+        devY = arg.strip()
+print("Data X: {} | Y: {}".format(dataX, dataY))
+
+_X = jnp.load(dataX)
+_Y = jnp.load(dataY)
+Xdev = jnp.load(devX)
+Ydev = jnp.load(devY)
 x_dim = _X.shape[1]
 patch_shape = (int(jnp.sqrt(x_dim)), int(jnp.sqrt(x_dim)))
 y_dim = _Y.shape[1]

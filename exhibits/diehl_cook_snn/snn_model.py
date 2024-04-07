@@ -156,8 +156,14 @@ class DC_SNN_Model():
         """
         self.circuit.save(dir=self.model_dir) ## save current parameter arrays
 
-    def load_from_disk(self):
-        pass
+    def load_from_disk(self, model_directory="exp"):
+        """
+        Loads parameter/config values from disk to this model
+
+        Args:
+            model_directory: directory/path to saved model parameter/config values
+        """
+        self.circuit.load_from_dir(self, model_directory)
 
     def viz_receptive_fields(self, fname, field_shape, show_stats=True):
         """
