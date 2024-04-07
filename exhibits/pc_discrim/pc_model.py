@@ -217,6 +217,21 @@ class PCN():
                              jnp.mean(_W1),
                              jnp.linalg.norm(_W1)))
 
+    def print_norms(self):
+        _W1 = self.circuit.components.get("W1").weights
+        _W2 = self.circuit.components.get("W2").weights
+        _W3 = self.circuit.components.get("W3").weights
+        _b1 = self.circuit.components.get("b1").weights
+        _b2 = self.circuit.components.get("b2").weights
+        _b3 = self.circuit.components.get("b3").weights
+        _norms = "W1: {} W2: {} W3: {} b1: {} b2: {} b3: {}".format(jnp.linalg.norm(_W1),
+                                                                    jnp.linalg.norm(_W2),
+                                                                    jnp.linalg.norm(_W3),
+                                                                    jnp.linalg.norm(_b1),
+                                                                    jnp.linalg.norm(_b2),
+                                                                    jnp.linalg.norm(_b3))
+        print(_norms)
+
     def process(self, obs, lab, adapt_synapses=True):
         eps = 0.001
         _lab = jnp.clip(lab, eps, 1. - eps)
@@ -244,6 +259,7 @@ class PCN():
 
         y_mu_inf = self.circuit.components["q3"].compartments["z"] ## get projected prediction
         #print("mu: ",self.circuit.components["q3"].compartments["z"])
+        EFE = 0. ## expected free energy
         y_mu = 0.
         if adapt_synapses == True:
             ## Perform E-step
@@ -259,8 +275,12 @@ class PCN():
             #print(self.circuit.components["z2"].compartments["z"]
             y_mu = self.circuit.components["e3"].compartments["mu"] ## get settled prediction
 
+            L1 = self.circuit.components["e1"].compartments["L"]
+            L2 = self.circuit.components["e2"].compartments["L"]
+            L3 = self.circuit.components["e3"].compartments["L"]
+            EFE = L3 + L2 + L1
             ## Perform (optional) M-step (scheduled synaptic updates)
             if adapt_synapses == True:
                 self.circuit.evolve(t=self.T, dt=self.dt)
         ## skip E/M steps if just doing test-time inference
-        return y_mu_inf, y_mu
+        return y_mu_inf, y_mu, EFE

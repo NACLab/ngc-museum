@@ -23,9 +23,10 @@ dkey = random.PRNGKey(1234)
 dkey, *subkeys = random.split(dkey, 10)
 
 # hid-dims = 128
+tau_m=10.
 ## build model
-model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=512, hid2_dim=512, T=20, 
-            dt=1., tau_m=10., act_fx="sigmoid", eta=0.001, exp_dir="exp", 
+model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=512, hid2_dim=512, T=20,
+            dt=1., tau_m=20., act_fx="sigmoid", eta=0.001, exp_dir="exp",
             model_name="pcn")
 
 def eval_model(model, Xdev, Ydev, mb_size):
@@ -34,18 +35,20 @@ def eval_model(model, Xdev, Ydev, mb_size):
     n_samp_seen = 0
     nll = 0. ## negative Categorical log liklihood
     acc = 0. ## accuracy
+    EFE = 0. ## free energy
     for j in range(n_batches):
         ## extract data block/batch
         idx = j * mb_size
         Xb = Xdev[idx: idx + mb_size,:]
         Yb = Ydev[idx: idx + mb_size,:]
         ## run model inference
-        yMu_0, yMu = model.process(obs=Xb, lab=Yb, adapt_synapses=False)
+        yMu_0, yMu, _EFE = model.process(obs=Xb, lab=Yb, adapt_synapses=False)
         ## record metric measurements
         _nll = measure_CatNLL(yMu_0, Yb) * Xb.shape[0] ## un-normalize score
         _acc = measure_ACC(yMu_0, Yb) * Yb.shape[0] ## un-normalize score
         nll += _nll
         acc += _acc
+        EFE += _EFE
 
         n_samp_seen += Yb.shape[0]
         #print("\r nll: {} acc: {} for {} samps ".format(nll/(n_samp_seen *1.),
@@ -54,17 +57,21 @@ def eval_model(model, Xdev, Ydev, mb_size):
     #print()
     nll = nll/(Xdev.shape[0]) ## calc full dev-set nll
     acc = acc/(Xdev.shape[0]) ## calc full dev-set acc
-    return nll, acc
+    EFE = EFE/(Xdev.shape[0]) ## calc full dev-set EFE
+    return nll, acc, EFE
 
 nll_set = []
 acc_set = []
+efe_set = []
 
-nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
-print("-1: Acc = {}  NLL = {}".format(acc, nll))
+nll, acc, EFE = eval_model(model, Xdev, Ydev, mb_size=1000)
+print("-1: Acc = {}  NLL = {}  EFE = {}".format(acc, nll, EFE))
 nll_set.append(nll)
 acc_set.append(acc)
+efe_set.append(EFE)
 jnp.save("exp/nll.npy", jnp.asarray(nll_set))
 jnp.save("exp/acc.npy", jnp.asarray(acc_set))
+jnp.save("exp/efe.npy", jnp.asarray(efe_set))
 
 for i in range(n_iter):
     ## shuffle data (to ensure i.i.d. assumption holds)
@@ -82,19 +89,20 @@ for i in range(n_iter):
         Xb = X[idx: idx + mb_size,:]
         Yb = Y[idx: idx + mb_size,:]
         ## perform a step of inference/learning
-        yMu_0, yMu = model.process(obs=Xb, lab=Yb, adapt_synapses=True)
+        yMu_0, yMu, _ = model.process(obs=Xb, lab=Yb, adapt_synapses=True)
         n_samp_seen += Yb.shape[0]
         print("\r {} processed ".format(n_samp_seen), end="")
     print()
 
     ## evaluate current progress of model on dev-set
-    nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
+    nll, acc, EFE = eval_model(model, Xdev, Ydev, mb_size=1000)
     nll_set.append(nll)
     acc_set.append(acc)
-    print("{}: Acc = {}  NLL = {}".format(i, acc, nll))
+    efe_set.append(efe)
+    print("{}: Acc = {}  NLL = {}  EFE = {}".format(i, acc, nll, EFE))
     model.viz_receptive_fields(fname="recFields", field_shape=patch_shape,
                                show_stats=False)
-nll_set = jnp.asarray(nll_set)
-acc_set = jnp.asarray(acc_set)
-jnp.save("exp/nll.npy", nll_set)
-jnp.save("exp/acc.npy", acc_set)
+
+jnp.save("exp/nll.npy", jnp.asarray(nll_set))
+jnp.save("exp/acc.npy", jnp.asarray(acc_set))
+jnp.save("exp/efe.npy", jnp.asarray(efe_set))
