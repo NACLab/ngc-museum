@@ -1,7 +1,7 @@
 from jax import numpy as jnp, random, nn, jit
 import sys, getopt as gopt, optparse
 ## bring in model from museum
-from pc_model import PCN
+from pcn_model import PCN
 ## bring in ngc-learn analysis tools
 from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
 
