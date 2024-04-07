@@ -78,13 +78,16 @@ class PCN():
         e3 = model.add_component("error", name="e3", n_units=out_dim)
         ### set up generative/forward synapses
         W1 = model.add_component("hebbian", name="W1", shape=(in_dim, hid1_dim),
-                                 eta=eta, wInit=("uniform", wlb, wub), w_bound=0.,
+                                 eta=eta, wInit=("uniform", wlb, wub),
+                                 bInit=("constant", 0., 0.), w_bound=0.,
                                  optim_type=optim_type, signVal=-1., key=subkeys[4])
         W2 = model.add_component("hebbian", name="W2", shape=(hid1_dim, hid2_dim),
-                                 eta=eta, wInit=("uniform", wlb, wub), w_bound=0.,
+                                 eta=eta, wInit=("uniform", wlb, wub),
+                                 bInit=("constant", 0., 0.), w_bound=0.,
                                  optim_type=optim_type, signVal=-1., key=subkeys[5])
         W3 = model.add_component("hebbian", name="W3", shape=(hid2_dim, out_dim),
-                                 eta=eta, wInit=("uniform", wlb, wub), w_bound=0.,
+                                 eta=eta, wInit=("uniform", wlb, wub),
+                                 bInit=("constant", 0., 0.), w_bound=0.,
                                  optim_type=optim_type, signVal=-1., key=subkeys[6])
         ## set up feedback/error synapses
         E2 = model.add_component("hebbian", name="E2", shape=(hid2_dim, hid1_dim),
@@ -133,9 +136,12 @@ class PCN():
         q2 = model.add_component("rate", name="q2", n_units=hid2_dim, tau_m=0., act_fx=act_fx)
         q3 = model.add_component("rate", name="q3", n_units=out_dim, tau_m=0., act_fx="identity")
         eq3 = model.add_component("error", name="eq3", n_units=out_dim)
-        Q1 = model.add_component("hebbian", name="Q1", shape=(in_dim, hid1_dim), key=subkeys[0])
-        Q2 = model.add_component("hebbian", name="Q2", shape=(hid1_dim, hid2_dim), key=subkeys[0])
-        Q3 = model.add_component("hebbian", name="Q3", shape=(hid2_dim, out_dim), key=subkeys[0])
+        Q1 = model.add_component("hebbian", name="Q1", shape=(in_dim, hid1_dim),
+                                 bInit=("constant", 0., 0.), key=subkeys[0])
+        Q2 = model.add_component("hebbian", name="Q2", shape=(hid1_dim, hid2_dim),
+                                 bInit=("constant", 0., 0.), key=subkeys[0])
+        Q3 = model.add_component("hebbian", name="Q3", shape=(hid2_dim, out_dim),
+                                 bInit=("constant", 0., 0.), key=subkeys[0])
         ## wire q0 -(Q1)-> q1, q1 -(Q2)-> q2, q2 -(Q3)-> q3
         model.connect(q0.name, q0.outputCompartmentName(), Q1.name, Q1.inputCompartmentName())
         model.connect(Q1.name, Q1.outputCompartmentName(), q1.name, q1.inputCompartmentName())
@@ -240,6 +246,9 @@ class PCN():
         self.circuit.components["Q1"].weights = (self.circuit.components["W1"].weights)
         self.circuit.components["Q2"].weights = (self.circuit.components["W2"].weights)
         self.circuit.components["Q3"].weights = (self.circuit.components["W3"].weights)
+        self.circuit.components["Q1"].biases = (self.circuit.components["W1"].biases)
+        self.circuit.components["Q2"].biases = (self.circuit.components["W2"].biases)
+        self.circuit.components["Q3"].biases = (self.circuit.components["W3"].biases)
         ## pin feedback synapses to transpose of forward ones
         self.circuit.components["E2"].weights = (self.circuit.components["W2"].weights).T
         self.circuit.components["E3"].weights = (self.circuit.components["W3"].weights).T
