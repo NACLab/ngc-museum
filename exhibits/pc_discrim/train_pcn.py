@@ -52,38 +52,35 @@ def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference
     n_samp_seen = 0
     nll = 0. ## negative Categorical log liklihood
     acc = 0. ## accuracy
-    EFE = 0. ## free energy
     for j in range(n_batches):
         ## extract data block/batch
         idx = j * mb_size
         Xb = Xdev[idx: idx + mb_size,:]
         Yb = Ydev[idx: idx + mb_size,:]
         ## run model inference
-        yMu_0, yMu, _EFE = model.process(obs=Xb, lab=Yb, adapt_synapses=False)
+        yMu_0, yMu, _ = model.process(obs=Xb, lab=Yb, adapt_synapses=False)
         ## record metric measurements
         _nll = measure_CatNLL(yMu_0, Yb) * Xb.shape[0] ## un-normalize score
         _acc = measure_ACC(yMu_0, Yb) * Yb.shape[0] ## un-normalize score
         nll += _nll
         acc += _acc
-        EFE += _EFE
 
         n_samp_seen += Yb.shape[0]
 
     nll = nll/(Xdev.shape[0]) ## calc full dev-set nll
     acc = acc/(Xdev.shape[0]) ## calc full dev-set acc
-    EFE = EFE/(Xdev.shape[0]) ## calc full dev-set EFE
-    return nll, acc, EFE
+    return nll, acc
 
 nll_set = []
 acc_set = []
 efe_set = []
 
-nll, acc, EFE = eval_model(model, Xdev, Ydev, mb_size=1000)
-print("-1: Acc = {}  NLL = {}  EFE = {}".format(acc, nll, EFE))
+nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
+print("-1: Acc = {}  NLL = {}  EFE = --".format(acc, nll))
 #print(model._get_norm_string())
 nll_set.append(nll)
 acc_set.append(acc)
-efe_set.append(EFE)
+efe_set.append(-500.)
 jnp.save("exp/nll.npy", jnp.asarray(nll_set))
 jnp.save("exp/acc.npy", jnp.asarray(acc_set))
 jnp.save("exp/efe.npy", jnp.asarray(efe_set))
@@ -113,12 +110,13 @@ for i in range(n_iter):
     print()
 
     ## evaluate current progress of model on dev-set
-    nll, acc, EFE = eval_model(model, Xdev, Ydev, mb_size=1000)
+    nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
     model.save_to_disk() # save final state of synapses to disk
     nll_set.append(nll)
     acc_set.append(acc)
-    efe_set.append(EFE)
-    print("{}: Acc = {}  NLL = {}  EFE = {}".format(i, acc, nll, EFE))
+    efe_set.append((train_EFE/n_samp_seen))
+    print("{}: Acc = {}  NLL = {}  EFE = {}".format(i, acc, nll,
+                                                    (train_EFE/n_samp_seen)))
     #print(model._get_norm_string())
 
 jnp.save("exp/nll.npy", jnp.asarray(nll_set))
