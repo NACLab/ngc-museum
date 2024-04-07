@@ -14,7 +14,7 @@ x_dim = _X.shape[1]
 patch_shape = (int(jnp.sqrt(x_dim)), int(jnp.sqrt(x_dim)))
 y_dim = _Y.shape[1]
 
-n_iter = 40 #100
+n_iter = 100
 mb_size = 250 # 256
 # std of init - 0.025
 n_batches = int(_X.shape[0]/mb_size)
@@ -24,8 +24,9 @@ dkey, *subkeys = random.split(dkey, 10)
 
 # hid-dims = 128
 ## build model
-model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=512, hid2_dim=512, T=15, # T=20 #hid=500
-            dt=1., tau_m=10., act_fx="sigmoid", eta=0.001, exp_dir="exp", model_name="pcn")
+model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=512, hid2_dim=512, T=20, 
+            dt=1., tau_m=10., act_fx="sigmoid", eta=0.001, exp_dir="exp", 
+            model_name="pcn")
 
 def eval_model(model, Xdev, Ydev, mb_size):
     n_batches = int(Xdev.shape[0]/mb_size)
@@ -55,8 +56,16 @@ def eval_model(model, Xdev, Ydev, mb_size):
     acc = acc/(Xdev.shape[0]) ## calc full dev-set acc
     return nll, acc
 
+nll_set = []
+acc_set = []
+
 nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
 print("-1: Acc = {}  NLL = {}".format(acc, nll))
+nll_set.append(nll)
+acc_set.append(acc)
+jnp.save("exp/nll.npy", jnp.asarray(nll_set))
+jnp.save("exp/acc.npy", jnp.asarray(acc_set))
+
 for i in range(n_iter):
     ## shuffle data (to ensure i.i.d. assumption holds)
     dkey, *subkeys = random.split(dkey, 2)
@@ -80,6 +89,12 @@ for i in range(n_iter):
 
     ## evaluate current progress of model on dev-set
     nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
+    nll_set.append(nll)
+    acc_set.append(acc)
     print("{}: Acc = {}  NLL = {}".format(i, acc, nll))
     model.viz_receptive_fields(fname="recFields", field_shape=patch_shape,
                                show_stats=False)
+nll_set = jnp.asarray(nll_set)
+acc_set = jnp.asarray(acc_set)
+jnp.save("exp/nll.npy", nll_set)
+jnp.save("exp/acc.npy", acc_set)
