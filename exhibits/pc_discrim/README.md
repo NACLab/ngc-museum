@@ -14,8 +14,17 @@ synaptic plasticity." Neural computation 29.5 (2017): 1229-1262.
 To train this implementation of PC, simply run:
 
 ```console
-$ python train_model.py --dataX="../data/baby_mnist/babyX.npy"
+$ python train_model.py --dataX="..." --dataY="..." --devX="..." --devY="..."
 ```
+
+where you replace the ellipses with paths to the appropriate numpy array 
+data source. Alternatively, you may run the convenience bash script:
+
+```console
+$ ./sim.sh
+```
+
+which will execute and run the model simulation for MNIST.
 
 Note that you can point the training script to other datasets besides the
 default MNIST, just ensure that the target for `dataX` is a numpy array of
