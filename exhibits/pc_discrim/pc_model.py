@@ -317,15 +317,15 @@ class PCN():
         #self.circuit.components["z1"].compartments["z"] = self.circuit.components["q1"].compartments["z"]
         #self.circuit.components["z2"].compartments["z"] = self.circuit.components["q2"].compartments["z"]
         ###self.circuit.components["z3"].compartments["z"] = self.circuit.components["q3"].compartments["z"]
-        tie_compartments(circuit, "z1", "q1", compartmentName="z")
-        tie_compartments(circuit, "z2", "q2", compartmentName="z")
-        ###transfer_compartments(circuit, "z3", "q3", compartmentName="z")
+        tie_compartments(self.circuit, "z1", "q1", compartmentName="z")
+        tie_compartments(self.circuit, "z2", "q2", compartmentName="z")
+        ###transfer_compartments(self.circuit, "z3", "q3", compartmentName="z")
         ## pin projection statistics to main inference components
         ### Note: e1 = 0, e2 = 0 at initial conditions
         # self.circuit.components["e3"].compartments["dmu"] = self.circuit.components["eq3"].compartments["dmu"]
         # self.circuit.components["e3"].compartments["dtarget"] = self.circuit.components["eq3"].compartments["dtarget"]
-        tie_compartments(circuit, "e3", "eq3", compartmentName="dmu")
-        tie_compartments(circuit, "e3", "eq3", compartmentName="dtarget")
+        tie_compartments(self.circuit, "e3", "eq3", compartmentName="dmu")
+        tie_compartments(self.circuit, "e3", "eq3", compartmentName="dtarget")
 
         y_mu_inf = self.circuit.components["q3"].compartments["z"] ## get projected prediction
         EFE = 0. ## expected free energy
