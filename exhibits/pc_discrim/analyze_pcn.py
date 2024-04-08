@@ -5,7 +5,30 @@ from ngcsimlib.controller import Controller
 ## bring in ngc-learn analysis tools
 from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
 
-from train_pcn import eval_model
+def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference performance
+    n_batches = int(Xdev.shape[0]/mb_size)
+
+    n_samp_seen = 0
+    nll = 0. ## negative Categorical log liklihood
+    acc = 0. ## accuracy
+    for j in range(n_batches):
+        ## extract data block/batch
+        idx = j * mb_size
+        Xb = Xdev[idx: idx + mb_size,:]
+        Yb = Ydev[idx: idx + mb_size,:]
+        ## run model inference
+        yMu_0, yMu, _ = model.process(obs=Xb, lab=Yb, adapt_synapses=False)
+        ## record metric measurements
+        _nll = measure_CatNLL(yMu_0, Yb) * Xb.shape[0] ## un-normalize score
+        _acc = measure_ACC(yMu_0, Yb) * Yb.shape[0] ## un-normalize score
+        nll += _nll
+        acc += _acc
+
+        n_samp_seen += Yb.shape[0]
+
+    nll = nll/(Xdev.shape[0]) ## calc full dev-set nll
+    acc = acc/(Xdev.shape[0]) ## calc full dev-set acc
+    return nll, acc
 
 dataX = "../data/mnist/testX.npy"
 dataY = "../data/mnist/testY.npy"
