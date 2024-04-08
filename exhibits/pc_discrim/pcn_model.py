@@ -10,7 +10,7 @@ def load_model(model_dir, exp_dir="exp", model_name="pc_disc", dt=1., T=10):
     circuit = Controller()
     circuit.load_from_dir(directory=model_dir)
 
-    model = PCN(_key, in_dim=1, out_dim=1)
+    model = PCN(_key, in_dim=1, out_dim=1, save_init=False)
     model.circuit = circuit
     model.exp_dir = exp_dir
     model.model_dir = "{}/{}/custom".format(exp_dir, model_name)
@@ -99,10 +99,12 @@ class PCN():
         exp_dir: experimental directory to save model results
 
         model_name: unique model name to stamp the output files/dirs with
+
+        save_init: save model at initialization/first configuration time (Default: True)
     """
     def __init__(self, dkey, in_dim, out_dim, hid1_dim=128, hid2_dim=64, T=10,
                  dt=1., tau_m=10., act_fx = "tanh", eta=0.001, exp_dir="exp",
-                 model_name="pc_disc", **kwargs):
+                 model_name="pc_disc", save_init=True, **kwargs):
         self.exp_dir = exp_dir
         makedir(exp_dir)
         makedir(exp_dir + "/filters")
@@ -255,9 +257,11 @@ class PCN():
         model.add_step("advance")
 
         ## save JSON structure to disk once
-        model.save_to_json(directory="exp", model_name=model_name)
+        if save_init == True:
+            model.save_to_json(directory="exp", model_name=model_name)
         self.model_dir = "{}/{}/custom".format(exp_dir, model_name)
-        model.save(dir=self.model_dir) ## save current parameter arrays
+        if save_init == True:
+            model.save(dir=self.model_dir) ## save current parameter arrays
         self.circuit = model # embed model construct to agent "circuit"
 
     def save_to_disk(self):

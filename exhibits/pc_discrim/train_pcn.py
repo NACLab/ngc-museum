@@ -119,6 +119,9 @@ for i in range(n_iter):
     _, tr_acc = eval_model(model, _X, _Y, mb_size=1000)
     if (i+1) % save_point == 0 or i == (n_iter-1):
         model.save_to_disk() # save final state of synapses to disk
+        jnp.save("exp/trAcc.npy", jnp.asarray(trAcc_set))
+        jnp.save("exp/acc.npy", jnp.asarray(acc_set))
+        jnp.save("exp/efe.npy", jnp.asarray(efe_set))
     ## record current generalization stats and print to I/O
     trAcc_set.append(tr_acc)
     acc_set.append(acc)
