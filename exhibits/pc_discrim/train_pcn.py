@@ -78,12 +78,13 @@ trAcc_set = []
 acc_set = []
 efe_set = []
 
+_, tr_acc = eval_model(model, _X, _Y, mb_size=1000)
 nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
 print("-1: Acc = {}  NLL = {}  EFE = --".format(acc, nll))
 #print(model._get_norm_string())
-trAcc_set.append(0.1) ## random guessing is where models typically start
+trAcc_set.append(tr_acc) ## random guessing is where models typically start
 acc_set.append(acc)
-efe_set.append(-1000.)
+efe_set.append(-2000.)
 jnp.save("exp/dev_acc.npy", jnp.asarray(acc_set))
 jnp.save("exp/efe.npy", jnp.asarray(efe_set))
 
@@ -108,7 +109,6 @@ for i in range(n_iter):
         yMu_0, yMu, _EFE = model.process(obs=Xb, lab=Yb, adapt_synapses=True)
         ## track online training EFE and accuracy
         train_EFE += _EFE * mb_size
-        trAcc += measure_ACC(yMu_0, Yb) * mb_size ## biased estimator of acc
         n_samp_seen += Yb.shape[0]
         print("\r EFE = {} over {} samples ".format((train_EFE/n_samp_seen),
                                                     n_samp_seen), end="")
@@ -116,13 +116,15 @@ for i in range(n_iter):
 
     ## evaluate current progress of model on dev-set
     nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
+    _, tr_acc = eval_model(model, _X, _Y, mb_size=1000)
     if (i+1) % save_point == 0 or i == (n_iter-1):
         model.save_to_disk() # save final state of synapses to disk
-    trAcc_set.append((trAcc/n_samp_seen))
+    ## record current generalization stats and print to I/O
+    trAcc_set.append(tr_acc)
     acc_set.append(acc)
     efe_set.append((train_EFE/n_samp_seen))
     print("{}: Dev: Acc = {}, NLL = {} | Tr: Acc = {}, \
-      EFE = {}".format(i, acc, nll, (trAcc/n_samp_seen), (train_EFE/n_samp_seen)))
+        EFE = {}".format(i, acc, nll, tr_acc, (train_EFE/n_samp_seen)))
     #print(model._get_norm_string())
 
 jnp.save("exp/trAcc.npy", jnp.asarray(trAcc_set))
