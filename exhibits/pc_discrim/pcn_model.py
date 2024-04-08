@@ -323,6 +323,9 @@ class PCN():
         ## skip E/M steps if just doing test-time inference
         return y_mu_inf, y_mu, EFE
 
+    def get_latents(self):
+        return self.circuit.components["q2"].compartments["z"]
+
     def _get_norm_string(self): ## debugging routine
         _W1 = self.circuit.components.get("W1").weights
         _W2 = self.circuit.components.get("W2").weights
