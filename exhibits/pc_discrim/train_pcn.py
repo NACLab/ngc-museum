@@ -1,17 +1,33 @@
 from jax import numpy as jnp, random, nn, jit
 import sys, getopt as gopt, optparse, time
-## bring in model from museum
-from pcn_model import PCN
+from pcn_model import PCN ## bring in model from museum
 ## bring in ngc-learn analysis tools
 from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
+
+"""
+################################################################################
+Predictive Coding Network (PCN) Exhibit File:
+
+Fits a PCN classifier to the MNIST database.
+
+Usage:
+$ python sim_train.py --dataX="/path/to/train_patterns.npy" \
+                      --dataY="/path/to/train_labels.npy" \
+                      --devX="/path/to/dev_patterns.npy" \
+                      --devY="/path/to/dev_labels.npy" \
+                      --verbosity=0
+
+@author: The Neural Adaptive Computing Laboratory
+################################################################################
+"""
 
 # read in general program arguments
 options, remainder = gopt.getopt(sys.argv[1:], '',
                                  ["dataX=", "dataY=", "devX=", "devY=", "verbosity="]
                                  )
 # external dataset arguments
-dataX = "../data/baby_mnist/babyX.npy"
-dataY = "../data/baby_mnist/babyY.npy"
+dataX = "../data/mnist/testX.npy"
+dataY = "../data/mnist/testY.npy"
 devX = dataX
 devY = dataY
 verbosity = 0 ## verbosity level (0 - fairly minimal, 1 - prints multiple lines on I/O)

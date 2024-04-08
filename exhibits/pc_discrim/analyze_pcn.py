@@ -1,13 +1,28 @@
 from jax import numpy as jnp, random, nn, jit
 import numpy as np
 import sys, getopt as gopt, optparse
-## bring in model from museum
-#from ngcsimlib.controller import Controller
 from pcn_model import load_model
 ## bring in ngc-learn analysis tools
 from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
 from ngclearn.utils.viz.dim_reduce import extract_tsne_latents, plot_latents
 
+"""
+################################################################################
+Predictive Coding Network (PCN) Exhibit File:
+
+Evaluates a trained PCN classifier on the MNIST database test-set and produces
+a t-SNE visualization of its penultimate neuronal layer activities over this
+test-set.
+
+Usage:
+$ python analyze_pcn.py --dataX="/path/to/train_patterns.npy" \
+                        --dataY="/path/to/train_labels.npy"
+
+@author: The Neural Adaptive Computing Laboratory
+################################################################################
+"""
+
+## program-specific co-routine
 def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference performance
     n_batches = int(Xdev.shape[0]/mb_size)
 
@@ -52,14 +67,14 @@ print("=> Data X: {} | Y: {}".format(dataX, dataY))
 _X = jnp.load(dataX)
 _Y = jnp.load(dataY)
 
-#model = Controller()
-#model.load_from_dir(directory="exp/pcn")
-model = load_model("exp/pcn", dt=1., T=20) # PCN(model_dir="exp/pcn", exp_dir="exp", dt=1., T=10)
+model = load_model("exp/pcn", dt=1., T=20) ## load in pre-trained PCN model
 
+## evaluate performance
 nll, acc, latents = eval_model(model, _X, _Y, mb_size=1000)
 print("------------------------------------")
 print("=> NLL = {}  Acc = {}".format(nll, acc))
 
+## extract latents and visualize via the t-SNE algorithm
 print("Lat.shape = ",latents.shape)
 codes = extract_tsne_latents(np.asarray(latents))
 print("code.shape = ",codes.shape)
