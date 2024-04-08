@@ -1,11 +1,12 @@
 from jax import numpy as jnp, random, nn, jit
+import numpy as np
 import sys, getopt as gopt, optparse
 ## bring in model from museum
 #from ngcsimlib.controller import Controller
 from pcn_model import load_model
 ## bring in ngc-learn analysis tools
 from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
-from ngclearn.utils.viz.dim_reduce import extract_tsne_latents
+from ngclearn.utils.viz.dim_reduce import extract_tsne_latents, plot_latents
 
 def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference performance
     n_batches = int(Xdev.shape[0]/mb_size)
@@ -61,6 +62,7 @@ print("=> NLL = {}  Acc = {}".format(nll, acc))
 
 print("Lat.shape = ",latents.shape)
 codes = extract_tsne_latents(np.asarray(latents))
+print("code.shape = ",codes.shape)
 plot_latents(codes, _Y, plot_fname="pcn_latents.jpg")
 
 ## TODO: put in tSNE viz code to show what latents look like
