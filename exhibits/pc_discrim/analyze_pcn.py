@@ -31,9 +31,9 @@ def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference
     return nll, acc
 
 # read in general program arguments
-options, remainder = gopt.getopt(sys.argv[1:], '',
+options, remainder = gopt.getopt(sys.argv[1:], '', \
                                  ["dataX=", "dataY=", "devX=", "devY="]
-                                 
+
 dataX = "../data/mnist/testX.npy"
 dataY = "../data/mnist/testY.npy"
 for opt, arg in options:
