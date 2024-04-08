@@ -2,4 +2,4 @@
 DATA_DIR="../data/mnist"
 
 rm -r exp/* ## clear out experimental directory
-python train_model.py  --dataX="$DATA_DIR/trainX.npy" --dataY="$DATA_DIR/trainY.npy" --devX="$DATA_DIR/testX.npy" --devY="$DATA_DIR/testY.npy" 
+python train_pcn.py  --dataX="$DATA_DIR/trainX.npy" --dataY="$DATA_DIR/trainY.npy" --devX="$DATA_DIR/validX.npy" --devY="$DATA_DIR/validY.npy" 
