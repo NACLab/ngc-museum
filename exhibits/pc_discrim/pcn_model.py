@@ -12,7 +12,7 @@ def load_model(model_dir, exp_dir="exp", model_name="pc_disc", dt=1., T=10):
 
     model = PCN(_key, in_dim=1, out_dim=1)
     model.circuit = circuit
-    self.exp_dir = exp_dir
+    model.exp_dir = exp_dir
     model.model_dir = "{}/{}/custom".format(exp_dir, model_name)
     model.dt = dt
     model.T = T
