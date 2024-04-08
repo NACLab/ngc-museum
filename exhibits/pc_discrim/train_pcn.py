@@ -9,7 +9,7 @@ from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
 options, remainder = gopt.getopt(sys.argv[1:], '',
                                  ["dataX=", "dataY=", "devX=", "devY="]
                                  )
-# GPU arguments
+# external dataset arguments
 dataX = "../data/baby_mnist/babyX.npy"
 dataY = "../data/baby_mnist/babyY.npy"
 devX = dataX
@@ -23,7 +23,8 @@ for opt, arg in options:
         devX = arg.strip()
     elif opt in ("--devY"):
         devY = arg.strip()
-print("Data X: {} | Y: {}".format(dataX, dataY))
+print("Train-set: X: {} | Y: {}".format(dataX, dataY))
+print("  Dev-set: X: {} | Y: {}".format(devX, devY))
 
 _X = jnp.load(dataX)
 _Y = jnp.load(dataY)
