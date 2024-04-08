@@ -36,7 +36,9 @@ y_dim = _Y.shape[1]
 n_iter = 100
 mb_size = 250
 n_batches = int(_X.shape[0]/mb_size)
+save_point = 5 ## save model params every modulo "save_point"
 
+## set up JAX seeding
 dkey = random.PRNGKey(1234)
 dkey, *subkeys = random.split(dkey, 10)
 
@@ -80,7 +82,7 @@ print("-1: Acc = {}  NLL = {}  EFE = --".format(acc, nll))
 #print(model._get_norm_string())
 nll_set.append(nll)
 acc_set.append(acc)
-efe_set.append(-500.)
+efe_set.append(-1000.)
 jnp.save("exp/nll.npy", jnp.asarray(nll_set))
 jnp.save("exp/acc.npy", jnp.asarray(acc_set))
 jnp.save("exp/efe.npy", jnp.asarray(efe_set))
@@ -111,7 +113,8 @@ for i in range(n_iter):
 
     ## evaluate current progress of model on dev-set
     nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
-    model.save_to_disk() # save final state of synapses to disk
+    if (i+1) % save_point == 0 or i == (n_iter-1):
+        model.save_to_disk() # save final state of synapses to disk
     nll_set.append(nll)
     acc_set.append(acc)
     efe_set.append((train_EFE/n_samp_seen))
