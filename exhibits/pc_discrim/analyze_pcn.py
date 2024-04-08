@@ -60,7 +60,7 @@ nll, acc, latents = eval_model(model, _X, _Y, mb_size=1000)
 print("=> NLL = {}  Acc = {}".format(nll, acc))
 
 print("Lat.shape = ",latents.shape)
-codes = extract_tsne_latents(latents)
+codes = extract_tsne_latents(np.asarray(latents))
 plot_latents(codes, _Y, plot_fname="pcn_latents.jpg")
 
 ## TODO: put in tSNE viz code to show what latents look like
