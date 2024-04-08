@@ -250,7 +250,7 @@ class PCN():
         """
         self.circuit.save(dir=self.model_dir) ## save current parameter arrays
 
-    def load_from_disk(self, model_directory="exp"):
+    def load_from_disk(self, model_directory="exp/pcn"):
         """
         Loads parameter/config values from disk to this model
 
