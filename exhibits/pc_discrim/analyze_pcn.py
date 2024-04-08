@@ -37,9 +37,7 @@ def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference
     return nll, acc, latents
 
 # read in general program arguments
-options, remainder = gopt.getopt(sys.argv[1:], '',
-                                 ["dataX=", "dataY=", "devX=", "devY="]
-                                 )
+options, remainder = gopt.getopt(sys.argv[1:], '', ["dataX=", "dataY="])
 
 dataX = "../data/mnist/testX.npy"
 dataY = "../data/mnist/testY.npy"
@@ -48,6 +46,7 @@ for opt, arg in options:
         dataX = arg.strip()
     elif opt in ("--dataY"):
         dataY = arg.strip()
+
 print("=> Data X: {} | Y: {}".format(dataX, dataY))
 
 _X = jnp.load(dataX)
@@ -58,11 +57,10 @@ _Y = jnp.load(dataY)
 model = load_model("exp/pcn", dt=1., T=20) # PCN(model_dir="exp/pcn", exp_dir="exp", dt=1., T=10)
 
 nll, acc, latents = eval_model(model, _X, _Y, mb_size=1000)
+print("------------------------------------")
 print("=> NLL = {}  Acc = {}".format(nll, acc))
 
 print("Lat.shape = ",latents.shape)
 codes = extract_tsne_latents(np.asarray(latents))
 print("code.shape = ",codes.shape)
-plot_latents(codes, _Y, plot_fname="pcn_latents.jpg")
-
-## TODO: put in tSNE viz code to show what latents look like
+plot_latents(codes, _Y, plot_fname="exp/pcn_latents.jpg")

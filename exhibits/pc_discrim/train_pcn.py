@@ -1,5 +1,5 @@
 from jax import numpy as jnp, random, nn, jit
-import sys, getopt as gopt, optparse
+import sys, getopt as gopt, optparse, time
 ## bring in model from museum
 from pcn_model import PCN
 ## bring in ngc-learn analysis tools
@@ -7,13 +7,14 @@ from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
 
 # read in general program arguments
 options, remainder = gopt.getopt(sys.argv[1:], '',
-                                 ["dataX=", "dataY=", "devX=", "devY="]
+                                 ["dataX=", "dataY=", "devX=", "devY=", "verbosity="]
                                  )
 # external dataset arguments
 dataX = "../data/baby_mnist/babyX.npy"
 dataY = "../data/baby_mnist/babyY.npy"
 devX = dataX
 devY = dataY
+verbosity = 0 ## verbosity level (0 - fairly minimal, 1 - prints multiple lines on I/O)
 for opt, arg in options:
     if opt in ("--dataX"):
         dataX = arg.strip()
@@ -23,6 +24,8 @@ for opt, arg in options:
         devX = arg.strip()
     elif opt in ("--devY"):
         devY = arg.strip()
+    elif opt in ("--verbosity"):
+        verbosity = int(arg.strip())
 print("Train-set: X: {} | Y: {}".format(dataX, dataY))
 print("  Dev-set: X: {} | Y: {}".format(devX, devY))
 
@@ -78,10 +81,13 @@ trAcc_set = []
 acc_set = []
 efe_set = []
 
+sim_start_time = time.time() ## start time profiling
+
 _, tr_acc = eval_model(model, _X, _Y, mb_size=1000)
 nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
 print("-1: Dev: Acc = {}  NLL = {} | Tr: Acc = {} EFE = --".format(acc, nll, tr_acc))
-#print(model._get_norm_string())
+if verbosity >= 2:
+    print(model._get_norm_string())
 trAcc_set.append(tr_acc) ## random guessing is where models typically start
 acc_set.append(acc)
 efe_set.append(-2000.)
@@ -110,9 +116,11 @@ for i in range(n_iter):
         ## track online training EFE and accuracy
         train_EFE += _EFE * mb_size
         n_samp_seen += Yb.shape[0]
-        print("\r EFE = {} over {} samples ".format((train_EFE/n_samp_seen),
-                                                    n_samp_seen), end="")
-    print()
+        if verbosity >= 1:
+            print("\r EFE = {} over {} samples ".format((train_EFE/n_samp_seen),
+                                                        n_samp_seen), end="")
+    if verbosity >= 1:
+        print()
 
     ## evaluate current progress of model on dev-set
     nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
@@ -129,8 +137,23 @@ for i in range(n_iter):
     io_str = ("{} Dev: Acc = {}, NLL = {} | "
               "Tr: Acc = {}, EFE = {}"
              ).format(i, acc, nll, tr_acc, (train_EFE/n_samp_seen))
-    print(io_str)
-    #print(model._get_norm_string())
+    if verbosity >= 1:
+        print(io_str)
+    else:
+        print("\r{}".format(io_str), end="")
+    if verbosity >= 2:
+        print(model._get_norm_string())
+if verbosity == 0:
+    print("")
+
+## stop time profiling
+sim_end_time = time.time()
+sim_time = sim_end_time - sim_start_time
+sim_time_hr = (sim_time/3600.0) # convert time to hours
+
+print("------------------------------------")
+vAcc_best = jnp.amax(jnp.asarray(acc_set))
+print(" Trial.sim_time = {} h  ({} sec)  Best Acc = {}".format(sim_time_hr, sim_time, vAcc_best))
 
 jnp.save("exp/trAcc.npy", jnp.asarray(trAcc_set))
 jnp.save("exp/acc.npy", jnp.asarray(acc_set))
