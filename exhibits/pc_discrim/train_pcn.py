@@ -80,7 +80,7 @@ efe_set = []
 
 _, tr_acc = eval_model(model, _X, _Y, mb_size=1000)
 nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
-print("-1: Acc = {}  NLL = {}  EFE = --".format(acc, nll))
+print("-1: Dev: Acc = {}  NLL = {} | Tr: Acc = {} EFE = --".format(acc, nll, tr_acc))
 #print(model._get_norm_string())
 trAcc_set.append(tr_acc) ## random guessing is where models typically start
 acc_set.append(acc)
@@ -123,8 +123,10 @@ for i in range(n_iter):
     trAcc_set.append(tr_acc)
     acc_set.append(acc)
     efe_set.append((train_EFE/n_samp_seen))
-    print("{}: Dev: Acc = {}, NLL = {} | Tr: Acc = {}, \
-        EFE = {}".format(i, acc, nll, tr_acc, (train_EFE/n_samp_seen)))
+    io_str = ("{} Dev: Acc = {}, NLL = {} | "
+              "Tr: Acc = {}, EFE = {}"
+             ).format(i, acc, nll, tr_acc, (train_EFE/n_samp_seen))
+    print(io_str)
     #print(model._get_norm_string())
 
 jnp.save("exp/trAcc.npy", jnp.asarray(trAcc_set))
