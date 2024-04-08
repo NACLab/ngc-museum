@@ -4,6 +4,20 @@ from jax import numpy as jnp, random
 import time, sys
 
 ## PCN model  co-routines
+def load_model(model_dir, exp_dir="exp", model_name="pc_disc", dt=1., T=10):
+    _key = random.PRNGKey(time.time_ns())
+    ## load circuit from disk
+    circuit = Controller()
+    circuit.load_from_dir(directory=model_dir)
+
+    model = PCN(_key, x_dim=1, y_dim=1)
+    model.circuit = circuit
+    self.exp_dir = exp_dir
+    model.model_dir = "{}/{}/custom".format(exp_dir, model_name)
+    model.dt = dt
+    model.T = T
+    return model
+
 
 def tie_compartments(circuit, target, source, compartmentName):
     """
