@@ -1,7 +1,8 @@
 from jax import numpy as jnp, random, nn, jit
 import sys, getopt as gopt, optparse
 ## bring in model from museum
-from ngcsimlib.controller import Controller
+#from ngcsimlib.controller import Controller
+from pcn_model import PCN
 ## bring in ngc-learn analysis tools
 from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
 
@@ -47,8 +48,9 @@ print("=> Data X: {} | Y: {}".format(dataX, dataY))
 _X = jnp.load(dataX)
 _Y = jnp.load(dataY)
 
-model = Controller()
-model.load_from_dir(directory="exp/pcn")
+#model = Controller()
+#model.load_from_dir(directory="exp/pcn")
+model = PCN(model_dir="exp/pcn", exp_dir="exp", dt=1., T=10)
 
 nll, acc = eval_model(model, _X, _Y, mb_size=1000)
 
