@@ -231,7 +231,9 @@ class PCN():
                           component_names=[eq3.name], compartment=eq3.targetName(),
                           clamp_name="target")
         model.add_command("save", command_name="save",
-                          component_names=[W1.name, W2.name, W3.name],
+                          component_names=[W1.name, W2.name, W3.name,
+                                           Q1.name, Q2.name, Q3.name,
+                                           E2.name, E3.name],
                           directory_flag="dir")
 
         ## tell model the order in which to run automatic commands
