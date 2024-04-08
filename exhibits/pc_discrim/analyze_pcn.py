@@ -48,7 +48,7 @@ _X = jnp.load(dataX)
 _Y = jnp.load(dataY)
 
 model = Controller()
-model.load_from_dir(model_directory="exp/pcn")
+model.load_from_dir(directory="exp/pcn")
 
 nll, acc = eval_model(model, _X, _Y, mb_size=1000)
 
