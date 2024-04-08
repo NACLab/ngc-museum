@@ -2,8 +2,8 @@
 
 <b>Version</b>: ngclearn==1.0.beta2, ngcsimlib==0.2.beta2
 
-This exhibit contains an implementation of the predictive coding (PC) model
-proposed and studied in:
+This exhibit contains an implementation of the predictive coding (PC) model (
+also known as the predictive coding network or PCN) proposed and studied in:
 
 Whittington, James CR, and Rafal Bogacz. "An approximation of the error
 backpropagation algorithm in a predictive coding network with local hebbian
@@ -14,11 +14,15 @@ synaptic plasticity." Neural computation 29.5 (2017): 1229-1262.
 To train this implementation of PC, simply run:
 
 ```console
-$ python train_model.py --dataX="..." --dataY="..." --devX="..." --devY="..."
+$ python sim_train.py --dataX="/path/to/train_patterns.npy" \
+                      --dataY="/path/to/train_labels.npy" \
+                      --devX="/path/to/dev_patterns.npy" \
+                      --devY="/path/to/dev_labels.npy" \
+                      --verbosity=0
 ```
 
-where you replace the ellipses with paths to the appropriate numpy array 
-data source. Alternatively, you may run the convenience bash script:
+
+Alternatively, you may run the convenience bash script:
 
 ```console
 $ ./sim.sh
@@ -27,8 +31,10 @@ $ ./sim.sh
 which will execute and run the model simulation for MNIST.
 
 Note that you can point the training script to other datasets besides the
-default MNIST, just ensure that the target for `dataX` is a numpy array of
-shape `(Number data points x Pattern Dimensionality)`.
+default MNIST, just ensure that the targets for `dataX`, `dataY`, `devX`, and
+`devY` are numpy arrays of shape `(Number data points x D)` for data patterns  
+(i.e., `dataX` and `devX`) and shape `(Number data points x C)` for labels
+(`dataY` and `devY`).
 
 ## Description
 
@@ -58,12 +64,4 @@ T = 10 (number of time steps to simulate, or number of E-steps to take)
 dt = 0.1 ms (integration time constant)
 ## synaptic update meta-parameters
 eta = 0.001 (learning rate of Adam optimizer embedded w/in each synaptic cable for the M-step)
-w_norm = 1. (L2 norm constraint)
 ```
-
-<!-- In effect, the model enforces a synaptic re-scaling based on an L2 norm
-at the end of `T * dt` milliseconds (ms) -- this re-scaling step is maintained
-by the particular Hebbian synapse used in our implementation of Whittington's
-PC model. -->
-
-<i>Model Simplification</i>: TODO
