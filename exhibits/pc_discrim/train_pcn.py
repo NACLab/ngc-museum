@@ -74,18 +74,17 @@ def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference
     acc = acc/(Xdev.shape[0]) ## calc full dev-set acc
     return nll, acc
 
-nll_set = []
+trAcc_set = []
 acc_set = []
 efe_set = []
 
 nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
 print("-1: Acc = {}  NLL = {}  EFE = --".format(acc, nll))
 #print(model._get_norm_string())
-nll_set.append(nll)
+trAcc_set.append(0.1) ## random guessing is where models typically start
 acc_set.append(acc)
 efe_set.append(-1000.)
-jnp.save("exp/nll.npy", jnp.asarray(nll_set))
-jnp.save("exp/acc.npy", jnp.asarray(acc_set))
+jnp.save("exp/dev_acc.npy", jnp.asarray(acc_set))
 jnp.save("exp/efe.npy", jnp.asarray(efe_set))
 
 for i in range(n_iter):
@@ -97,7 +96,8 @@ for i in range(n_iter):
 
     ## begin a single epoch
     n_samp_seen = 0
-    train_EFE = 0. ## track training free energy (online) estimate
+    train_EFE = 0. ## training free energy (online) estimate
+    trAcc = 0. ## training accuracy score
     for j in range(n_batches):
         dkey, *subkeys = random.split(dkey, 2)
         ## sample mini-batch of patterns
@@ -106,7 +106,9 @@ for i in range(n_iter):
         Yb = Y[idx: idx + mb_size,:]
         ## perform a step of inference/learning
         yMu_0, yMu, _EFE = model.process(obs=Xb, lab=Yb, adapt_synapses=True)
+        ## track online training EFE and accuracy
         train_EFE += _EFE * mb_size
+        trAcc += measure_ACC(yMu_0, Yb) * mb_size ## biased estimator of acc
         n_samp_seen += Yb.shape[0]
         print("\r EFE = {} over {} samples ".format((train_EFE/n_samp_seen),
                                                     n_samp_seen), end="")
@@ -116,13 +118,13 @@ for i in range(n_iter):
     nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
     if (i+1) % save_point == 0 or i == (n_iter-1):
         model.save_to_disk() # save final state of synapses to disk
-    nll_set.append(nll)
+    trAcc_set.append((trAcc/n_samp_seen))
     acc_set.append(acc)
     efe_set.append((train_EFE/n_samp_seen))
-    print("{}: Acc = {}  NLL = {}  EFE = {}".format(i, acc, nll,
-                                                    (train_EFE/n_samp_seen)))
+    print("{}: Dev: Acc = {}, NLL = {} | Tr: Acc = {}, \
+      EFE = {}".format(i, acc, nll, (trAcc/n_samp_seen), (train_EFE/n_samp_seen)))
     #print(model._get_norm_string())
 
-jnp.save("exp/nll.npy", jnp.asarray(nll_set))
+jnp.save("exp/trAcc.npy", jnp.asarray(trAcc_set))
 jnp.save("exp/acc.npy", jnp.asarray(acc_set))
 jnp.save("exp/efe.npy", jnp.asarray(efe_set))
