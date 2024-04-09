@@ -4,10 +4,11 @@
 
 In this directory, each directory should contain a single scientific or
 engineered model/project using ngc-learn. The content and organization within
-this directory is dependent on the project/model/agent and generally will
-contain application/task-specific structuring code, e.g., agent classes with
-specified functions pertinent to the problem/task examined in a paper's
-experiment. <!--Datasets should not be stored in this repo but instead referenced
+an exhibit's directory is dependent on the project/model/agent the exhibit is 
+about and generally will contain application/task-specific structuring code, 
+e.g., agent classes with specified functions pertinent to the problem/task 
+examined in a paper's experiment. 
+<!--Datasets should not be stored in this repo but instead referenced
 to their source locations.-->
 
 The only file we specifically require in an exhibition's folder is a single

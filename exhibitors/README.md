@@ -12,11 +12,17 @@ The contents of each exhibitor sub-directory may be organized and structured
 however the exhibitor requires, though it is recommended that each sub-directory
 within an exhibitor's folder pertains to a single paper/publication or
 application. The only file we require in an exhibitor's folder is a single
-markdown file -- `README.md` -- containing information about the exhibitor and a
-header containing the name of the exhibitor, e.g., the researcher, organization,
-company, or research group/lab, as follows:
+markdown file -- `README.md` at the top-level -- containing information 
+about the exhibitor and a header containing the name of the exhibitor, 
+e.g., the researcher, organization, company, or research group/lab, 
+as follows:
 ```markdown
 # <NAME_OF_EXHIBITOR>
 
 ...rest of text...
 ```
+
+It is up to the exhibitor to provide the relevant context and explanation of 
+how a set of models relate to one another (if they do), a research group's body of 
+ongoing work, or the broader goals they are meant to satisfy, hypotheses they 
+are meant to test, and general research questions they seek to answer.
