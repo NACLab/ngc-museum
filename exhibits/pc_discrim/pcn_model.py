@@ -3,7 +3,7 @@ from ngclearn.utils.io_utils import makedir
 from jax import numpy as jnp, random
 import time, sys
 
-## PCN model  co-routines
+## PCN model co-routines
 def load_model(model_dir, exp_dir="exp", model_name="pc_disc", dt=1., T=10):
     _key = random.PRNGKey(time.time_ns())
     ## load circuit from disk
@@ -66,7 +66,7 @@ def tie_parameters(circuit, target, source, transpose_source=False, share_bias=F
 
 class PCN():
     """
-    Structure for constructing the predictive coding (network) in:
+    Structure for constructing the predictive coding network (PCN) in:
 
     Whittington, James CR, and Rafal Bogacz. "An approximation of the error
     backpropagation algorithm in a predictive coding network with local hebbian
