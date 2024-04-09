@@ -19,7 +19,7 @@ visit the ngc-learn documentation page: https://ngc-learn.readthedocs.io/
 (under the "Model Museum" side-bar). For information, including anything related
 to usage instructions and details related to ngc-learn itself, please refer to
 the official ngc-learn repo at: https://github.com/NACLab/ngc-learn/ (and
-its <a href="https://ngc-learn.readthedocs.io/>documentation</a>).
+its <a href="https://ngc-learn.readthedocs.io/">documentation</a>).
 
 For those contributing models/algorithms in either the `exhibitors/` or
 `exhibits/` directories, please send us an [email](mailto:ago@cs.rit.edu) if
