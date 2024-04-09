@@ -19,16 +19,16 @@ visit the ngc-learn documentation page: https://ngc-learn.readthedocs.io/
 (under the "Model Museum" side-bar). For information, including anything related
 to usage instructions and details related to ngc-learn itself, please refer to
 the official ngc-learn repo at: https://github.com/NACLab/ngc-learn/ (and
-its documentation found at https://ngc-learn.readthedocs.io/).
+its <a href="https://ngc-learn.readthedocs.io/>documentation</a>).
 
-For those contributing models/algorithms in either the `exhibitors/` or 
+For those contributing models/algorithms in either the `exhibitors/` or
 `exhibits/` directories, please send us an [email](mailto:ago@cs.rit.edu) if
-you are interested in writing your own walkthrough for us to 
-include and integrate related to a particular model exhibit that you are 
-working on in the official ngc-learn documentation as we warmly welcome 
-the community to contribute to ngc-museum, as it is these contributions 
-that help ensure various models of biomimetic inference/learning and 
-brain-inspired computing see application as well as inspire future lines of 
+you are interested in writing your own walkthrough for us to
+include and integrate related to a particular model exhibit that you are
+working on in the official ngc-learn documentation as we warmly welcome
+the community to contribute to ngc-museum, as it is these contributions
+that help ensure various models of biomimetic inference/learning and
+brain-inspired computing see application as well as inspire future lines of
 scientific inquiry.
 
 This package is distributed under the 3-Clause BSD license. It is currently
