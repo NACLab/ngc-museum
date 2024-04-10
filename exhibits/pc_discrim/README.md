@@ -9,6 +9,8 @@ Whittington, James CR, and Rafal Bogacz. "An approximation of the error
 backpropagation algorithm in a predictive coding network with local hebbian
 synaptic plasticity." Neural computation 29.5 (2017): 1229-1262.
 
+<img src="images/pcn_arch.png" width="300">
+
 ## Running the Model's Simulation
 
 To train this implementation of PC, simply run:
