@@ -14,7 +14,7 @@ synaptic plasticity." Neural computation 29.5 (2017): 1229-1262.
   <i>Visual depiction of the PCN architecture.</i>
 </p>
 
-This model is also discussed in the ngc-learn 
+This model is also discussed in the ngc-learn
 <a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_discrim.html">documentation</a>.
 
 ## Running the Model's Simulation
@@ -22,7 +22,7 @@ This model is also discussed in the ngc-learn
 To train this implementation of PC, simply run:
 
 ```console
-$ python sim_train.py --dataX="/path/to/train_patterns.npy" \
+$ python train_pcn.py --dataX="/path/to/train_patterns.npy" \
                       --dataY="/path/to/train_labels.npy" \
                       --devX="/path/to/dev_patterns.npy" \
                       --devY="/path/to/dev_labels.npy" \
