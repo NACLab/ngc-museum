@@ -11,7 +11,8 @@ synaptic plasticity." Neural computation 29.5 (2017): 1229-1262.
 
 <p align="center">
   <img height="350" src="fig/pcn_arch.jpg"><br>
-  <i>Theoretical depiction of an ANGC agent.</i>
+  <i>Visual depiction of the
+  <a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_discrim.html"PCN architecture</a>.</i>
 </p>
 
 ## Running the Model's Simulation
