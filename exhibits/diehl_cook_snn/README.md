@@ -11,7 +11,8 @@ neuroscience 9 (2015): 99.
 
 ## Running the Model's Simulation
 
-To train this implementation of Diehl and Cook's model, simply run:
+To train this implementation of Diehl and Cook's model (also referred to
+in ngc-learn as the DC-SNN), simply run:
 
 ```console
 $ python train_dcsnn.py --dataX="../data/mnist/trainX.npy" --n_samples=10000
@@ -28,6 +29,14 @@ $ ./sim.sh
 ```
 
 which will execute and run the model simulation for MNIST.
+
+<p align="center">
+  <img height="350" src="fig/dcsnn_arch.jpg"><br>
+  <i>Visual depiction of the DC-SNN architecture.</i>
+</p>
+
+This model is also discussed in the ngc-learn
+<a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_dc.html">documentation</a>.
 
 ## Description
 
