@@ -26,8 +26,8 @@ options, remainder = gopt.getopt(sys.argv[1:], '',
                                  ["dataX=", "dataY=", "devX=", "devY=", "verbosity="]
                                  )
 # external dataset arguments
-dataX = "../data/mnist/testX.npy"
-dataY = "../data/mnist/testY.npy"
+dataX = "../data/mnist/trainX.npy"
+dataY = "../data/mnist/trainY.npy"
 devX = dataX
 devY = dataY
 verbosity = 0 ## verbosity level (0 - fairly minimal, 1 - prints multiple lines on I/O)
