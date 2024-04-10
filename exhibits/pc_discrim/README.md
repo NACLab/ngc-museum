@@ -10,7 +10,7 @@ backpropagation algorithm in a predictive coding network with local hebbian
 synaptic plasticity." Neural computation 29.5 (2017): 1229-1262.
 
 <p align="center">
-  <img height="250" src="fig/pcn_arch.jpg"><br>
+  <img height="350" src="fig/pcn_arch.jpg"><br>
   <i>Theoretical depiction of an ANGC agent.</i>
 </p>
 
