@@ -11,9 +11,11 @@ synaptic plasticity." Neural computation 29.5 (2017): 1229-1262.
 
 <p align="center">
   <img height="350" src="fig/pcn_arch.jpg"><br>
-  <i>Visual depiction of the
-  <a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_discrim.html"PCN architecture</a>.</i>
+  <i>Visual depiction of the PCN architecture.</i>
 </p>
+
+This model is also discussed in the ngc-learn 
+<a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_discrim.html">documentation</a>.
 
 ## Running the Model's Simulation
 
