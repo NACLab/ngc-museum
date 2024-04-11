@@ -42,7 +42,7 @@ _X = jnp.load(dataX)
 n_batches = _X.shape[0]
 patch_shape = (28, 28)
 
-model = load_model("exp/snn_stdp", dt=1., T=200) ## load in pre-trained PCN model
+model = load_model("exp/snn_stdp", dt=1., T=200) ## load in pre-trained SNN model
 
 print("****")
 ## save final receptive fields
