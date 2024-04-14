@@ -65,7 +65,7 @@ database.
 ## Hyperparameters
 
 This model requires the following hyperparameters, tuned to produce results much akin
-to that of the original Diehl and Cook model:
+to that of the original Whittington et al. model:
 
 ```
 T = 10 (number of time steps to simulate, or number of E-steps to take)

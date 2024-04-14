@@ -9,7 +9,7 @@ Diehl and Cook Spiking Neural Network (DC-SNN) Exhibit File:
 Adapts a DC-SNN to patterns from the MNIST database.
 
 Usage:
-$ python train_snn_dc.py --dataX="/path/to/train_patterns.npy" \
+$ python train_dcsnn.py --dataX="/path/to/train_patterns.npy" \
                          --verbosity=0
 
 @author: The Neural Adaptive Computing Laboratory
@@ -17,7 +17,7 @@ $ python train_snn_dc.py --dataX="/path/to/train_patterns.npy" \
 """
 
 # read in general program arguments
-options, remainder = gopt.getopt(sys.argv[1:], '', ["dataX=", "n_samples=", 
+options, remainder = gopt.getopt(sys.argv[1:], '', ["dataX=", "n_samples=",
                                                     "n_iter=", "verbosity="])
 
 n_iter = 1 # 10 ## total number passes through dataset

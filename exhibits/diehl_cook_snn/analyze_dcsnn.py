@@ -14,7 +14,7 @@ raster plot produced by the model's layer of excitatory neurons while
 processing a sampled MNIST database digit.
 
 Usage:
-$ python analyze_snn_dc.py --dataX="/path/to/train_patterns.npy" \
+$ python analyze_dcsnn.py --dataX="/path/to/train_patterns.npy" \
                            --verbosity=0
 
 @author: The Neural Adaptive Computing Laboratory

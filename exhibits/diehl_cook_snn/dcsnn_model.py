@@ -151,7 +151,7 @@ class DC_SNN():
                                  component_names=[W1.name], compartment=W1.triggerName(),
                                  clamp_name="trig")
         circuit.add_command("save", command_name="save",
-                            component_names=[W1.name, W1ie.name, W1ei.name, 
+                            component_names=[W1.name, W1ie.name, W1ei.name,
                                              z1e.name, z1i.name],
                             directory_flag="dir")
 
@@ -190,9 +190,9 @@ class DC_SNN():
             string containing min, max, mean, and L2 norm of W1
         """
         _W1 = self.circuit.components.get("W1").weights
-        msg = "W1:\n  min {} ;  max {} \n  mu {} ;  norm {}".format(jnp.amin(_W1), 
-                                                                    jnp.amax(_W1), 
-                                                                    jnp.mean(_W1), 
+        msg = "W1:\n  min {} ;  max {} \n  mu {} ;  norm {}".format(jnp.amin(_W1),
+                                                                    jnp.amax(_W1),
+                                                                    jnp.mean(_W1),
                                                                     jnp.linalg.norm(_W1))
         return msg
 
@@ -240,5 +240,5 @@ class DC_SNN():
             self.circuit.runCycle(t=ts*self.dt, dt=self.dt)
 
             if collect_spike_train == True:
-                _S.append(self.circuit.components["z1e"].compartments["s"])
+                _S.append(self.circuit.components["z1e"].spikes
         return _S
