@@ -31,6 +31,17 @@ that help ensure various models of biomimetic inference/learning and
 brain-inspired computing see application as well as inspire future lines of
 scientific inquiry.
 
+<b>Current Models in the Museum</b>:<br>
+1. Discriminative Predictive Coding:
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_discrim">Model</a>,
+   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_discrim.html">Walkthrough</a>
+2. Spiking neural network, trained with broadcast feedback alignment:
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/bfa_snn">Model</a>,
+   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_bfa.html">Walkthrough</a>
+3. Diehl and Cook spiking network, trained with spike-timing-dependent plasticity:
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/diehl_cook_snn">Model</a>,
+   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_dc.html">Walkthrough</a>
+
 This package is distributed under the 3-Clause BSD license.<br>
 It is currently maintained by the
 <a href="https://www.cs.rit.edu/~ago/nac_lab.html">Neural Adaptive Computing
