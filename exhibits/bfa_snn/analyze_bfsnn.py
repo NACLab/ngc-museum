@@ -8,11 +8,11 @@ from ngclearn.utils.viz.dim_reduce import extract_tsne_latents, plot_latents
 
 """
 ################################################################################
-Diehl and Cook Spiking Neural Network (DC-SNN) Exhibit File:
+Broadcast Feedback Alignment Spiking Network (BFA-SNN) Exhibit File:
 
-Visualizes the receptive fields of a trained DC-SNN model and creates a
-raster plot produced by the model's layer of excitatory neurons while
-processing a sampled MNIST database digit.
+Evaluates a trained BFA-SNN classifier on the MNIST database test-set and produces
+a t-SNE visualization of its penultimate neuronal layer activities over this
+test-set.
 
 Usage:
 $ python analyze_bfsnn.py --dataX="/path/to/data_patterns.npy" \
