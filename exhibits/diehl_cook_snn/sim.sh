@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ################################################################################
-# Simulate the PCN on the MNIST database
+# Simulate the DC-SNN on the MNIST database
 ################################################################################
 
 #DATA_DIR="../data/baby_mnist"
