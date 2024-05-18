@@ -115,7 +115,6 @@ class DC_SNN():
             self.z1e = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_e, R_m=1., thr=-52.,
                                v_rest=-65., v_reset=-60., tau_theta=1e7, theta_plus=0.05,
                                refract_T=5., key=subkeys[2])
-            """
             self.z1i = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_i, R_m=1., thr=-40.,
                                v_rest=-60., v_reset=-45., tau_theta=0., one_spike=False,
                                refract_T=5., key=subkeys[3])
@@ -132,7 +131,6 @@ class DC_SNN():
                                 a_delta=0., key=subkeys[6])
             self.tr1 = VarTrace("tr1", n_units=hid_dim, tau_tr=tau_tr, decay_type="exp",
                                 a_delta=0., key=subkeys[7])
-            """
 
             ## wire z0 to z1e via W1 and z1i to z1e via W1ie
             self.W1.inputs << self.z0.outputs
