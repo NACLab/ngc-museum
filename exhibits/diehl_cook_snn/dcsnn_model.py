@@ -2,16 +2,18 @@
 from ngclearn.utils.io_utils import makedir
 from ngclearn.utils.viz.raster import create_raster_plot
 from ngclearn.utils.viz.synapse_plot import visualize
-from jax import numpy as jnp, random
+from jax import numpy as jnp, random, jit
 import time
 
 from ngcsimlib.compartment import All_compartments
 from ngcsimlib.context import Context
 from ngcsimlib.commands import Command
+from ngcsimlib.operations import summation
 from ngclearn.components.other.varTrace import VarTrace
 from ngclearn.components.input_encoders.poissonCell import PoissonCell
 from ngclearn.components.neurons.spiking.LIFCell import LIFCell
 from ngclearn.components.synapses.hebbian.traceSTDPSynapse import TraceSTDPSynapse
+from ngclearn.components.synapses.hebbian.hebbianSynapse import HebbianSynapse
 
 ## SNN model co-routines
 def load_model(model_dir, exp_dir="exp", model_name="snn_stdp", dt=1., T=200):
@@ -154,14 +156,14 @@ class DC_SNN():
                                          command_name="Advance")
             evolve_cmd = EvolveCommand(components=[self.W1], command_name="Evolve")
 
-        compiled_advance_cmd, _ = advance_cmd.compile()
-        wrapped_advance_cmd = wrapper(jit(compiled_advance_cmd))
+        advance, _ = advance_cmd.compile()
+        self.advance = wrapper(jit(advance))
 
-        compiled_evolve_cmd, _ = evolve_cmd.compile()
-        wrapped_evolve_cmd = wrapper(jit(compiled_evolve_cmd))
+        evolve, _ = evolve_cmd.compile()
+        self.evolve = wrapper(jit(evolve))
 
-        compiled_reset_cmd, _ = reset_cmd.compile()
-        wrapped_reset_cmd = wrapper(jit(compiled_reset_cmd))
+        reset, _ = reset_cmd.compile()
+        self.reset = wrapper(jit(reset))
 
 
         ################################################################################
@@ -254,12 +256,12 @@ class DC_SNN():
         # circuit.add_step("advance")
         # circuit.add_step("evolve")
 
-        if save_init == True: ## save JSON structure to disk once
-            circuit.save_to_json(directory="exp", model_name=model_name)
-        self.model_dir = "{}/{}/custom".format(exp_dir, model_name)
-        if save_init == True:
-            circuit.save(dir=self.model_dir) ## save current parameter arrays
-        self.circuit = circuit # embed circuit to model construct
+        #if save_init == True: ## save JSON structure to disk once
+        #    circuit.save_to_json(directory="exp", model_name=model_name)
+        #self.model_dir = "{}/{}/custom".format(exp_dir, model_name)
+        #if save_init == True:
+        #    circuit.save(dir=self.model_dir) ## save current parameter arrays
+        #self.circuit = circuit # embed circuit to model construct
 
     def save_to_disk(self):
         """
@@ -333,16 +335,16 @@ class DC_SNN():
         # if adapt_synapses == True:
         #     learn_flag = 1.
         #self.circuit.reset(do_reset=True)
-        wrapped_reset_cmd()
+        self.reset()
         t = 0.
         for ts in range(1, self.T):
             # self.circuit.clamp_input(obs) #x=inp)
             # self.circuit.clamp_trigger(learn_flag)
             # self.circuit.runCycle(t=ts*self.dt, dt=self.dt)
             self.z0.inputs.set(obs)
-            wrapped_advance_cmd(t, self.dt) ## pass in t and dt and run step forward of simulation
+            self.advance(t, self.dt) ## pass in t and dt and run step forward of simulation
             if adapt_synapses == True:
-                wrapped_evolve_cmd(t, self.dt) ## pass in t and dt and run step forward of simulation
+                self.evolve(t, self.dt) ## pass in t and dt and run step forward of simulation
             t = t + dt
 
             if collect_spike_train == True:
