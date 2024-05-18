@@ -134,6 +134,9 @@ class DC_SNN():
 
             ## wire z0 to z1e via W1 and z1i to z1e via W1ie
             self.W1.inputs << self.z0.outputs
+            print(self.z0.n_units)
+            print(self.W1.shape)
+            sys.exit(0)
             self.W1ie.inputs << self.z1i.s
             self.z1e.j << summation(self.W1.outputs, self.W1ie.outputs)
             ## wire z1e to z1i via W1ie
