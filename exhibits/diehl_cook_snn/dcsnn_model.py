@@ -115,6 +115,7 @@ class DC_SNN():
             self.z1e = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_e, R_m=1., thr=-52.,
                                v_rest=-65., v_reset=-60., tau_theta=1e7, theta_plus=0.05,
                                refract_T=5., key=subkeys[2])
+            """
             self.z1i = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_i, R_m=1., thr=-40.,
                                v_rest=-60., v_reset=-45., tau_theta=0., one_spike=False,
                                refract_T=5., key=subkeys[3])
@@ -131,46 +132,53 @@ class DC_SNN():
                                 a_delta=0., key=subkeys[6])
             self.tr1 = VarTrace("tr1", n_units=hid_dim, tau_tr=tau_tr, decay_type="exp",
                                 a_delta=0., key=subkeys[7])
+            """
 
             ## wire z0 to z1e via W1 and z1i to z1e via W1ie
             self.W1.inputs << self.z0.outputs
             self.W1ie.inputs << self.z1i.s
             self.z1e.j << summation(self.W1.outputs, self.W1ie.outputs)
-            ## wire z1e to z1i via W1ie
+            # wire z1e to z1i via W1ie
             self.W1ei.inputs << self.z1e.s
             self.z1i.j << self.W1ei.outputs
-            ## wire cells z0 and z1e to their respective traces
+            # wire cells z0 and z1e to their respective traces
             self.tr0.inputs << self.z0.outputs
             self.tr1.inputs << self.z1e.s
-            ## wire relevant compartment statistics to synaptic cable W1
-            #self.W1.preTrace << self.tr0.trace
-            #self.W1.preSpike << self.z0.outputs
-            #self.W1.postTrace << self.tr1.trace
-            #self.W1.postSpike << self.z1e.s
-            self.W1.tmp << self.z1e.s
+            # wire relevant compartment statistics to synaptic cable W1
+            self.W1.preTrace << self.tr0.trace
+            self.W1.preSpike << self.z0.outputs
+            self.W1.postTrace << self.tr1.trace
+            self.W1.postSpike << self.z1e.s
 
-            reset_cmd = ResetCommand(components=[self.z0, self.z1e, self.z1i, 
-                                                 self.tr0, self.tr1, 
-                                                 self.W1, self.W1ie, self.W1ei],
-                                     command_name="Reset")
+            reset_cmd = ResetCommand(components=[self.z0, self.z1e, self.z1i,
+                                                self.tr0, self.tr1,
+                                                self.W1, self.W1ie, self.W1ei],
+                                    command_name="Reset")
             advance_cmd = AdvanceCommand(components=[self.W1, self.W1ie, self.W1ei, ## exec synapses first
-                                                     self.z0, self.z1e, self.z1i, ## exec neuronal cells next
-                                                     self.tr0, self.tr1], ## exec traces last
+                                                    self.z0, self.z1e, self.z1i, ## exec neuronal cells next
+                                                    self.tr0, self.tr1], ## exec traces last
                                          command_name="Advance")
-            #evolve_cmd = EvolveCommand(components=[self.W1], command_name="Evolve")
+            evolve_cmd = EvolveCommand(components=[self.W1], command_name="Evolve")
 
-        _advance, _ = advance_cmd.compile()
-        self.advance = wrapper(_advance)
-
-        #_evolve, _ = evolve_cmd.compile()
-        #self.evolve = wrapper(_evolve)
-
-        #_reset, _ = reset_cmd.compile()
-        #self.reset = wrapper(_reset)
+        # _advance, _ = advance_cmd.compile()
+        # self.advance = wrapper(_advance)
+        #
+        # _evolve, _ = evolve_cmd.compile()
+        # self.evolve = wrapper(_evolve)
+        #
+        # _reset, _ = reset_cmd.compile()
+        # self.reset = wrapper(_reset)
+        self.advance_cmd = advance_cmd
+        self.evolve_cmd = evolve_cmd
+        self.reset_cmd = reset_cmd
 
         #self.reset()
         t = 0.
-        self.advance(t, self.dt)
+        #self.W1.inputs.set(jnp.zeros((1,in_dim)))
+        #self.advance(t, self.dt)
+        for c_name, component in self.advance_cmd.components.items():
+            component.gather()
+            component.advance(t=t, dt=self.dt)
 
         sys.exit(0)
         ################################################################################
