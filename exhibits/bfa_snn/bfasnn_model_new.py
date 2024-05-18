@@ -124,54 +124,53 @@ class BFA_SNN():
         # circuit = Controller()
 
         with Context("circuit") as circuit:
-            z0 = BernoulliCell(name="z0", n_units=in_dim, key=subkeys[0])
-            W1 = HebbianSynapse(name="W1", shape=(in_dim, hid_dim),
+            self.z0 = BernoulliCell(name="z0", n_units=in_dim, key=subkeys[0])
+            self.W1 = HebbianSynapse(name="W1", shape=(in_dim, hid_dim),
                                    eta=1., wInit=weightInit, bInit=biasInit,
                                    signVal=-1., optim_type=optim_type, w_bound=0.,
                                    pre_wght=1., post_wght=eta1_w, is_nonnegative=False,
                                    key=subkeys[1])
-            z1 = SLIFCell(name="z1", n_units=hid_dim, tau_m=tau_m, R_m=R_m,
+            self.z1 = SLIFCell(name="z1", n_units=hid_dim, tau_m=tau_m, R_m=R_m,
                                    thr=v_thr, inhibit_R=0., sticky_spikes=True,
                                    refract_T=refract_T, thrGain=0., thrLeak=0.,
                                    thr_jitter=0., key=subkeys[2])
-            W2 = HebbianSynapse(name="W2", shape=(hid_dim, out_dim),
+            self.W2 = HebbianSynapse(name="W2", shape=(hid_dim, out_dim),
                                    eta=1., wInit=weightInit, bInit=biasInit,
                                    signVal=-1., optim_type=optim_type, w_bound=0.,
                                    pre_wght=1., post_wght=eta2_w, is_nonnegative=False,
                                    key=subkeys[3])
-            z2 = SLIFCell(name="z2", n_units=out_dim, tau_m=tau_m, R_m=R_m,
+            self.z2 = SLIFCell(name="z2", n_units=out_dim, tau_m=tau_m, R_m=R_m,
                                    thr=v_thr, inhibit_R=0., sticky_spikes=True,
                                    refract_T=refract_T, thrGain=0., thrLeak=0.,
                                    thr_jitter=0., key=subkeys[4])
-            e2 = GaussianErrorCell(name="e2", n_units=out_dim)
-            E2 = HebbianSynapse(name="E2", shape=(out_dim, hid_dim),
+            self.e2 = GaussianErrorCell(name="e2", n_units=out_dim)
+            self.E2 = HebbianSynapse(name="E2", shape=(out_dim, hid_dim),
                                    eta=0., wInit=weightInit, bInit=None, w_bound=0.,
                                    is_nonnegative=False, key=subkeys[5])
-            d1 = GaussianErrorCell(name="d1", n_units=hid_dim)
+            self.d1 = GaussianErrorCell(name="d1", n_units=hid_dim)
 
 
             ## wire up z0 to z1 via W1
-            W1.inputs << z0.outputs
-            z1.j << W1.outputs
+            self.W1.inputs << self.z0.outputs
+            self.z1.j << self.W1.outputs
 
-            W2.inputs << z1.s
-            z2.j << W2.outputs
+            self.W2.inputs << self.z1.s
+            self.z2.j << self.W2.outputs
+            self.e2.mu << self.z2.s
 
-            E2.inputs << e2.dmu
-            d1.target << E2.outputs
-
-            e2.mu << z2.s
+            self.E2.inputs << self.e2.dmu
+            self.d1.target << self.E2.outputs
 
             ## wire relevant compartment statistics to synaptic cable z0_z1
-            d1.modulator << z1.surrogate
-            W1.pre << z0.outputs
-            W1.post << d1.dmu
-            W2.pre << z1.s
-            W2.post << e2.dmu
+            self.d1.modulator << self.z1.surrogate
+            self.W1.pre << self.z0.outputs
+            self.W1.post << self.d1.dmu
+            self.W2.pre << self.z1.s
+            self.W2.post << self.e2.dmu
 
-            reset = ResetCommand(components=[z0, W1, z1, W2, z2, e2, E2, d1], command_name="Reset")
-            advance = AdvanceCommand(components=[z0, W1, z1, W2, z2, e2, E2, d1], command_name="Advance")
-            evolve = EvolveCommand(components=[W1, W2], command_name="Evolve")
+            reset = ResetCommand(components=[self.z0, self.W1, self.z1, self.W2, self.z2, self.e2, self.E2, self.d1], command_name="Reset")
+            advance = AdvanceCommand(components=[self.z0, self.W1, self.z1, self.W2, self.z2, self.e2, self.E2, self.d1], command_name="Advance")
+            evolve = EvolveCommand(components=[self.W1, self.W2], command_name="Evolve")
             # we will clamp input and clamp target manually
             # we also save manually
 
@@ -185,14 +184,14 @@ class BFA_SNN():
             #                                                                 z1.name, z2.name], directory_flag="dir")
 
             # setup and bring variables to self
-            self.z0 = z0
-            self.W1 = W1
-            self.z1 = z1
-            self.W2 = W2
-            self.z2 = z2
-            self.e2 = e2
-            self.E2 = E2
-            self.d1 = d1
+            # self.z0 = z0
+            # self.W1 = W1
+            # self.z1 = z1
+            # self.W2 = W2
+            # self.z2 = z2
+            # self.e2 = e2
+            # self.E2 = E2
+            # self.d1 = d1
 
         reset, _ = reset.compile()
         self.reset = wrapper(jit(reset))
@@ -284,13 +283,14 @@ class BFA_SNN():
         yCnt = yMu + 0
         # self.circuit.reset(do_reset=True)
         # print(f"[get here]")
-        # self.reset()
+        # self.reset() # NOTE: bug here, cannot reset
         T_learn = 0.
         for ts in range(1, self.T):
             # self.circuit.clamp_input(_obs) #x=inp)
             # self.circuit.clamp_target(lab) #y=lab
             self.z0.inputs.set(_obs)
             self.e2.target.set(lab)
+            print(f"[Step {ts}] z0.inputs: {self.z0.outputs.value.shape}, W1.outputs: {self.W1.outputs.value}, z1.s: {self.z1.s.value.shape}")
             # self.circuit.runCycle(t=ts*self.dt, dt=self.dt)
             self.advance(ts*self.dt, self.dt)
             curr_t = ts * self.dt ## track current time
