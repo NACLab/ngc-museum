@@ -1,7 +1,3 @@
-# %%
-
-import warnings
-
 # from ngcsimlib.controller import Controller
 from ngcsimlib.compartment import All_compartments
 from ngcsimlib.context import Context
@@ -184,6 +180,7 @@ class BFA_SNN():
         # if save_init == True: ## save JSON structure to disk once
         #     circuit.save_to_json(directory="exp", model_name=model_name)
         self.model_dir = "{}/{}/custom".format(exp_dir, model_name)
+        makedir(self.model_dir)
         # if save_init == True:
         #     circuit.save(dir=self.model_dir) ## save current parameter arrays
         # self.circuit = circuit # embed circuit to model construct
@@ -195,10 +192,8 @@ class BFA_SNN():
         # self.circuit.save(dir=self.model_dir) ## save current parameter arrays
         # self.save(dir=self.model_dir)
         for name, component in self.circuit.components.items():
-            try:
-                component.save(self.model_dir)
-            except:
-                warnings.warn(f"Unable to save component {name} to disk")
+            component.gather()
+            component.save(self.model_dir)
 
     def load_from_disk(self, model_directory="exp"):
         """
@@ -209,10 +204,7 @@ class BFA_SNN():
         """
         # self.circuit.load_from_dir(self, model_directory)
         for name, component in self.circuit.components.items():
-            try:
-                component.load(self.model_dir)
-            except:
-                warnings.warn(f"Unable to load component {name} from disk.")
+            component.load(self.model_dir)
 
     def get_synapse_stats(self):
         """
