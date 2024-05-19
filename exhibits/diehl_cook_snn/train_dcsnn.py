@@ -61,6 +61,7 @@ model = Model(subkeys[1], in_dim=in_dim, T=T, dt=dt)
 sim_start_time = time.time() ## start time profiling
 
 print("------------------------------------")
+print(model.get_synapse_stats())
 ## enter main adaptation loop over data patterns
 for i in range(n_iter):
     dkey, *subkeys = random.split(dkey, 2)
@@ -79,7 +80,8 @@ for i in range(n_iter):
         if (j+1) % viz_mod == 0: ## save intermediate receptive fields
             print()
             print(model.get_synapse_stats())
-            model.save_to_disk() # save final state of synapses to disk
+            model.viz_receptive_fields(fname="recFields", field_shape=(28, 28))
+            #model.save_to_disk() # save final state of synapses to disk
 print()
 
 ## stop time profiling
@@ -90,5 +92,5 @@ sim_time_hr = (sim_time/3600.0) # convert time to hours
 print("------------------------------------")
 print(" Trial.sim_time = {} h  ({} sec)".format(sim_time_hr, sim_time))
 
-print("****")
-model.save_to_disk() # save final state of synapses to disk
+#print("****")
+#model.save_to_disk() # save final state of synapses to disk

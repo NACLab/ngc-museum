@@ -86,7 +86,7 @@ class DC_SNN():
         save_init: save model at initialization/first configuration time (Default: True)
     """
     # Define Functions
-    def __init__(self, dkey, in_dim, hid_dim=100, T=200, dt=1., exp_dir="exp",
+    def __init__(self, dkey, in_dim, hid_dim=8, T=200, dt=1., exp_dir="exp",
                  model_name="snn_stdp", save_init=True, **kwargs):
         self.exp_dir = exp_dir
         makedir(exp_dir)
@@ -159,14 +159,20 @@ class DC_SNN():
             evolve_cmd = EvolveCommand(components=[self.W1], command_name="Evolve")
 
         _advance, _ = advance_cmd.compile()
-        self.advance = wrapper(_advance)
+        self.advance = wrapper((_advance))
 
         _evolve, _ = evolve_cmd.compile()
-        self.evolve = wrapper(_evolve)
+        self.evolve = wrapper((_evolve))
 
         _reset, _ = reset_cmd.compile()
-        self.reset = wrapper(_reset)
+        self.reset = wrapper((_reset))
 
+        _tmp = jnp.load("/home/ago/Research/dev_ngc-learn/ngc-museum/exhibits/diehl_cook_snn/W1.npy")
+        self.W1.weights.set(_tmp)
+        _tmp = jnp.load("/home/ago/Research/dev_ngc-learn/ngc-museum/exhibits/diehl_cook_snn/z1e_thr.npy")
+        self.z1e.thr.set(_tmp)
+        _tmp = jnp.load("/home/ago/Research/dev_ngc-learn/ngc-museum/exhibits/diehl_cook_snn/z1i_thr.npy")
+        self.z1i.thr.set(_tmp)
         ## DEBUGGING CODE ..................
         # self.advance_cmd = advance_cmd
         # self.evolve_cmd = evolve_cmd
@@ -261,26 +267,47 @@ class DC_SNN():
         #self.circuit.reset(do_reset=True)
         #print(self.W1.inputs_.value)
         self.reset()
+        S0 = jnp.load("/home/ago/Research/dev_ngc-learn/ngc-museum/exhibits/diehl_cook_snn/S0.npy")
+        print(self.get_synapse_stats())
+        print("------------------------------")
         # print(self.W1.inputs_.value)
         # self.W1.inputs_.set(jnp.zeros(obs.shape))
         # print(self.W1.inputs_.value.shape)
         # print("%%%")
         t = 0.
+        ptr = 0
         for ts in range(1, self.T):
             # self.circuit.clamp_input(obs) #x=inp)
             # self.circuit.clamp_trigger(learn_flag)
             # self.circuit.runCycle(t=ts*self.dt, dt=self.dt)
             #print(obs.shape)
-            print(self.W1.inputs_.value.shape)
+            #print(self.W1.inputs.value)
+            #print("~~~~~~")
+            #print(jnp.linalg.norm(self.W1.weights.value, ord=1))
+            
             self.z0.inputs.set(obs)
+            self.z0.outputs.set(S0[ptr:ptr+1,:])
+            #print(jnp.sum(S0[ptr:ptr+1,:]))
+            ptr += 1
             self.advance(t, self.dt) ## pass in t and dt and run step forward of simulation
-
-            sys.exit(0)
-            if adapt_synapses == True:
-                self.evolve(t, self.dt) ## pass in t and dt and run step forward of simulation
-            t = t + dt
-
+            
+            print(jnp.sum(self.z0.outputs.value))
+            #print(self.W1.outputs)
+            print(self.z1e.j)
+            if ts == 2:
+                import sys
+                sys.exit(0)
+            #if adapt_synapses == True:
+            #    self.evolve(t, self.dt) ## pass in t and dt and run step forward of simulation
+            t = t + self.dt
+            
+            #print("############")
+            #print(jnp.linalg.norm(self.W1.weights.value, ord=1))
             if collect_spike_train == True:
                 _S.append(self.z1e.s)
                 #_S.append(self.circuit.components["z1e"].spikes)
+            #sys.exit(0)
+        print(self.get_synapse_stats())
+        import sys
+        sys.exit(0)
         return _S
