@@ -1,9 +1,3 @@
-# %%
-
-import sys, pathlib
-sys.path.append(str(pathlib.Path("~/ngc-learn/ngclearn")))
-sys.path.append(str(pathlib.Path("~/ngc-sim-lib/ngcsimlib")))
-
 # from ngcsimlib.controller import Controller
 from ngcsimlib.compartment import All_compartments
 from ngcsimlib.context import Context
@@ -123,7 +117,7 @@ class BFA_SNN():
         ## Create/configure model and simulation object
         # circuit = Controller()
 
-        with Context("circuit") as circuit:
+        with Context("circuit") as self.circuit:
             self.z0 = BernoulliCell(name="z0", n_units=in_dim, key=subkeys[0])
             self.W1 = HebbianSynapse(name="W1", shape=(in_dim, hid_dim),
                                    eta=1., wInit=weightInit, bInit=biasInit,
@@ -172,26 +166,7 @@ class BFA_SNN():
             advance = AdvanceCommand(components=[self.z0, self.W1, self.z1, self.W2, self.z2, self.e2, self.E2, self.d1], command_name="Advance")
             evolve = EvolveCommand(components=[self.W1, self.W2], command_name="Evolve")
             # we will clamp input and clamp target manually
-            # we also save manually
-
-            # circuit.add_command("clamp", command_name="clamp_input",
-            #                      component_names=[z0.name], compartment=z0.inputCompartmentName(),
-            #                      clamp_name="x")
-            # circuit.add_command("clamp", command_name="clamp_target",
-            #                         component_names=[e2.name], compartment=e2.targetName(),
-            #                         clamp_name="y")
-            # circuit.add_command("save", command_name="save", component_names=[W1.name, W2.name, E2.name,
-            #                                                                 z1.name, z2.name], directory_flag="dir")
-
-            # setup and bring variables to self
-            # self.z0 = z0
-            # self.W1 = W1
-            # self.z1 = z1
-            # self.W2 = W2
-            # self.z2 = z2
-            # self.e2 = e2
-            # self.E2 = E2
-            # self.d1 = d1
+            # self.save = SaveCommand(components=[self.W1, self.W2, self.E2, self.z1, self.z2])
 
         reset, _ = reset.compile()
         self.reset = wrapper(jit(reset))
@@ -204,37 +179,44 @@ class BFA_SNN():
 
         # if save_init == True: ## save JSON structure to disk once
         #     circuit.save_to_json(directory="exp", model_name=model_name)
-        # self.model_dir = "{}/{}/custom".format(exp_dir, model_name)
+        self.model_dir = "{}/{}/custom".format(exp_dir, model_name)
+        makedir(self.model_dir)
         # if save_init == True:
         #     circuit.save(dir=self.model_dir) ## save current parameter arrays
         # self.circuit = circuit # embed circuit to model construct
 
-    # def save_to_disk(self):
-    #     """
-    #     Saves current model parameter values to disk
-    #     """
-    #     self.circuit.save(dir=self.model_dir) ## save current parameter arrays
+    def save_to_disk(self):
+        """
+        Saves current model parameter values to disk
+        """
+        # self.circuit.save(dir=self.model_dir) ## save current parameter arrays
+        # self.save(dir=self.model_dir)
+        for name, component in self.circuit.components.items():
+            component.gather()
+            component.save(self.model_dir)
 
-    # def load_from_disk(self, model_directory="exp"):
-    #     """
-    #     Loads parameter/config values from disk to this model
+    def load_from_disk(self, model_directory="exp"):
+        """
+        Loads parameter/config values from disk to this model
 
-    #     Args:
-    #         model_directory: directory/path to saved model parameter/config values
-    #     """
-    #     self.circuit.load_from_dir(self, model_directory)
+        Args:
+            model_directory: directory/path to saved model parameter/config values
+        """
+        # self.circuit.load_from_dir(self, model_directory)
+        for name, component in self.circuit.components.items():
+            component.load(self.model_dir)
 
-    # def get_synapse_stats(self):
-    #     """
-    #     Print basic statistics of W1 to string
+    def get_synapse_stats(self):
+        """
+        Print basic statistics of W1 to string
 
-    #     Returns:
-    #         string containing min, max, mean, and L2 norm of W1
-    #     """
-    #     _W1 = self.circuit.components.get("W1").weights
-    #     _W2 = self.circuit.components.get("W2").weights
-    #     msg = "W1.n = {}  W2.n = {}".format(jnp.linalg.norm(_W1), jnp.linalg.norm(_W2))
-    #     return msg
+        Returns:
+            string containing min, max, mean, and L2 norm of W1
+        """
+        _W1 = self.circuit.components["W1"].weights.value
+        _W2 = self.circuit.components["W2"].weights.value
+        msg = "W1.n = {}  W2.n = {}".format(jnp.linalg.norm(_W1), jnp.linalg.norm(_W2))
+        return msg
 
     def process(self, obs, lab, adapt_synapses=True, collect_spike_train=False,
                 label_dist_estimator="spikes", get_latent_rates=False,
@@ -281,43 +263,36 @@ class BFA_SNN():
         # yMu = jnp.zeros((obs.shape[0], self.circuit.components["z2"].n_units))
         yMu = jnp.zeros((obs.shape[0], self.z2.n_units))
         yCnt = yMu + 0
-        # self.circuit.reset(do_reset=True)
-        # print(f"[get here]")
-        # self.reset() # NOTE: bug here, cannot reset
+
+        # for components in self.circuit.components.items():
+        #     print(f"component {components}")
+
+        self.reset()
         T_learn = 0.
         for ts in range(1, self.T):
-            # self.circuit.clamp_input(_obs) #x=inp)
-            # self.circuit.clamp_target(lab) #y=lab
+            # print(f"---- [TIME {ts}] ----")
             self.z0.inputs.set(_obs)
             self.e2.target.set(lab)
-            print(f"[Step {ts}] z0.inputs: {self.z0.outputs.value.shape}, W1.outputs: {self.W1.outputs.value}, z1.s: {self.z1.s.value.shape}")
-            # self.circuit.runCycle(t=ts*self.dt, dt=self.dt)
+            # print(f"[Step {ts}] z0.inputs: {self.z0.outputs.value.shape}, W1.outputs: {self.W1.outputs.value}, z1.s: {self.z1.s.value.shape}")
             self.advance(ts*self.dt, self.dt)
             curr_t = ts * self.dt ## track current time
             if adapt_synapses == True:
                 if curr_t > self.burnin_T:
-                    # self.circuit.evolve(t=self.T, dt=self.dt)
                     self.evolve(self.T, self.dt)
-            # yCnt = _add(self.circuit.components["z2"].spikes, yCnt)
             yCnt = _add(self.z2.s.value, yCnt)
             ## estimate output distribution
             if curr_t > self.burnin_T:
                 T_learn += 1.
                 if label_dist_estimator == "current":
-                    # yMu = _add(self.circuit.components["z2"].current, yMu)
                     yMu = _add(self.z2.j.value, yMu)
                 elif label_dist_estimator == "voltage":
-                    # yMu = _add(self.circuit.components["z2"].voltage, yMu)
                     yMu = _add(self.z2.v.value, yMu)
-                else: # label_dist_estimator == "spike":
-                    # yMu = _add(self.circuit.components["z2"].spikes, yMu)
+                else:
                     yMu = _add(self.z2.s.value, yMu)
             ## collect internal/hidden spikes at t
             if get_latent_rates == True:
-                # _S = _add(_S, self.circuit.components["z1"].spikes)
                 _S = _add(_S, self.z1.s.value)
             else:
-                # _S.append(self.circuit.components["z1"].spikes)
                 _S.append(self.z1.s.value)
         _yMu = softmax(yMu/T_learn) #self.T) ## estimate approximate label distribution
         if get_latent_rates == True:
