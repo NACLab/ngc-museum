@@ -114,10 +114,10 @@ class DC_SNN():
                                        w_norm=78.4, norm_T=T, preTrace_target=0., key=subkeys[1])
             self.z1e = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_e, R_m=1., thr=-52.,
                                v_rest=-65., v_reset=-60., tau_theta=1e7, theta_plus=0.05,
-                               refract_T=5., key=subkeys[2])
+                               refract_T=5., one_spike=False, key=subkeys[2]) # should be: one_spike=True
             self.z1i = LIFCell("z1i", n_units=hid_dim, tau_m=tau_m_i, R_m=1., thr=-40.,
-                               v_rest=-60., v_reset=-45., tau_theta=0., one_spike=False,
-                               refract_T=5., key=subkeys[3])
+                               v_rest=-60., v_reset=-45., tau_theta=0., refract_T=5., 
+                               one_spike=False, key=subkeys[3])
 
             # ie -> inhibitory to excitatory; ei -> excitatory to inhibitory
             #       (eta = 0 means no learning)
@@ -170,10 +170,6 @@ class DC_SNN():
         #"""
         _tmp = jnp.load("/home/ago/Research/dev_ngc-learn/ngc-museum/exhibits/diehl_cook_snn/W1.npy")
         self.W1.weights.set(_tmp)
-        _tmp = jnp.load("/home/ago/Research/dev_ngc-learn/ngc-museum/exhibits/diehl_cook_snn/z1e_thr.npy")
-        self.z1e.thr.set(_tmp)
-        _tmp = jnp.load("/home/ago/Research/dev_ngc-learn/ngc-museum/exhibits/diehl_cook_snn/z1i_thr.npy")
-        self.z1i.thr.set(_tmp)
         #"""
 
         ## DEBUGGING CODE ..................
@@ -289,6 +285,7 @@ class DC_SNN():
         t = 0.
         ptr = 0
         for ts in range(1, self.T):
+            print("---- {} ----".format(ts))
             # self.circuit.clamp_input(obs) #x=inp)
             # self.circuit.clamp_trigger(learn_flag)
             # self.circuit.runCycle(t=ts*self.dt, dt=self.dt)
@@ -298,15 +295,19 @@ class DC_SNN():
             #print(jnp.linalg.norm(self.W1.weights.value, ord=1))
 
             self.z0.inputs.set(obs)
-            self.z0.outputs.set(S0[ptr:ptr+1,:])
+            self.z0.outputs.set(S0[ptr:ptr+1,:]) ## hard override of poisson for debug
+            #self.W1.inputs.set(S0[ptr:ptr+1,:])
+            #print(">>> ",jnp.sum(S0[ptr:ptr+1,:]))
             #print(jnp.sum(S0[ptr:ptr+1,:]))
             ptr += 1
             self.advance(t, self.dt) ## pass in t and dt and run step forward of simulation
 
-            print(jnp.sum(self.z0.outputs.value))
+            print(jnp.sum(self.W1.inputs.value))
             #print(self.W1.outputs)
-            print(self.z1e.j)
-            if ts == 2:
+            print(self.z1e.v)
+            print(self.z1e.s)
+            print(self.z1e.thr_theta)
+            if ts == 19:
                 import sys
                 sys.exit(0)
             #if adapt_synapses == True:
