@@ -8,22 +8,17 @@ from ngclearn.utils.viz.raster import create_raster_plot
 from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
 import time
+import sys
 from ngclearn.utils.model_utils import softmax
 from ngclearn.components import GaussianErrorCell, SLIFCell, BernoulliCell, HebbianSynapse
 
 
 ## SNN model co-routines
-# def load_model(model_dir, exp_dir="exp", model_name="snn_stdp", dt=3, T=100):
-#     _key = random.PRNGKey(time.time_ns())
-#     ## load circuit from disk
-#     circuit = Controller()
-#     circuit.load_from_dir(directory=model_dir)
-
-#     model = BFA_SNN(_key, in_dim=1, out_dim=1, save_init=False, dt=dt, T=T)
-#     model.circuit = circuit
-#     model.exp_dir = exp_dir
-#     model.model_dir = "{}/{}/custom".format(exp_dir, model_name)
-#     return model
+def load_model(exp_dir="exp", dt=3, T=100):
+    _key = random.PRNGKey(time.time_ns())
+    model = BFA_SNN(_key, in_dim=1, out_dim=1, save_init=False, dt=dt, T=T)
+    model.load_from_disk(exp_dir)
+    return model
 
 @jit
 def _add(x, y): ## jit-i-fied vector-matrix add
@@ -263,10 +258,6 @@ class BFA_SNN():
         # yMu = jnp.zeros((obs.shape[0], self.circuit.components["z2"].n_units))
         yMu = jnp.zeros((obs.shape[0], self.z2.n_units))
         yCnt = yMu + 0
-
-        # for components in self.circuit.components.items():
-        #     print(f"component {components}")
-
         self.reset()
         T_learn = 0.
         for ts in range(1, self.T):
@@ -294,6 +285,20 @@ class BFA_SNN():
                 _S = _add(_S, self.z1.s.value)
             else:
                 _S.append(self.z1.s.value)
+
+            ######### Logging/Model Matching #############
+            # if ts == 2:
+            #     print(self.z0)
+            #     print(self.W1)
+            #     print(self.z1)
+            #     print(self.W2)
+            #     print(self.z2)
+            #     print(self.e2)
+            #     print(self.E2)
+            #     print(self.d1)
+            #     sys.exit(0)
+            ##############################################
+
         _yMu = softmax(yMu/T_learn) #self.T) ## estimate approximate label distribution
         if get_latent_rates == True:
             _S = (_S * rGamma)/self.T
