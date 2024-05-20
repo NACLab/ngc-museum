@@ -115,7 +115,7 @@ class DC_SNN():
             self.z1e = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_e, R_m=1., thr=-52.,
                                v_rest=-65., v_reset=-60., tau_theta=1e7, theta_plus=0.05,
                                refract_T=5., key=subkeys[2])
-            self.z1i = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_i, R_m=1., thr=-40.,
+            self.z1i = LIFCell("z1i", n_units=hid_dim, tau_m=tau_m_i, R_m=1., thr=-40.,
                                v_rest=-60., v_reset=-45., tau_theta=0., one_spike=False,
                                refract_T=5., key=subkeys[3])
 
@@ -152,38 +152,57 @@ class DC_SNN():
                                                 self.tr0, self.tr1,
                                                 self.W1, self.W1ie, self.W1ei],
                                     command_name="Reset")
-            advance_cmd = AdvanceCommand(components=[self.W1, self.W1ie, self.W1ei, ## exec synapses first
-                                                    self.z0, self.z1e, self.z1i, ## exec neuronal cells next
-                                                    self.tr0, self.tr1], ## exec traces last
+            advance_cmd = AdvanceCommand(components=[self.W1, self.W1ie, self.W1ei,
+                                                    self.z0, self.z1e, self.z1i, 
+                                                    self.tr0, self.tr1],
                                          command_name="Advance")
             evolve_cmd = EvolveCommand(components=[self.W1], command_name="Evolve")
 
-        _advance, _ = advance_cmd.compile()
-        self.advance = wrapper((_advance))
+        #_advance, _ = advance_cmd.compile()
+        #self.advance = wrapper((_advance))
 
-        _evolve, _ = evolve_cmd.compile()
-        self.evolve = wrapper((_evolve))
+        #_evolve, _ = evolve_cmd.compile()
+        #self.evolve = wrapper((_evolve))
 
-        _reset, _ = reset_cmd.compile()
-        self.reset = wrapper((_reset))
+        #_reset, _ = reset_cmd.compile()
+        #self.reset = wrapper((_reset))
 
+        """
         _tmp = jnp.load("/home/ago/Research/dev_ngc-learn/ngc-museum/exhibits/diehl_cook_snn/W1.npy")
         self.W1.weights.set(_tmp)
         _tmp = jnp.load("/home/ago/Research/dev_ngc-learn/ngc-museum/exhibits/diehl_cook_snn/z1e_thr.npy")
         self.z1e.thr.set(_tmp)
         _tmp = jnp.load("/home/ago/Research/dev_ngc-learn/ngc-museum/exhibits/diehl_cook_snn/z1i_thr.npy")
         self.z1i.thr.set(_tmp)
+        """
+
         ## DEBUGGING CODE ..................
-        # self.advance_cmd = advance_cmd
-        # self.evolve_cmd = evolve_cmd
-        # self.reset_cmd = reset_cmd
-        # t = 0.
-        # #self.W1.inputs.set(jnp.zeros((1,in_dim)))
-        # #self.advance(t, self.dt)
-        # for c_name, component in self.advance_cmd.components.items():
-        #     component.gather()
-        #     component.advance(t=t, dt=self.dt)
-        # sys.exit(0)
+        self.advance_cmd = advance_cmd
+        #self.evolve_cmd = evolve_cmd
+        #self.reset_cmd = reset_cmd
+        t = 0.
+        self.z0.inputs.set(jnp.zeros((1,in_dim)))
+        self.W1.inputs.set(jnp.zeros((1,in_dim)) + 1.)
+        #print(self.W1.inputs.value)
+        #self.advance(t, self.dt)
+        self.z0.outputs.set(jnp.zeros((1,in_dim)) + 1.)
+        #self.z1e.j.set(jnp.ones((1,hid_dim)))
+        for _ in range(2):
+            self.z0.outputs.set(jnp.zeros((1,in_dim)) + 1.)
+            self.W1.inputs.set(jnp.zeros((1,in_dim)) + 1.)
+            for c_name, component in self.advance_cmd.components.items():
+                #print(component.name)
+                component.gather()
+                component.advance(t=t, dt=self.dt)
+            #self.z0.outputs.set(jnp.zeros((1,in_dim)) + 1.)
+            #self.W1.inputs.set(jnp.zeros((1,in_dim)) + 1.)
+            print(self.z1e.j)
+            print(jnp.sum(self.W1.inputs.value))
+            print("...")
+        #print(self.W1.inputs.value)
+
+        import sys
+        sys.exit(0)
         ## .................................
 
         #if save_init == True: ## save JSON structure to disk once
