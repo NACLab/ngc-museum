@@ -178,7 +178,7 @@ class DC_SNN():
                 dt = args[1]
                 compartment_values = _advance(compartment_values, t, dt)
                 compartment_values = _evolve(compartment_values, t, dt)
-                return compartment_values, self.z1e.v.value
+                return compartment_values, self.z1e.s.value
 
 
         self.circuit = circuit
@@ -264,6 +264,6 @@ class DC_SNN():
 
         self.reset()
         self.z0.inputs.set(obs)
-        z1e_v = self.circuit.process(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
+        z1e_s = self.circuit.process(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
         self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
-        return z1e_v 
+        return z1e_s
