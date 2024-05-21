@@ -3,10 +3,13 @@ from ngclearn.utils.io_utils import makedir
 from ngclearn.utils.viz.raster import create_raster_plot
 from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
-from jax.lax import scan
+#from jax.lax import scan
+from ngclearn.utils.model_utils import scanner
 import time
 
-from ngcsimlib.compartment import All_compartments
+from ngcsimlib.compilers import compile_command, wrap_command
+
+#from ngcsimlib.compartment import All_compartments
 from ngcsimlib.context import Context
 from ngcsimlib.commands import Command
 from ngcsimlib.operations import summation
@@ -40,11 +43,11 @@ def wrapper(compiled_fn):
     return _wrapped
 
 class AdvanceCommand(Command):
-    compile_key = "advance"
+    compile_key = "advance_state"
     def __call__(self, t=None, dt=None, *args, **kwargs):
         for component in self.components:
             component.gather()
-            component.advance(t=t, dt=dt)
+            component.advance_state(t=t, dt=dt)
 
 class EvolveCommand(Command):
     compile_key = "evolve"
@@ -160,31 +163,23 @@ class DC_SNN():
                                          command_name="Advance")
             evolve_cmd = EvolveCommand(components=[self.W1], command_name="Evolve")
 
-        _advance, _ = advance_cmd.compile()
-        self._advance = _advance
-        self.advance = wrapper(jit(_advance))
+            _advance, _ = compile_command(advance_cmd)
+            self.advance = wrap_command(jit(_advance))
 
-        _evolve, _ = evolve_cmd.compile()
-        self._evolve = _evolve
-        self.evolve = wrapper(jit(_evolve))
+            _evolve, _ = compile_command(evolve_cmd)
+            self.evolve = wrap_command(jit(_evolve))
 
-        _reset, _ = reset_cmd.compile()
-        self.reset = wrapper(jit(_reset))
+            _reset, _ = compile_command(reset_cmd)
+            self.reset = wrap_command(jit(_reset))
 
-        def merged(compartment_values, args):
-            t = args[0]
-            dt = args[1]
-            compartment_values = self._advance(t, dt, compartment_values=compartment_values)
-            compartment_values = self._evolve(t, dt, compartment_values=compartment_values)
-            return compartment_values, self.z1e.v.value
+            @scanner
+            def process(compartment_values, args):
+                t = args[0]
+                dt = args[1]
+                compartment_values = _advance(compartment_values, t, dt)
+                compartment_values = _evolve(compartment_values, t, dt)
+                return compartment_values, self.z1e.v.value
 
-        def scanned(xs):
-            vals, z1e_v_values = scan(merged, init={key: c.value for key, c in All_compartments.items()}, xs=xs)
-            for key, value in vals.items():
-                All_compartments[str(key)].set(value)
-            return z1e_v_values
-
-        self.scanned = scanned
 
         self.circuit = circuit
         #if save_init == True: ## save JSON structure to disk once
@@ -269,28 +264,6 @@ class DC_SNN():
 
         self.reset()
         self.z0.inputs.set(obs)
-        z1e_v = self.scanned(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
-        #self.wrapped_looped_command()
+        z1e_v = self.circuit.process(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
         self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
-        return z1e_v
-
-        # _S = []
-        # learn_flag = 0.
-        # if adapt_synapses == True:
-        #     learn_flag = 1.
-        # self.reset()
-        # t = 0.
-        # ptr = 0
-        # for ts in range(1, self.T):
-        #     self.z0.inputs.set(obs)
-        #     ptr += 1
-        #     self.advance(t, self.dt) ## pass in t and dt and run step forward of simulation
-        #     if adapt_synapses == True:
-        #         self.evolve(t, self.dt)
-        #         if ts == self.T-1:
-        #             self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
-        #     t = t + self.dt
-        #
-        #     if collect_spike_train == True:
-        #         _S.append(self.z1e.s)
-        # return _S
+        return z1e_v 
