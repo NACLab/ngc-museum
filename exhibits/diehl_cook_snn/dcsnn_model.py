@@ -14,6 +14,7 @@ from ngclearn.components.input_encoders.poissonCell import PoissonCell
 from ngclearn.components.neurons.spiking.LIFCell import LIFCell
 from ngclearn.components.synapses.hebbian.traceSTDPSynapse import TraceSTDPSynapse
 from ngclearn.components.synapses.hebbian.hebbianSynapse import HebbianSynapse
+from ngclearn.utils.model_utils import normalize_matrix
 
 ## SNN model co-routines
 def load_model(model_dir, exp_dir="exp", model_name="snn_stdp", dt=1., T=200):
@@ -111,7 +112,7 @@ class DC_SNN():
             self.z0 = PoissonCell("z0", n_units=in_dim, max_freq=63.75, key=subkeys[0])
             self.W1 = TraceSTDPSynapse("W1", shape=(in_dim, hid_dim), eta=1.,
                                        Aplus=Aplus, Aminus=Aminus, wInit=("uniform", 0.0, 0.3),
-                                       w_norm=78.4, norm_T=T-1., preTrace_target=0., key=subkeys[1])
+                                       preTrace_target=0., key=subkeys[1])
             self.z1e = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_e, R_m=1., thr=-52.,
                                v_rest=-65., v_reset=-60., tau_theta=1e7, theta_plus=0.05,
                                refract_T=5., one_spike=True, key=subkeys[2])
@@ -247,15 +248,13 @@ class DC_SNN():
         t = 0.
         ptr = 0
         for ts in range(1, self.T):
-            constrain_norm = 0.
-            if ts == self.T-1:
-                constrain_norm = 1.
-            self.W1.normEvMsk.set(constrain_norm)
             self.z0.inputs.set(obs)
             ptr += 1
             self.advance(t, self.dt) ## pass in t and dt and run step forward of simulation
             if adapt_synapses == True:
                 self.evolve(t, self.dt)
+                if ts == self.T-1:
+                    self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
             t = t + self.dt
 
             if collect_spike_train == True:

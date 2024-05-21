@@ -82,6 +82,7 @@ for i in range(n_iter):
             tend = time.time()
             print()
             print(" -> Time = {} s".format(tend - tstart))
+            tstart = tend + 0.
             print(model.get_synapse_stats())
             model.viz_receptive_fields(fname="recFields", field_shape=(28, 28))
             #model.save_to_disk() # save final state of synapses to disk
