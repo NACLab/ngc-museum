@@ -118,7 +118,7 @@ class DC_SNN():
                                v_rest=-65., v_reset=-60., tau_theta=1e7, theta_plus=0.05,
                                refract_T=5., one_spike=True, key=subkeys[2])
             self.z1i = LIFCell("z1i", n_units=hid_dim, tau_m=tau_m_i, R_m=1., thr=-40.,
-                               v_rest=-60., v_reset=-45., tau_theta=0., refract_T=5., 
+                               v_rest=-60., v_reset=-45., tau_theta=0., refract_T=5.,
                                one_spike=False, key=subkeys[3])
 
             # ie -> inhibitory to excitatory; ei -> excitatory to inhibitory
@@ -170,7 +170,7 @@ class DC_SNN():
 
         _reset, _ = reset_cmd.compile()
         self.reset = wrapper(jit(_reset))
-        
+
         def merged(compartment_values, args):
             t = args[0]
             dt = args[1]
@@ -180,15 +180,17 @@ class DC_SNN():
 
         def scanned(xs):
             vals, z1e_v_values = scan(merged, init={key: c.value for key, c in All_compartments.items()}, xs=xs)
-            for key, value in vals.items(): 
+            for key, value in vals.items():
                 All_compartments[str(key)].set(value)
             return z1e_v_values
-            
+
         self.scanned = scanned
 
+        self.circuit = circuit
         #if save_init == True: ## save JSON structure to disk once
         #    circuit.save_to_json(directory="exp", model_name=model_name)
-        #self.model_dir = "{}/{}/custom".format(exp_dir, model_name)
+        self.model_dir = "{}/{}/custom".format(exp_dir, model_name)
+        makedir(self.model_dir)
         #if save_init == True:
         #    circuit.save(dir=self.model_dir) ## save current parameter arrays
         #self.circuit = circuit # embed circuit to model construct
@@ -197,7 +199,10 @@ class DC_SNN():
         """
         Saves current model parameter values to disk
         """
-        self.circuit.save(dir=self.model_dir) ## save current parameter arrays
+        #self.circuit.save(dir=self.model_dir) ## save current parameter arrays
+        for name, component in self.circuit.components.items():
+            #component.gather()
+            component.save(self.model_dir)
 
     def load_from_disk(self, model_directory="exp"):
         """
@@ -206,7 +211,9 @@ class DC_SNN():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        self.circuit.load_from_dir(self, model_directory)
+        #self.circuit.load_from_dir(self, model_directory)
+        for name, component in self.circuit.components.items():
+            component.load(self.model_dir)
 
     def get_synapse_stats(self):
         """
@@ -257,33 +264,33 @@ class DC_SNN():
             an array containing spike vectors (will be empty; length = 0 if
                 collect_spike_train is False)
         """
-        ## TODO: add check to code for batch size of one 
-        
+        batch_dim = obs.shape[0]
+        assert batch_dim == 1 ## batch-length must be one for DC-SNN
+
         self.reset()
         self.z0.inputs.set(obs)
         z1e_v = self.scanned(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
         #self.wrapped_looped_command()
         self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
         return z1e_v
-        
-        _S = []
-        learn_flag = 0.
-        if adapt_synapses == True:
-            learn_flag = 1.
-        self.reset()
-        t = 0.
-        ptr = 0
-        for ts in range(1, self.T):
-            self.z0.inputs.set(obs)
-            ptr += 1
-            self.advance(t, self.dt) ## pass in t and dt and run step forward of simulation
-            if adapt_synapses == True:
-                self.evolve(t, self.dt)
-                if ts == self.T-1:
-                    self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
-            t = t + self.dt
 
-            if collect_spike_train == True:
-                _S.append(self.z1e.s) 
-        return _S
-    
+        # _S = []
+        # learn_flag = 0.
+        # if adapt_synapses == True:
+        #     learn_flag = 1.
+        # self.reset()
+        # t = 0.
+        # ptr = 0
+        # for ts in range(1, self.T):
+        #     self.z0.inputs.set(obs)
+        #     ptr += 1
+        #     self.advance(t, self.dt) ## pass in t and dt and run step forward of simulation
+        #     if adapt_synapses == True:
+        #         self.evolve(t, self.dt)
+        #         if ts == self.T-1:
+        #             self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
+        #     t = t + self.dt
+        #
+        #     if collect_spike_train == True:
+        #         _S.append(self.z1e.s)
+        # return _S
