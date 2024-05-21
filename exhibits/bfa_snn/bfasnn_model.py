@@ -5,6 +5,46 @@ from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
 import time
 from ngclearn.utils.model_utils import softmax
+import sys
+
+def tensorstats(tensor):
+    if tensor is not None:
+        _tensor = jnp.asarray(tensor)
+        return {
+            'mean': _tensor.mean(),
+            'std': _tensor.std(),
+            'mag': jnp.abs(_tensor).max(),
+            'min': _tensor.min(),
+            'max': _tensor.max(),
+        }
+    else:
+        return {
+            'mean': None,
+            'std': None,
+            'mag': None,
+            'min': None,
+            'max': None,
+        }
+
+def component_stats(component):
+    maxlen = max(len(c) for c in component.compartments.keys()) + 5
+    lines = f"[{component.__class__.__name__}] {component.name}\n"
+    for comp_name, comp_value in component.compartments.items():
+        stats = tensorstats(comp_value)
+        line = [f"{k}: {v}" for k, v in stats.items()]
+        line = ", ".join(line)
+        lines += f"  {f'({comp_name})'.ljust(maxlen)}{line}\n"
+    if hasattr(component, "weights"):
+        stats = tensorstats(getattr(component, "weights"))
+        line = [f"{k}: {v}" for k, v in stats.items()]
+        line = ", ".join(line)
+        lines += f"  {f'(weights)'.ljust(maxlen)}{line}\n"
+    if hasattr(component, "biases"):
+        stats = tensorstats(getattr(component, "biases"))
+        line = [f"{k}: {v}" for k, v in stats.items()]
+        line = ", ".join(line)
+        lines += f"  {f'(biases)'.ljust(maxlen)}{line}\n"
+    return lines
 
 ## SNN model co-routines
 def load_model(model_dir, exp_dir="exp", model_name="snn_stdp", dt=3, T=100):
@@ -51,7 +91,7 @@ class BFA_SNN():
         save_init: save model at initialization/first configuration time (Default: True)
     """
     # Define Functions
-    def __init__(self, dkey, in_dim, out_dim, hid_dim=1024, T=100, dt=0.25, 
+    def __init__(self, dkey, in_dim, out_dim, hid_dim=1024, T=100, dt=0.25,
                  tau_m=20., exp_dir="exp", model_name="snn_bfa", save_init=True, **kwargs):
         self.exp_dir = exp_dir
         makedir(exp_dir)
@@ -85,20 +125,20 @@ class BFA_SNN():
         W1 = circuit.add_component("hebbian", name="W1", shape=(in_dim, hid_dim),
                                    eta=1., wInit=weightInit, bInit=biasInit,
                                    signVal=-1., optim_type=optim_type, w_bound=0.,
-                                   pre_wght=1., post_wght=eta1_w, is_nonnegative=False, 
+                                   pre_wght=1., post_wght=eta1_w, is_nonnegative=False,
                                    key=subkeys[1])
         z1 = circuit.add_component("SLIF", name="z1", n_units=hid_dim, tau_m=tau_m, R_m=R_m,
-                                   thr=v_thr, inhibit_R=0., sticky_spikes=True, 
-                                   refract_T=refract_T, thrGain=0., thrLeak=0., 
+                                   thr=v_thr, inhibit_R=0., sticky_spikes=True,
+                                   refract_T=refract_T, thrGain=0., thrLeak=0.,
                                    thr_jitter=0., key=subkeys[2])
         W2 = circuit.add_component("hebbian", name="W2", shape=(hid_dim, out_dim),
                                    eta=1., wInit=weightInit, bInit=biasInit,
                                    signVal=-1., optim_type=optim_type, w_bound=0.,
-                                   pre_wght=1., post_wght=eta2_w, is_nonnegative=False, 
+                                   pre_wght=1., post_wght=eta2_w, is_nonnegative=False,
                                    key=subkeys[3])
         z2 = circuit.add_component("SLIF", name="z2", n_units=out_dim, tau_m=tau_m, R_m=R_m,
-                                   thr=v_thr, inhibit_R=0., sticky_spikes=True, 
-                                   refract_T=refract_T, thrGain=0., thrLeak=0., 
+                                   thr=v_thr, inhibit_R=0., sticky_spikes=True,
+                                   refract_T=refract_T, thrGain=0., thrLeak=0.,
                                    thr_jitter=0., key=subkeys[4])
         e2 = circuit.add_component("error", name="e2", n_units=out_dim)
         E2 = circuit.add_component("hebbian", name="E2", shape=(out_dim, hid_dim),
@@ -252,12 +292,26 @@ class BFA_SNN():
                 _S = _add(_S, self.circuit.components["z1"].spikes)
             else:
                 _S.append(self.circuit.components["z1"].spikes)
+
+            ######### Logging/Model Matching #############
+            # if ts == 2:
+            #     print(f"{component_stats(self.circuit.components.get('z0'))}")
+            #     print(f"{component_stats(self.circuit.components.get('W1'))}")
+            #     print(f"{component_stats(self.circuit.components.get('z1'))}")
+            #     print(f"{component_stats(self.circuit.components.get('W2'))}")
+            #     print(f"{component_stats(self.circuit.components.get('z2'))}")
+            #     print(f"{component_stats(self.circuit.components.get('e2'))}")
+            #     print(f"{component_stats(self.circuit.components.get('E2'))}")
+            #     print(f"{component_stats(self.circuit.components.get('d1'))}")
+            #     sys.exit(0)
+            ##############################################
+
         _yMu = softmax(yMu/T_learn) #self.T) ## estimate approximate label distribution
         if get_latent_rates == True:
             _S = (_S * rGamma)/self.T
         return _S, _yMu, yCnt
 
 @jit
-def _scale(x, factor): 
+def _scale(x, factor):
     ## small jit co-routine used by BFA-SNN process function
     return x * factor

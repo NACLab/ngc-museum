@@ -8,7 +8,7 @@ from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
 ################################################################################
 BFA-Trained Spiking Neural Network (BFA-SNN) Exhibit File:
 
-Fits a BFA-SNN (an SNN trained with broadcast feedback alignment) classifier 
+Fits a BFA-SNN (an SNN trained with broadcast feedback alignment) classifier
 to the MNIST database.
 
 Usage:
@@ -71,7 +71,7 @@ dt = 0.25 ## integration time constant (set in accordance w/ Samadi et al., 2017
 tau_mem = 20. ## membrane potential time constant (set as in Samadi et al., 2017)
 ## Note: another way to calc "T" is to list out a time-span (in ms) and divide by dt
 model = Model(subkeys[1], in_dim=x_dim, out_dim=y_dim, hid_dim=hid_dim, T=T, dt=dt, tau_m=tau_mem)
-# model.save_to_disk() # save final state of synapses to disk
+model.save_to_disk() # save final state of synapses to disk
 
 def eval_model(model, Xdev, Ydev, mb_size, verbosity=1): ## evals model's test-time inference performance
     n_batches = int(Xdev.shape[0]/mb_size)
@@ -138,7 +138,7 @@ for i in range(n_iter):
     tr_acc = 0.
     for j in range(n_batches):
         dkey, *subkeys = random.split(dkey, 2)
-        
+
         ## sample mini-batch of patterns
         idx = j * mb_size #j % 2 # 1
         Xb = X[idx: idx + mb_size,:]
