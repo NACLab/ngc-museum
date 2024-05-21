@@ -3,6 +3,7 @@ from ngclearn.utils.io_utils import makedir
 from ngclearn.utils.viz.raster import create_raster_plot
 from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
+from jax.lax import scan
 import time
 
 from ngcsimlib.compartment import All_compartments
@@ -160,13 +161,30 @@ class DC_SNN():
             evolve_cmd = EvolveCommand(components=[self.W1], command_name="Evolve")
 
         _advance, _ = advance_cmd.compile()
+        self._advance = _advance
         self.advance = wrapper(jit(_advance))
 
         _evolve, _ = evolve_cmd.compile()
+        self._evolve = _evolve
         self.evolve = wrapper(jit(_evolve))
 
         _reset, _ = reset_cmd.compile()
         self.reset = wrapper(jit(_reset))
+        
+        def merged(compartment_values, args):
+            t = args[0]
+            dt = args[1]
+            compartment_values = self._advance(t, dt, compartment_values=compartment_values)
+            compartment_values = self._evolve(t, dt, compartment_values=compartment_values)
+            return compartment_values, self.z1e.v.value
+
+        def scanned(xs):
+            vals, z1e_v_values = scan(merged, init={key: c.value for key, c in All_compartments.items()}, xs=xs)
+            for key, value in vals.items(): 
+                All_compartments[str(key)].set(value)
+            return z1e_v_values
+            
+        self.scanned = scanned
 
         #if save_init == True: ## save JSON structure to disk once
         #    circuit.save_to_json(directory="exp", model_name=model_name)
@@ -239,7 +257,15 @@ class DC_SNN():
             an array containing spike vectors (will be empty; length = 0 if
                 collect_spike_train is False)
         """
-        ## TODO: add check to code for batch size of one
+        ## TODO: add check to code for batch size of one 
+        
+        self.reset()
+        self.z0.inputs.set(obs)
+        z1e_v = self.scanned(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
+        #self.wrapped_looped_command()
+        self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
+        return z1e_v
+        
         _S = []
         learn_flag = 0.
         if adapt_synapses == True:
@@ -260,3 +286,4 @@ class DC_SNN():
             if collect_spike_train == True:
                 _S.append(self.z1e.s) 
         return _S
+    
