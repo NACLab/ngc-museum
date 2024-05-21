@@ -86,7 +86,7 @@ class DC_SNN():
         save_init: save model at initialization/first configuration time (Default: True)
     """
     # Define Functions
-    def __init__(self, dkey, in_dim, hid_dim=8, T=200, dt=1., exp_dir="exp",
+    def __init__(self, dkey, in_dim, hid_dim=100, T=200, dt=1., exp_dir="exp",
                  model_name="snn_stdp", save_init=True, **kwargs):
         self.exp_dir = exp_dir
         makedir(exp_dir)
@@ -111,10 +111,10 @@ class DC_SNN():
             self.z0 = PoissonCell("z0", n_units=in_dim, max_freq=63.75, key=subkeys[0])
             self.W1 = TraceSTDPSynapse("W1", shape=(in_dim, hid_dim), eta=1.,
                                        Aplus=Aplus, Aminus=Aminus, wInit=("uniform", 0.0, 0.3),
-                                       w_norm=78.4, norm_T=T, preTrace_target=0., key=subkeys[1])
+                                       w_norm=78.4, norm_T=T-1., preTrace_target=0., key=subkeys[1])
             self.z1e = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_e, R_m=1., thr=-52.,
                                v_rest=-65., v_reset=-60., tau_theta=1e7, theta_plus=0.05,
-                               refract_T=5., one_spike=False, key=subkeys[2]) # should be: one_spike=True
+                               refract_T=5., one_spike=True, key=subkeys[2])
             self.z1i = LIFCell("z1i", n_units=hid_dim, tau_m=tau_m_i, R_m=1., thr=-40.,
                                v_rest=-60., v_reset=-45., tau_theta=0., refract_T=5., 
                                one_spike=False, key=subkeys[3])
@@ -159,40 +159,13 @@ class DC_SNN():
             evolve_cmd = EvolveCommand(components=[self.W1], command_name="Evolve")
 
         _advance, _ = advance_cmd.compile()
-        self.advance = wrapper((_advance))
+        self.advance = wrapper(jit(_advance))
 
         _evolve, _ = evolve_cmd.compile()
-        self.evolve = wrapper((_evolve))
+        self.evolve = wrapper(jit(_evolve))
 
         _reset, _ = reset_cmd.compile()
-        self.reset = wrapper((_reset))
-
-        #"""
-        _tmp = jnp.load("/home/ago/Research/dev_ngc-learn/ngc-museum/exhibits/diehl_cook_snn/W1.npy")
-        self.W1.weights.set(_tmp)
-        #"""
-
-        ## DEBUGGING CODE ..................
-        # self.advance_cmd = advance_cmd
-        # #self.evolve_cmd = evolve_cmd
-        # #self.reset_cmd = reset_cmd
-        # t = 0.
-        # self.z0.inputs.set(jnp.zeros((1,in_dim)))
-        # self.W1.inputs.set(jnp.zeros((1,in_dim)) + 1.)
-        # self.z0.outputs.set(jnp.zeros((1,in_dim)) + 1.)
-        # for _ in range(2):
-        #     self.z0.outputs.set(jnp.zeros((1,in_dim)) + 1.)
-        #     self.W1.inputs.set(jnp.zeros((1,in_dim)) + 1.)
-        #     for c_name, component in self.advance_cmd.components.items():
-        #         #print(component.name)
-        #         component.gather()
-        #         component.advance(t=t, dt=self.dt)
-        #     print(self.z1e.j)
-        #     print(jnp.sum(self.W1.inputs.value))
-        #     print("...")
-        # import sys
-        # sys.exit(0)
-        ## .................................
+        self.reset = wrapper(jit(_reset))
 
         #if save_init == True: ## save JSON structure to disk once
         #    circuit.save_to_json(directory="exp", model_name=model_name)
@@ -224,7 +197,6 @@ class DC_SNN():
             string containing min, max, mean, and L2 norm of W1
         """
         _W1 = self.W1.weights.value
-        #_W1 = self.circuit.components.get("W1").weights
         msg = "W1:\n  min {} ;  max {} \n  mu {} ;  norm {}".format(jnp.amin(_W1),
                                                                     jnp.amax(_W1),
                                                                     jnp.mean(_W1),
@@ -243,7 +215,6 @@ class DC_SNN():
             field_shape: 2-tuple specifying expected shape of receptive fields to plot
         """
         _W1 = self.W1.weights.value
-        #_W1 = self.circuit.components.get("W1").weights
         visualize([_W1], [field_shape], self.exp_dir + "/filters/{}".format(fname))
 
     def process(self, obs, adapt_synapses=True, collect_spike_train=False):
@@ -270,57 +241,23 @@ class DC_SNN():
         ## TODO: add check to code for batch size of one
         _S = []
         learn_flag = 0.
-        # if adapt_synapses == True:
-        #     learn_flag = 1.
-        #self.circuit.reset(do_reset=True)
-        #print(self.W1.inputs_.value)
+        if adapt_synapses == True:
+            learn_flag = 1.
         self.reset()
-        S0 = jnp.load("/home/ago/Research/dev_ngc-learn/ngc-museum/exhibits/diehl_cook_snn/S0.npy")
-        print(self.get_synapse_stats())
-        print("------------------------------")
-        # print(self.W1.inputs_.value)
-        # self.W1.inputs_.set(jnp.zeros(obs.shape))
-        # print(self.W1.inputs_.value.shape)
-        # print("%%%")
         t = 0.
         ptr = 0
         for ts in range(1, self.T):
-            print("---- {} ----".format(ts))
-            # self.circuit.clamp_input(obs) #x=inp)
-            # self.circuit.clamp_trigger(learn_flag)
-            # self.circuit.runCycle(t=ts*self.dt, dt=self.dt)
-            #print(obs.shape)
-            #print(self.W1.inputs.value)
-            #print("~~~~~~")
-            #print(jnp.linalg.norm(self.W1.weights.value, ord=1))
-
+            constrain_norm = 0.
+            if ts == self.T-1:
+                constrain_norm = 1.
+            self.W1.normEvMsk.set(constrain_norm)
             self.z0.inputs.set(obs)
-            self.z0.outputs.set(S0[ptr:ptr+1,:]) ## hard override of poisson for debug
-            #self.W1.inputs.set(S0[ptr:ptr+1,:])
-            #print(">>> ",jnp.sum(S0[ptr:ptr+1,:]))
-            #print(jnp.sum(S0[ptr:ptr+1,:]))
             ptr += 1
             self.advance(t, self.dt) ## pass in t and dt and run step forward of simulation
-
-            print(jnp.sum(self.W1.inputs.value))
-            #print(self.W1.outputs)
-            print(self.z1e.v)
-            print(self.z1e.s)
-            print(self.z1e.thr_theta)
-            if ts == 19:
-                import sys
-                sys.exit(0)
-            #if adapt_synapses == True:
-            #    self.evolve(t, self.dt) ## pass in t and dt and run step forward of simulation
+            if adapt_synapses == True:
+                self.evolve(t, self.dt)
             t = t + self.dt
 
-            #print("############")
-            #print(jnp.linalg.norm(self.W1.weights.value, ord=1))
             if collect_spike_train == True:
-                _S.append(self.z1e.s)
-                #_S.append(self.circuit.components["z1e"].spikes)
-            #sys.exit(0)
-        print(self.get_synapse_stats())
-        import sys
-        sys.exit(0)
+                _S.append(self.z1e.s) 
         return _S

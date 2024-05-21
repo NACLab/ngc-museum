@@ -43,7 +43,7 @@ if n_samples > 0:
 n_batches = _X.shape[0] ## num batches is = to num samples (online learning)
 
 ## basic simulation hyper-parameter/configuraiton values go here
-viz_mod = 500
+viz_mod = 1000 #500
 mb_size = 1 ## locked to batch sizes of 1
 patch_shape = (28, 28)
 in_dim = patch_shape[0] * patch_shape[1]
@@ -68,6 +68,7 @@ for i in range(n_iter):
     ptrs = random.permutation(subkeys[0],_X.shape[0])
     X = _X[ptrs,:]
 
+    tstart = time.time()
     n_samps_seen = 0
     for j in range(n_batches):
         idx = j
@@ -78,7 +79,9 @@ for i in range(n_iter):
         n_samps_seen += Xb.shape[0]
         print("\r Seen {} images...".format(n_samps_seen), end="")
         if (j+1) % viz_mod == 0: ## save intermediate receptive fields
+            tend = time.time()
             print()
+            print(" -> Time = {} s".format(tend - tstart))
             print(model.get_synapse_stats())
             model.viz_receptive_fields(fname="recFields", field_shape=(28, 28))
             #model.save_to_disk() # save final state of synapses to disk
