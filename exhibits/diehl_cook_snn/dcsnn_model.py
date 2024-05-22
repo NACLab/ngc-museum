@@ -21,16 +21,17 @@ from ngclearn.components.synapses.hebbian.hebbianSynapse import HebbianSynapse
 from ngclearn.utils.model_utils import normalize_matrix
 
 ## SNN model co-routines
-def load_model(model_dir, exp_dir="exp", model_name="snn_stdp", dt=1., T=200):
+def load_model(model_dir, exp_dir="exp", model_name="snn_stdp", dt=1., T=200, in_dim=1):
     _key = random.PRNGKey(time.time_ns())
     ## load circuit from disk
-    circuit = Controller()
-    circuit.load_from_dir(directory=model_dir)
+    #circuit = Controller()
+    #circuit.load_from_dir(directory=model_dir)
 
-    model = DC_SNN(_key, in_dim=1, save_init=False, dt=dt, T=T)
-    model.circuit = circuit
+    model = DC_SNN(_key, in_dim=in_dim, save_init=False, dt=dt, T=T)
+    #model.circuit = circuit
     model.exp_dir = exp_dir
     model.model_dir = "{}/{}/custom".format(exp_dir, model_name)
+    model.load_from_disk(model.model_dir)
     return model
 
 def wrapper(compiled_fn):
@@ -163,7 +164,9 @@ class DC_SNN():
                                          command_name="Advance")
             evolve_cmd = EvolveCommand(components=[self.W1], command_name="Evolve")
 
-            _advance, _ = compile_command(advance_cmd)
+            self.advance_cmd = advance_cmd
+            _advance, argOrd = compile_command(advance_cmd)
+            #print(argOrd)
             self.advance = wrap_command(jit(_advance))
 
             _evolve, _ = compile_command(evolve_cmd)
@@ -178,7 +181,7 @@ class DC_SNN():
                 dt = args[1]
                 compartment_values = _advance(compartment_values, t, dt)
                 compartment_values = _evolve(compartment_values, t, dt)
-                return compartment_values, self.z1e.s.value
+                return compartment_values, self.z0.outputs.value
 
 
         self.circuit = circuit
@@ -262,8 +265,25 @@ class DC_SNN():
         batch_dim = obs.shape[0]
         assert batch_dim == 1 ## batch-length must be one for DC-SNN
 
-        self.reset()
-        self.z0.inputs.set(obs)
-        z1e_s = self.circuit.process(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
-        self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
+        #self.reset()
+        #self.z0.inputs.set(obs)
+        if adapt_synapses == False:
+            z1e_s = []
+            self.reset()
+            self.z0.inputs.set(obs)
+            #print(self.circuit.components)
+            for i in range(self.T):
+                for cname, component in self.circuit.components.items():
+                    component.gather()
+                    component.advance_state(t=self.dt * i, dt=self.dt)
+                #self.circuit.advance_state(self.dt * i, self.dt)
+                z1e_s.append(self.z1e.s.value)
+                #print(jnp.sum(self.z0.outputs.value))
+            #sys.exit(0)
+            z1e_s = jnp.concatenate(z1e_s, axis=0)
+        else:
+            self.reset()
+            self.z0.inputs.set(obs)
+            z1e_s = self.circuit.process(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
+            self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
         return z1e_s
