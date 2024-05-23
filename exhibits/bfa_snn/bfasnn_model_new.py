@@ -281,7 +281,7 @@ class BFA_SNN():
         # yMu = jnp.zeros((obs.shape[0], self.circuit.components["z2"].n_units))
         yMu = jnp.zeros((obs.shape[0], self.z2.n_units))
         yCnt = yMu + 0
-        self.reset()
+        self.circuit.reset()
         T_learn = 0.
         for ts in range(1, self.T):
             self.clamp(_obs, lab)
