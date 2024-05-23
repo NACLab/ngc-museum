@@ -163,9 +163,9 @@ class DC_SNN():
         """
         Saves current model parameter values to disk
         """
-        self.circuit.save_to_json(self.model_dir, self.model_name) ## save current parameter arrays
+        self.circuit.save_to_json(self.exp_dir, self.model_name) ## save current parameter arrays
 
-    def load_from_disk(self, model_directory="exp"):
+    def load_from_disk(self, model_directory):
         """
         Loads parameter/config values from disk to this model
 
@@ -173,7 +173,8 @@ class DC_SNN():
             model_directory: directory/path to saved model parameter/config values
         """
         with self.circuit:
-            self.circuit.load_from_dir(self.model_dir + "/{}".format(self.model_name))
+            #self.circuit.load_from_dir(self.exp_dir + "/{}".format(self.model_name))
+            self.circuit.load_from_dir(model_directory)
             ## note: redo scanner and anything using decorators
 
     def get_synapse_stats(self):
