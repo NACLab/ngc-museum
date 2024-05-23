@@ -289,9 +289,6 @@ class BFA_SNN():
         self.reset()
         T_learn = 0.
         for ts in range(1, self.T):
-            # print(f"---- [TIME {ts}] ----")
-            #self.z0.inputs.set(_obs)
-            #self.e2.target.set(lab)
             self.clamp(_obs, lab)
             self.circuit.advance(ts*self.dt, self.dt)
             if adapt_synapses == True:
