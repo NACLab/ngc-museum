@@ -1,8 +1,3 @@
-# from ngcsimlib.controller import Controller
-from ngcsimlib.compartment import All_compartments
-from ngcsimlib.context import Context
-from ngcsimlib.commands import Command
-
 from ngclearn.utils.io_utils import makedir
 from ngclearn.utils.viz.raster import create_raster_plot
 from ngclearn.utils.viz.synapse_plot import visualize
@@ -61,7 +56,7 @@ class BFA_SNN():
     """
     # Define Functions
     def __init__(self, dkey, in_dim, out_dim, hid_dim=1024, T=100, dt=0.25,
-                 tau_m=20., exp_dir="exp", model_name="snn_bfa", , loadDir=None, **kwargs):
+                 tau_m=20., exp_dir="exp", model_name="snn_bfa", loadDir=None, **kwargs):
         self.exp_dir = exp_dir
         self.model_name = model_name
         makedir(exp_dir)
