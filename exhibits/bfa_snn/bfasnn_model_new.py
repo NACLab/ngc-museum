@@ -281,16 +281,25 @@ class BFA_SNN():
         # yMu = jnp.zeros((obs.shape[0], self.circuit.components["z2"].n_units))
         yMu = jnp.zeros((obs.shape[0], self.z2.n_units))
         yCnt = yMu + 0
+        #print(">> RESET START")
         self.circuit.reset()
+        #print(">> RESET DONE")
         T_learn = 0.
         for ts in range(1, self.T):
-            self.clamp(_obs, lab)
+            #print(">> CLAMP START")
+            self.circuit.clamp(_obs, lab)
+            #print(">> CLAMP DONE")
+            #print(">> ADVANCE START")
             self.circuit.advance(ts*self.dt, self.dt)
+            #print(">> ADVANCE DONE")
+            curr_t = ts * self.dt ## track current time
+
             if adapt_synapses == True:
                 if curr_t > self.burnin_T:
+                    #print(">> ADVANCE DONE")
                     self.circuit.evolve(ts*self.dt, self.dt)
+                    #print(">> EVOVLE DONE")
             yCnt = _add(self.z2.s.value, yCnt)
-            curr_t = ts * self.dt ## track current time
 
             ## estimate output distribution
             if curr_t > self.burnin_T:
