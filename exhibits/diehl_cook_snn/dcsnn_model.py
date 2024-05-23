@@ -64,12 +64,12 @@ class DC_SNN():
         save_init: save model at initialization/first configuration time (Default: True)
     """
     # Define Functions
-    def __init__(self, dkey, in_dim, hid_dim=100, T=200, dt=1., exp_dir="exp",
-                 model_name="snn_stdp", save_init=True, **kwargs):
+    def __init__(self, dkey, in_dim=1, hid_dim=100, T=200, dt=1., exp_dir="exp",
+                 model_name="snn_stdp", save_init=True, loadDir=None, **kwargs):
         self.exp_dir = exp_dir
         self.model_name = model_name
         makedir(exp_dir)
-        makedir("{}/{}".format(exp_dir, model_name))
+        #makedir("{}/{}".format(exp_dir, model_name))
         makedir(exp_dir + "/filters")
         makedir(exp_dir + "/raster")
 
@@ -85,85 +85,108 @@ class DC_SNN():
         self.wNorm = 78.4 ## post-stimulus window norm constraint to apply to synapses
 
         dkey, *subkeys = random.split(dkey, 10)
+        ## TODO: does this seed loaded models?
+        
+        if loadDir is not None:
+            ## build from disk
+            self.load_from_disk(loadDir)
+        else:
+            with Context("Circuit") as self.circuit:
+                self.z0 = PoissonCell("z0", n_units=in_dim, max_freq=63.75, key=subkeys[0])
+                self.W1 = TraceSTDPSynapse("W1", shape=(in_dim, hid_dim), eta=1.,
+                                           Aplus=Aplus, Aminus=Aminus, wInit=("uniform", 0.0, 0.3),
+                                           preTrace_target=0., key=subkeys[1])
+                self.z1e = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_e, R_m=1., thr=-52.,
+                                   v_rest=-65., v_reset=-60., tau_theta=1e7, theta_plus=0.05,
+                                   refract_T=5., one_spike=True, key=subkeys[2])
+                self.z1i = LIFCell("z1i", n_units=hid_dim, tau_m=tau_m_i, R_m=1., thr=-40.,
+                                   v_rest=-60., v_reset=-45., tau_theta=0., refract_T=5.,
+                                   one_spike=False, key=subkeys[3])
 
-        with Context("Circuit") as circuit:
-            self.z0 = PoissonCell("z0", n_units=in_dim, max_freq=63.75, key=subkeys[0])
-            self.W1 = TraceSTDPSynapse("W1", shape=(in_dim, hid_dim), eta=1.,
-                                       Aplus=Aplus, Aminus=Aminus, wInit=("uniform", 0.0, 0.3),
-                                       preTrace_target=0., key=subkeys[1])
-            self.z1e = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_e, R_m=1., thr=-52.,
-                               v_rest=-65., v_reset=-60., tau_theta=1e7, theta_plus=0.05,
-                               refract_T=5., one_spike=True, key=subkeys[2])
-            self.z1i = LIFCell("z1i", n_units=hid_dim, tau_m=tau_m_i, R_m=1., thr=-40.,
-                               v_rest=-60., v_reset=-45., tau_theta=0., refract_T=5.,
-                               one_spike=False, key=subkeys[3])
+                # ie -> inhibitory to excitatory; ei -> excitatory to inhibitory
+                #       (eta = 0 means no learning)
+                self.W1ie = HebbianSynapse("W1ie", shape=(hid_dim, hid_dim), eta=0.,
+                                           wInit=("hollow", -120., 0.), w_bound=0.,
+                                           key=subkeys[4])
+                self.W1ei = HebbianSynapse("W1ei", shape=(hid_dim, hid_dim), eta=0.,
+                                           wInit=("eye", 22.5, 0), w_bound=0.,
+                                           key=subkeys[5])
+                self.tr0 = VarTrace("tr0", n_units=in_dim, tau_tr=tau_tr, decay_type="exp",
+                                    a_delta=0., key=subkeys[6])
+                self.tr1 = VarTrace("tr1", n_units=hid_dim, tau_tr=tau_tr, decay_type="exp",
+                                    a_delta=0., key=subkeys[7])
 
-            # ie -> inhibitory to excitatory; ei -> excitatory to inhibitory
-            #       (eta = 0 means no learning)
-            self.W1ie = HebbianSynapse("W1ie", shape=(hid_dim, hid_dim), eta=0.,
-                                       wInit=("hollow", -120., 0.), w_bound=0.,
-                                       key=subkeys[4])
-            self.W1ei = HebbianSynapse("W1ei", shape=(hid_dim, hid_dim), eta=0.,
-                                       wInit=("eye", 22.5, 0), w_bound=0.,
-                                       key=subkeys[5])
-            self.tr0 = VarTrace("tr0", n_units=in_dim, tau_tr=tau_tr, decay_type="exp",
-                                a_delta=0., key=subkeys[6])
-            self.tr1 = VarTrace("tr1", n_units=hid_dim, tau_tr=tau_tr, decay_type="exp",
-                                a_delta=0., key=subkeys[7])
+                ## wire z0 to z1e via W1 and z1i to z1e via W1ie
+                self.W1.inputs << self.z0.outputs
+                self.W1ie.inputs << self.z1i.s
+                self.z1e.j << summation(self.W1.outputs, self.W1ie.outputs)
+                # wire z1e to z1i via W1ie
+                self.W1ei.inputs << self.z1e.s
+                self.z1i.j << self.W1ei.outputs
+                # wire cells z0 and z1e to their respective traces
+                self.tr0.inputs << self.z0.outputs
+                self.tr1.inputs << self.z1e.s
+                # wire relevant compartment statistics to synaptic cable W1
+                self.W1.preTrace << self.tr0.trace
+                self.W1.preSpike << self.z0.outputs
+                self.W1.postTrace << self.tr1.trace
+                self.W1.postSpike << self.z1e.s
 
-            ## wire z0 to z1e via W1 and z1i to z1e via W1ie
-            self.W1.inputs << self.z0.outputs
-            self.W1ie.inputs << self.z1i.s
-            self.z1e.j << summation(self.W1.outputs, self.W1ie.outputs)
-            # wire z1e to z1i via W1ie
-            self.W1ei.inputs << self.z1e.s
-            self.z1i.j << self.W1ei.outputs
-            # wire cells z0 and z1e to their respective traces
-            self.tr0.inputs << self.z0.outputs
-            self.tr1.inputs << self.z1e.s
-            # wire relevant compartment statistics to synaptic cable W1
-            self.W1.preTrace << self.tr0.trace
-            self.W1.preSpike << self.z0.outputs
-            self.W1.postTrace << self.tr1.trace
-            self.W1.postSpike << self.z1e.s
+                reset_cmd, reset_args = self.circuit.compile_command_key(
+                                            self.z0, self.z1e, self.z1i,
+                                            self.tr0, self.tr1,
+                                            self.W1, self.W1ie, self.W1ei,
+                                            compile_key="reset")
+                advance_cmd, advance_args = self.circuit.compile_command_key(
+                                                self.W1, self.W1ie, self.W1ei,
+                                                self.z0, self.z1e, self.z1i,
+                                                self.tr0, self.tr1,
+                                                compile_key="advance_state")
+                evolve_cmd, evolve_args = self.circuit.compile_command_key(self.W1, compile_key="evolve")
 
-            reset_cmd, reset_args = circuit.compile_command_key(
-                                        self.z0, self.z1e, self.z1i,
-                                        self.tr0, self.tr1,
-                                        self.W1, self.W1ie, self.W1ei,
-                                    compile_key="reset")
-            advance_cmd, advance_args = circuit.compile_command_key(self.W1, self.W1ie, self.W1ei,
-                                                    self.z0, self.z1e, self.z1i,
-                                                    self.tr0, self.tr1,
-                                         compile_key="advance_state")
-            evolve_cmd, evolve_args = circuit.compile_command_key(self.W1, compile_key="evolve")
+                #self.circuit.add_command(wrap_command(jit(reset_cmd)), name="reset")
+                self.dynamic()
 
-            circuit.add_command(wrap_command(jit(reset_cmd)), name="reset")
+    def dynamic(self):## create dynamic commands for circuit
+        #from ngcsimlib.utils import get_current_context
+        #context = get_current_context()
+        W1, z0, z1e = self.circuit.get_components("W1", "z0", "z1e")
+        self.W1 = W1
+        self.z0 = z0
+        self.z1e = z1e
 
-            @scanner
-            def process(compartment_values, args):
-                t = args[0]
-                dt = args[1]
-                compartment_values = circuit.advance_state(compartment_values, t, dt)
-                compartment_values = circuit.evolve(compartment_values, t, dt)
-                return compartment_values, compartment_values[self.z1e.s.path]
+        self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
 
-            ## some helper dynamic commands
-            @circuit.dynamicCommand
-            def norm():
-                self.W1.weights.set(normalize_matrix(self.W1.weights.value, self.wNorm, order=1, axis=0))
+        @Context.dynamicCommand
+        def norm():
+            W1.weights.set(normalize_matrix(W1.weights.value, self.wNorm, order=1, axis=0))
 
-            @circuit.dynamicCommand
-            def clamp(x):
-                self.z0.inputs.set(x)
+        @Context.dynamicCommand
+        def clamp(x):
+            z0.inputs.set(x)
 
-        self.circuit = circuit
+        @scanner
+        def process(compartment_values, args):
+            t = args[0]
+            dt = args[1]
+            compartment_values = self.circuit.advance_state(compartment_values, t, dt)
+            compartment_values = self.circuit.evolve(compartment_values, t, dt)
+            return compartment_values, compartment_values[self.z1e.s.path]
 
-    def save_to_disk(self):
+
+    def save_to_disk(self, params_only=False):
         """
         Saves current model parameter values to disk
+
+        Args:
+            params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
-        self.circuit.save_to_json(self.exp_dir, self.model_name) ## save current parameter arrays
+        if params_only == True:
+            model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
+            self.W1.save(model_dir)
+            self.z1e.save(model_dir)
+        else:
+            self.circuit.save_to_json(self.exp_dir, self.model_name) ## save current parameter arrays
 
     def load_from_disk(self, model_directory):
         """
@@ -172,10 +195,13 @@ class DC_SNN():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        with self.circuit:
+        with Context("Circuit") as circuit:
+            self.circuit = circuit
             #self.circuit.load_from_dir(self.exp_dir + "/{}".format(self.model_name))
             self.circuit.load_from_dir(model_directory)
             ## note: redo scanner and anything using decorators
+            self.dynamic()
+        
 
     def get_synapse_stats(self):
         """
@@ -237,6 +263,6 @@ class DC_SNN():
             self.circuit.norm()
         # self.reset()
         # self.z0.inputs.set(obs)
-        # z1e_s = self.circuit.process(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
+        # out = self.circuit.process(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
         # self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
-        return z1e_s
+        return out

@@ -88,7 +88,7 @@ for i in range(n_iter):
             tstart = tend + 0.
             print(model.get_synapse_stats())
             model.viz_receptive_fields(fname="recFields", field_shape=(28, 28))
-            model.save_to_disk() # save final state of synapses to disk
+            model.save_to_disk(params_only=True) # save final state of synapses to disk
 print()
 
 ## stop time profiling
@@ -96,7 +96,7 @@ sim_end_time = time.time()
 sim_time = sim_end_time - sim_start_time
 sim_time_hr = (sim_time/3600.0) # convert time to hours
 
-model.save_to_disk()
+model.save_to_disk(params_only=True)
 
 print("------------------------------------")
 print(" Trial.sim_time = {} h  ({} sec)".format(sim_time_hr, sim_time))
