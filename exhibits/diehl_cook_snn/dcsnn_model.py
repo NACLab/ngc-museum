@@ -34,34 +34,6 @@ def load_model(model_dir, exp_dir="exp", model_name="snn_stdp", dt=1., T=200, in
     model.load_from_disk(model.model_dir)
     return model
 
-def wrapper(compiled_fn):
-    def _wrapped(*args):
-        # vals = jax.jit(compiled_fn)(*args, compartment_values={key: c.value for key, c in All_compartments.items()})
-        vals = compiled_fn(*args, compartment_values={key: c.value for key, c in All_compartments.items()})
-        for key, value in vals.items():
-            All_compartments[str(key)].set(value)
-        return vals
-    return _wrapped
-
-class AdvanceCommand(Command):
-    compile_key = "advance_state"
-    def __call__(self, t=None, dt=None, *args, **kwargs):
-        for component in self.components:
-            component.gather()
-            component.advance_state(t=t, dt=dt)
-
-class EvolveCommand(Command):
-    compile_key = "evolve"
-    def __call__(self, t=None, dt=None, *args, **kwargs):
-        for component in self.components:
-            component.evolve(t=t, dt=dt)
-
-class ResetCommand(Command):
-    compile_key = "reset"
-    def __call__(self, t=None, dt=None, *args, **kwargs):
-        for component in self.components:
-            component.reset(t=t, dt=dt)
-
 class DC_SNN():
     """
     Structure for constructing the spiking neural model proposed in:
@@ -95,13 +67,14 @@ class DC_SNN():
     def __init__(self, dkey, in_dim, hid_dim=100, T=200, dt=1., exp_dir="exp",
                  model_name="snn_stdp", save_init=True, **kwargs):
         self.exp_dir = exp_dir
+        self.model_name = model_name
         makedir(exp_dir)
+        makedir("{}/{}".format(exp_dir, model_name))
         makedir(exp_dir + "/filters")
         makedir(exp_dir + "/raster")
 
-        #T = 200 #250 # num discrete time steps to simulate
-        self.T = T
-        self.dt = dt
+        self.T = T #250 # ms (num discrete time steps to simulate)
+        self.dt = dt # ms (integration time constant)
         tau_m_e = 100.500896468 # ms (excitatory membrane time constant)
         tau_m_i = 100.500896468 # ms (inhibitory membrane time constant)
         tau_tr= 20. # ms (trace time constant)
@@ -109,8 +82,8 @@ class DC_SNN():
         ## STDP hyper-parameters
         Aplus = 1e-2 ## LTD learning rate (STDP); nu1
         Aminus = 1e-4 ## LTD learning rate (STDP); nu0
+        self.wNorm = 78.4 ## post-stimulus window norm constraint to apply to synapses
 
-        #dkey = random.PRNGKey(1234)
         dkey, *subkeys = random.split(dkey, 10)
 
         with Context("Circuit") as circuit:
@@ -154,52 +127,43 @@ class DC_SNN():
             self.W1.postTrace << self.tr1.trace
             self.W1.postSpike << self.z1e.s
 
-            reset_cmd = ResetCommand(components=[self.z0, self.z1e, self.z1i,
-                                                self.tr0, self.tr1,
-                                                self.W1, self.W1ie, self.W1ei],
-                                    command_name="Reset")
-            advance_cmd = AdvanceCommand(components=[self.W1, self.W1ie, self.W1ei,
+            reset_cmd, reset_args = circuit.compile_command_key(
+                                        self.z0, self.z1e, self.z1i,
+                                        self.tr0, self.tr1,
+                                        self.W1, self.W1ie, self.W1ei,
+                                    compile_key="reset")
+            advance_cmd, advance_args = circuit.compile_command_key(self.W1, self.W1ie, self.W1ei,
                                                     self.z0, self.z1e, self.z1i,
-                                                    self.tr0, self.tr1],
-                                         command_name="Advance")
-            evolve_cmd = EvolveCommand(components=[self.W1], command_name="Evolve")
+                                                    self.tr0, self.tr1,
+                                         compile_key="advance_state")
+            evolve_cmd, evolve_args = circuit.compile_command_key(self.W1, compile_key="evolve")
 
-            self.advance_cmd = advance_cmd
-            _advance, argOrd = compile_command(advance_cmd)
-            #print(argOrd)
-            self.advance = wrap_command(jit(_advance))
-
-            _evolve, _ = compile_command(evolve_cmd)
-            self.evolve = wrap_command(jit(_evolve))
-
-            _reset, _ = compile_command(reset_cmd)
-            self.reset = wrap_command(jit(_reset))
+            circuit.add_command(wrap_command(jit(reset_cmd)), name="reset")
 
             @scanner
             def process(compartment_values, args):
                 t = args[0]
                 dt = args[1]
-                compartment_values = _advance(compartment_values, t, dt)
-                compartment_values = _evolve(compartment_values, t, dt)
-                return compartment_values, compartment_values[str(self.z1e.s._uid)]
+                compartment_values = circuit.advance_state(compartment_values, t, dt)
+                compartment_values = circuit.evolve(compartment_values, t, dt)
+                return compartment_values, compartment_values[self.z1e.s.path]
+
+            ## some helper dynamic commands
+            @circuit.dynamicCommand
+            def norm():
+                self.W1.weights.set(normalize_matrix(self.W1.weights.value, self.wNorm, order=1, axis=0))
+
+            @circuit.dynamicCommand
+            def clamp(x):
+                self.z0.inputs.set(x)
 
         self.circuit = circuit
-        #if save_init == True: ## save JSON structure to disk once
-        #    circuit.save_to_json(directory="exp", model_name=model_name)
-        self.model_dir = "{}/{}/custom".format(exp_dir, model_name)
-        makedir(self.model_dir)
-        #if save_init == True:
-        #    circuit.save(dir=self.model_dir) ## save current parameter arrays
-        #self.circuit = circuit # embed circuit to model construct
 
     def save_to_disk(self):
         """
         Saves current model parameter values to disk
         """
-        #self.circuit.save(dir=self.model_dir) ## save current parameter arrays
-        for name, component in self.circuit.components.items():
-            #component.gather()
-            component.save(self.model_dir)
+        self.circuit.save_to_json(self.model_dir, self.model_name) ## save current parameter arrays
 
     def load_from_disk(self, model_directory="exp"):
         """
@@ -208,9 +172,9 @@ class DC_SNN():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        #self.circuit.load_from_dir(self, model_directory)
-        for name, component in self.circuit.components.items():
-            component.load(self.model_dir)
+        with self.circuit:
+            self.circuit.load_from_dir(self.model_dir + "/{}".format(self.model_name))
+            ## note: redo scanner and anything using decorators
 
     def get_synapse_stats(self):
         """
@@ -264,25 +228,14 @@ class DC_SNN():
         batch_dim = obs.shape[0]
         assert batch_dim == 1 ## batch-length must be one for DC-SNN
 
-        #self.reset()
-        #self.z0.inputs.set(obs)
-        #if adapt_synapses == False:
-        #    z1e_s = []
-        #    self.reset()
-        #    self.z0.inputs.set(obs)
-        #    #print(self.circuit.components)
-        #    for i in range(self.T):
-        #        for cname, component in self.circuit.components.items():
-        #            component.gather()
-        #            component.advance_state(t=self.dt * i, dt=self.dt)
-        #        #self.circuit.advance_state(self.dt * i, self.dt)
-        #        z1e_s.append(self.z1e.s.value)
-        #        #print(jnp.sum(self.z0.outputs.value))
-        #    #sys.exit(0)
-        #    z1e_s = jnp.concatenate(z1e_s, axis=0)
-        #else:
-        self.reset()
-        self.z0.inputs.set(obs)
-        z1e_s = self.circuit.process(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
-        self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
+        self.circuit.reset()
+        self.circuit.clamp(obs)
+        out = self.circuit.process(jnp.array([[self.dt*i,self.dt]
+                                   for i in range(self.T)]))
+        if self.wNorm > 0.:
+            self.circuit.norm()
+        # self.reset()
+        # self.z0.inputs.set(obs)
+        # z1e_s = self.circuit.process(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
+        # self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
         return z1e_s
