@@ -59,6 +59,7 @@ print("=> Plotting raster of sample spike train...")
 x_ref = _X[sample_idx:sample_idx+1,:] ## extract data pattern
 _S = model.process(obs=x_ref, adapt_synapses=False, collect_spike_train=True)
 print(jnp.sum(_S))
+print(_S.shape)
 cnt = jnp.sum(jnp.squeeze(_S), axis=0, keepdims=True) ## get frequencies/firing rates
 
 neural_idx = jnp.squeeze(jnp.argmax(cnt, axis=1)) ## get highest firing rate among neurons
@@ -81,5 +82,5 @@ plt.imshow(arr)#.T)#, interpolation='nearest')#, cmap='rgb')#, cmap='gray')
 plt.savefig("exp/digit{}.png".format(sample_idx))
 plt.clf()
 
-create_raster_plot(jnp.transpose(_S, [2,0,1]), tag="{}".format(0),
+create_raster_plot(_S, tag="{}".format(0),
                    plot_fname="{}/raster/z1e_raster.jpg".format(model.exp_dir))
