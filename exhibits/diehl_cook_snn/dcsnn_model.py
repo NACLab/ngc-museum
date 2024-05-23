@@ -181,8 +181,7 @@ class DC_SNN():
                 dt = args[1]
                 compartment_values = _advance(compartment_values, t, dt)
                 compartment_values = _evolve(compartment_values, t, dt)
-                return compartment_values, self.z0.outputs.value
-
+                return compartment_values, compartment_values[str(self.z1e.s._uid)]
 
         self.circuit = circuit
         #if save_init == True: ## save JSON structure to disk once
@@ -267,23 +266,23 @@ class DC_SNN():
 
         #self.reset()
         #self.z0.inputs.set(obs)
-        if adapt_synapses == False:
-            z1e_s = []
-            self.reset()
-            self.z0.inputs.set(obs)
-            #print(self.circuit.components)
-            for i in range(self.T):
-                for cname, component in self.circuit.components.items():
-                    component.gather()
-                    component.advance_state(t=self.dt * i, dt=self.dt)
-                #self.circuit.advance_state(self.dt * i, self.dt)
-                z1e_s.append(self.z1e.s.value)
-                #print(jnp.sum(self.z0.outputs.value))
-            #sys.exit(0)
-            z1e_s = jnp.concatenate(z1e_s, axis=0)
-        else:
-            self.reset()
-            self.z0.inputs.set(obs)
-            z1e_s = self.circuit.process(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
-            self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
+        #if adapt_synapses == False:
+        #    z1e_s = []
+        #    self.reset()
+        #    self.z0.inputs.set(obs)
+        #    #print(self.circuit.components)
+        #    for i in range(self.T):
+        #        for cname, component in self.circuit.components.items():
+        #            component.gather()
+        #            component.advance_state(t=self.dt * i, dt=self.dt)
+        #        #self.circuit.advance_state(self.dt * i, self.dt)
+        #        z1e_s.append(self.z1e.s.value)
+        #        #print(jnp.sum(self.z0.outputs.value))
+        #    #sys.exit(0)
+        #    z1e_s = jnp.concatenate(z1e_s, axis=0)
+        #else:
+        self.reset()
+        self.z0.inputs.set(obs)
+        z1e_s = self.circuit.process(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
+        self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
         return z1e_s

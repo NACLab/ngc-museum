@@ -54,8 +54,8 @@ print("=> Plotting raster of sample spike train...")
 ## create a raster plot of for sample data pattern
 x_ref = _X[sample_idx:sample_idx+1,:] ## extract data pattern
 _S = model.process(obs=x_ref, adapt_synapses=False, collect_spike_train=True)
-#print(jnp.sum(_S))
-#sys.exit(0)
+print(jnp.sum(_S))
+sys.exit(0)
 #_S = jnp.concatenate(_S,axis=0) ## turn spike train into an array
 cnt = jnp.sum(_S, axis=0, keepdims=True) ## get frequencies/firing rates
 
@@ -79,5 +79,5 @@ plt.imshow(arr)#.T)#, interpolation='nearest')#, cmap='rgb')#, cmap='gray')
 plt.savefig("exp/digit{}.png".format(sample_idx))
 plt.clf()
 
-create_raster_plot(_S.T, tag="{}".format(0),
+create_raster_plot(jnp.transpose(_S, [2,0,1]), tag="{}".format(0),
                    plot_fname="{}/raster/z1e_raster.jpg".format(model.exp_dir))
