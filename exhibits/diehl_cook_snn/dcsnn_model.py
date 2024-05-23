@@ -85,7 +85,6 @@ class DC_SNN():
         self.wNorm = 78.4 ## post-stimulus window norm constraint to apply to synapses
 
         dkey, *subkeys = random.split(dkey, 10)
-        ## TODO: does this seed loaded models?
         
         if loadDir is not None:
             ## build from disk
