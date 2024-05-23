@@ -9,6 +9,14 @@ from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
 import time
 import sys
+
+from ngclearn.utils.model_utils import scanner
+from ngcsimlib.compilers import compile_command, wrap_command
+from ngcsimlib.context import Context
+from ngcsimlib.commands import Command
+from ngcsimlib.operations import summation
+
+
 from ngclearn.utils.model_utils import softmax
 from ngclearn.components import GaussianErrorCell, SLIFCell, BernoulliCell, HebbianSynapse
 
@@ -23,36 +31,6 @@ def load_model(exp_dir="exp", dt=3, T=100):
 @jit
 def _add(x, y): ## jit-i-fied vector-matrix add
     return x + y
-
-def wrapper(compiled_fn):
-    def _wrapped(*args):
-        # vals = jax.jit(compiled_fn)(*args, compartment_values={key: c.value for key, c in All_compartments.items()})
-        vals = compiled_fn(*args, compartment_values={key: c.value for key, c in All_compartments.items()})
-        for key, value in vals.items():
-            All_compartments[str(key)].set(value)
-        return vals
-    return _wrapped
-
-class AdvanceCommand(Command):
-    compile_key = "advance"
-    def __call__(self, t=None, dt=None, *args, **kwargs):
-        for component in self.components:
-            component.gather()
-            component.advance(t=t, dt=dt)
-
-class ResetCommand(Command):
-    compile_key = "reset"
-    def __call__(self, t=None, dt=None, *args, **kwargs):
-        for component in self.components:
-            component.gather()
-            component.reset()
-
-class EvolveCommand(Command):
-    compile_key = "evolve"
-    def __call__(self, t=None, dt=None, *args, **kwargs):
-        for component in self.components:
-            component.gather()
-            component.evolve(t=t, dt=dt)
 
 class BFA_SNN():
     """
@@ -82,10 +60,12 @@ class BFA_SNN():
         save_init: save model at initialization/first configuration time (Default: True)
     """
     # Define Functions
-    def __init__(self, dkey, in_dim, out_dim, hid_dim=1024, T=100, dt=0.25, 
-                 tau_m=20., exp_dir="exp", model_name="snn_bfa", save_init=True, **kwargs):
+    def __init__(self, dkey, in_dim, out_dim, hid_dim=1024, T=100, dt=0.25,
+                 tau_m=20., exp_dir="exp", model_name="snn_bfa", , loadDir=None, **kwargs):
         self.exp_dir = exp_dir
+        self.model_name = model_name
         makedir(exp_dir)
+        #makedir("{}/{}".format(exp_dir, model_name))
         makedir(exp_dir + "/filters")
         makedir(exp_dir + "/raster")
 
@@ -112,94 +92,142 @@ class BFA_SNN():
         ## Create/configure model and simulation object
         # circuit = Controller()
 
-        with Context("circuit") as self.circuit:
-            self.z0 = BernoulliCell(name="z0", n_units=in_dim, key=subkeys[0])
-            self.W1 = HebbianSynapse(name="W1", shape=(in_dim, hid_dim),
-                                   eta=1., wInit=weightInit, bInit=biasInit,
-                                   signVal=-1., optim_type=optim_type, w_bound=0.,
-                                   pre_wght=1., post_wght=eta1_w, is_nonnegative=False,
-                                   key=subkeys[1])
-            self.z1 = SLIFCell(name="z1", n_units=hid_dim, tau_m=tau_m, R_m=R_m,
-                                   thr=v_thr, inhibit_R=0., sticky_spikes=True,
-                                   refract_T=refract_T, thrGain=0., thrLeak=0.,
-                                   thr_jitter=0., key=subkeys[2])
-            self.W2 = HebbianSynapse(name="W2", shape=(hid_dim, out_dim),
-                                   eta=1., wInit=weightInit, bInit=biasInit,
-                                   signVal=-1., optim_type=optim_type, w_bound=0.,
-                                   pre_wght=1., post_wght=eta2_w, is_nonnegative=False,
-                                   key=subkeys[3])
-            self.z2 = SLIFCell(name="z2", n_units=out_dim, tau_m=tau_m, R_m=R_m,
-                                   thr=v_thr, inhibit_R=0., sticky_spikes=True,
-                                   refract_T=refract_T, thrGain=0., thrLeak=0.,
-                                   thr_jitter=0., key=subkeys[4])
-            self.e2 = GaussianErrorCell(name="e2", n_units=out_dim)
-            self.E2 = HebbianSynapse(name="E2", shape=(out_dim, hid_dim),
-                                   eta=0., wInit=weightInit, bInit=None, w_bound=0.,
-                                   is_nonnegative=False, key=subkeys[5])
-            self.d1 = GaussianErrorCell(name="d1", n_units=hid_dim)
+        if loadDir is not None:
+            ## build from disk
+            self.load_from_disk(loadDir)
+        else:
+            with Context("Circuit") as self.circuit:
+                self.z0 = BernoulliCell(name="z0", n_units=in_dim, key=subkeys[0])
+                self.W1 = HebbianSynapse(name="W1", shape=(in_dim, hid_dim),
+                                       eta=1., wInit=weightInit, bInit=biasInit,
+                                       signVal=-1., optim_type=optim_type, w_bound=0.,
+                                       pre_wght=1., post_wght=eta1_w, is_nonnegative=False,
+                                       key=subkeys[1])
+                self.z1 = SLIFCell(name="z1", n_units=hid_dim, tau_m=tau_m, R_m=R_m,
+                                       thr=v_thr, inhibit_R=0., sticky_spikes=True,
+                                       refract_T=refract_T, thrGain=0., thrLeak=0.,
+                                       thr_jitter=0., key=subkeys[2])
+                self.W2 = HebbianSynapse(name="W2", shape=(hid_dim, out_dim),
+                                       eta=1., wInit=weightInit, bInit=biasInit,
+                                       signVal=-1., optim_type=optim_type, w_bound=0.,
+                                       pre_wght=1., post_wght=eta2_w, is_nonnegative=False,
+                                       key=subkeys[3])
+                self.z2 = SLIFCell(name="z2", n_units=out_dim, tau_m=tau_m, R_m=R_m,
+                                       thr=v_thr, inhibit_R=0., sticky_spikes=True,
+                                       refract_T=refract_T, thrGain=0., thrLeak=0.,
+                                       thr_jitter=0., key=subkeys[4])
+                self.e2 = GaussianErrorCell(name="e2", n_units=out_dim)
+                self.E2 = HebbianSynapse(name="E2", shape=(out_dim, hid_dim),
+                                       eta=0., wInit=weightInit, bInit=None, w_bound=0.,
+                                       is_nonnegative=False, key=subkeys[5])
+                self.d1 = GaussianErrorCell(name="d1", n_units=hid_dim)
 
 
-            ## wire up z0 to z1 via W1
-            self.W1.inputs << self.z0.outputs
-            self.z1.j << self.W1.outputs
+                ## wire up z0 to z1 via W1
+                self.W1.inputs << self.z0.outputs
+                self.z1.j << self.W1.outputs
 
-            self.W2.inputs << self.z1.s
-            self.z2.j << self.W2.outputs
-            self.e2.mu << self.z2.s
+                self.W2.inputs << self.z1.s
+                self.z2.j << self.W2.outputs
+                self.e2.mu << self.z2.s
 
-            self.E2.inputs << self.e2.dmu
-            self.d1.target << self.E2.outputs
+                self.E2.inputs << self.e2.dmu
+                self.d1.target << self.E2.outputs
 
-            ## wire relevant compartment statistics to synaptic cable z0_z1
-            self.d1.modulator << self.z1.surrogate
-            self.W1.pre << self.z0.outputs
-            self.W1.post << self.d1.dmu
-            self.W2.pre << self.z1.s
-            self.W2.post << self.e2.dmu
+                ## wire relevant compartment statistics to synaptic cable z0_z1
+                self.d1.modulator << self.z1.surrogate
+                self.W1.pre << self.z0.outputs
+                self.W1.post << self.d1.dmu
+                self.W2.pre << self.z1.s
+                self.W2.post << self.e2.dmu
 
-            reset = ResetCommand(components=[self.z0, self.W1, self.z1, self.W2, self.z2, self.e2, self.E2, self.d1], command_name="Reset")
-            advance = AdvanceCommand(components=[self.z0, self.W1, self.z1, self.W2, self.z2, self.e2, self.E2, self.d1], command_name="Advance")
-            evolve = EvolveCommand(components=[self.W1, self.W2], command_name="Evolve")
-            # we will clamp input and clamp target manually
-            # self.save = SaveCommand(components=[self.W1, self.W2, self.E2, self.z1, self.z2])
+                reset_cmd, reset_args = self.circuit.compile_command_key(
+                                            self.z0, self.W1, self.z1,
+                                            self.W2, self.z2, self.e2,
+                                            self.E2, self.d1,
+                                            compile_key="reset")
+                advance_cmd, advance_args = self.circuit.compile_command_key(
+                                                self.z0, self.W1, self.z1,
+                                                self.W2, self.z2, self.e2,
+                                                self.E2, self.d1,
+                                                compile_key="advance_state")
+                evolve_cmd, evolve_args = self.circuit.compile_command_key(self.W1, self.W2, compile_key="evolve")
 
-        reset, _ = reset.compile()
-        self.reset = wrapper(jit(reset))
-        advance, _ = advance.compile()
-        self.advance = wrapper(jit(advance))
-        evolve, _ = evolve.compile()
-        self.evolve = wrapper(jit(evolve))
+                #self.circuit.add_command(wrap_command(jit(reset_cmd)), name="reset")
+                self.dynamic()
 
-        ################################################################################
+            # reset, _ = reset.compile()
+            # self.reset = wrapper(jit(reset))
+            # advance, _ = advance.compile()
+            # self.advance = wrapper(jit(advance))
+            # evolve, _ = evolve.compile()
+            # self.evolve = wrapper(jit(evolve))
 
-        # if save_init == True: ## save JSON structure to disk once
-        #     circuit.save_to_json(directory="exp", model_name=model_name)
-        self.model_dir = "{}/{}/custom".format(exp_dir, model_name)
-        makedir(self.model_dir)
-        # if save_init == True:
-        #     circuit.save(dir=self.model_dir) ## save current parameter arrays
-        # self.circuit = circuit # embed circuit to model construct
+    def dynamic(self):## create dynamic commands for circuit
+        #from ngcsimlib.utils import get_current_context
+        #context = get_current_context()
+        z0, W1, z1, W2, z2, e2, E2, d1 = self.circuit.get_components("z0", "W1", "z1", "W2", "z2", "e2", "E2", "d1")
+        self.z0 = z0
+        self.W1 = W1
+        self.z1 = z1
+        self.W2 = W2
+        self.z2 = z2
+        self.e2 = e2
+        self.E2 = E2
+        self.d1 = d1
 
-    def save_to_disk(self):
+        self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
+        self.circuit.add_command(wrap_command(jit(self.circuit.advance_state)), name="advance")
+        self.circuit.add_command(wrap_command(jit(self.circuit.evolve)), name="evolve")
+
+        # @Context.dynamicCommand
+        # def norm():
+        #     W1.weights.set(normalize_matrix(W1.weights.value, self.wNorm, order=1, axis=0))
+
+        @Context.dynamicCommand
+        def clamp(x, y):
+            z0.inputs.set(x)
+            e2.target.set(y)
+
+        @scanner
+        def process(compartment_values, args):
+            t = args[0]
+            dt = args[1]
+            compartment_values = self.circuit.advance_state(compartment_values, t, dt)
+            compartment_values = self.circuit.evolve(compartment_values, t, dt)
+            return compartment_values, (compartment_values[self.z1.s.path],
+                                        compartment_values[self.z2.s.path])
+
+
+    def save_to_disk(self, params_only=False):
         """
         Saves current model parameter values to disk
-        """
-        # self.circuit.save(dir=self.model_dir) ## save current parameter arrays
-        # self.save(dir=self.model_dir)
-        for name, component in self.circuit.components.items():
-            component.gather()
-            component.save(self.model_dir)
 
-    def load_from_disk(self, model_directory="exp"):
+        Args:
+            params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
+        """
+        if params_only == True:
+            model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
+            self.W1.save(model_dir)
+            self.z1.save(model_dir)
+            self.W2.save(model_dir)
+            self.z2.save(model_dir)
+        else:
+            self.circuit.save_to_json(self.exp_dir, self.model_name) ## save current parameter arrays
+
+    def load_from_disk(self, model_directory):
         """
         Loads parameter/config values from disk to this model
 
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        # self.circuit.load_from_dir(self, model_directory)
-        for name, component in self.circuit.components.items():
-            component.load(self.model_dir)
+        with Context("Circuit") as circuit:
+            self.circuit = circuit
+            #self.circuit.load_from_dir(self.exp_dir + "/{}".format(self.model_name))
+            self.circuit.load_from_dir(model_directory)
+            ## note: redo scanner and anything using decorators
+            self.dynamic()
 
     def get_synapse_stats(self):
         """
@@ -208,8 +236,8 @@ class BFA_SNN():
         Returns:
             string containing min, max, mean, and L2 norm of W1
         """
-        _W1 = self.circuit.components["W1"].weights.value
-        _W2 = self.circuit.components["W2"].weights.value
+        _W1 = self.W1.weights.value
+        _W2 = self.W2.weights.value
         msg = "W1.n = {}  W2.n = {}".format(jnp.linalg.norm(_W1), jnp.linalg.norm(_W2))
         return msg
 
@@ -262,15 +290,16 @@ class BFA_SNN():
         T_learn = 0.
         for ts in range(1, self.T):
             # print(f"---- [TIME {ts}] ----")
-            self.z0.inputs.set(_obs)
-            self.e2.target.set(lab)
-            # print(f"[Step {ts}] z0.inputs: {self.z0.outputs.value.shape}, W1.outputs: {self.W1.outputs.value}, z1.s: {self.z1.s.value.shape}")
-            self.advance(ts*self.dt, self.dt)
-            curr_t = ts * self.dt ## track current time
+            #self.z0.inputs.set(_obs)
+            #self.e2.target.set(lab)
+            self.clamp(_obs, lab)
+            self.circuit.advance(ts*self.dt, self.dt)
             if adapt_synapses == True:
                 if curr_t > self.burnin_T:
-                    self.evolve(self.T, self.dt)
+                    self.circuit.evolve(ts*self.dt, self.dt)
             yCnt = _add(self.z2.s.value, yCnt)
+            curr_t = ts * self.dt ## track current time
+
             ## estimate output distribution
             if curr_t > self.burnin_T:
                 T_learn += 1.
@@ -286,22 +315,46 @@ class BFA_SNN():
             else:
                 _S.append(self.z1.s.value)
 
-            ######### Logging/Model Matching #############
-            # if ts == 2:
-            #     print(self.z0)
-            #     print(self.W1)
-            #     print(self.z1)
-            #     print(self.W2)
-            #     print(self.z2)
-            #     print(self.e2)
-            #     print(self.E2)
-            #     print(self.d1)
-            #     sys.exit(0)
-            ##############################################
+        ## viet's old code
+        # _S = []
+        # if get_latent_rates == True:
+        #     # _S = jnp.zeros((obs.shape[0], self.circuit.components["z1"].n_units))
+        #     _S = jnp.zeros((obs.shape[0], self.z1.n_units))
+        # # yMu = jnp.zeros((obs.shape[0], self.circuit.components["z2"].n_units))
+        # yMu = jnp.zeros((obs.shape[0], self.z2.n_units))
+        # yCnt = yMu + 0
+        # self.reset()
+        # T_learn = 0.
+        # for ts in range(1, self.T):
+        #     # print(f"---- [TIME {ts}] ----")
+        #     self.z0.inputs.set(_obs)
+        #     self.e2.target.set(lab)
+        #     # print(f"[Step {ts}] z0.inputs: {self.z0.outputs.value.shape}, W1.outputs: {self.W1.outputs.value}, z1.s: {self.z1.s.value.shape}")
+        #     self.advance(ts*self.dt, self.dt)
+        #     curr_t = ts * self.dt ## track current time
+        #     if adapt_synapses == True:
+        #         if curr_t > self.burnin_T:
+        #             self.evolve(self.T, self.dt)
+        #     yCnt = _add(self.z2.s.value, yCnt)
+        #     ## estimate output distribution
+        #     if curr_t > self.burnin_T:
+        #         T_learn += 1.
+        #         if label_dist_estimator == "current":
+        #             yMu = _add(self.z2.j.value, yMu)
+        #         elif label_dist_estimator == "voltage":
+        #             yMu = _add(self.z2.v.value, yMu)
+        #         else:
+        #             yMu = _add(self.z2.s.value, yMu)
+        #     ## collect internal/hidden spikes at t
+        #     if get_latent_rates == True:
+        #         _S = _add(_S, self.z1.s.value)
+        #     else:
+        #         _S.append(self.z1.s.value)
 
         _yMu = softmax(yMu/T_learn) #self.T) ## estimate approximate label distribution
         if get_latent_rates == True:
             _S = (_S * rGamma)/self.T
+
         return _S, _yMu, yCnt
 
 @jit
