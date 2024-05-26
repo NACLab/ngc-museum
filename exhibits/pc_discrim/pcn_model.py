@@ -222,7 +222,7 @@ class PCN():
                 self.q3.j << self.Q3.outputs
                 #self.eq3.mu = self.q3.z
                 ## wire q3 to qe3
-                self.eq3.target << q3.z
+                self.eq3.target << self.q3.z
 
                 reset_cmd, reset_args = self.circuit.compile_command_key(
                                                 self.q0, self.q1, self.q2, self.q3, self.eq3,
@@ -233,7 +233,7 @@ class PCN():
                                                     self.E2, self.E3,
                                                     self.z0, self.z1, self.z2, self.z3,
                                                     self.W1, self.W2, self.W3,
-                                                    self.e1, self.e2, self.e3, 
+                                                    self.e1, self.e2, self.e3,
                                                 compile_key="advance_state") ## E-step
                 evolve_cmd, evolve_args = self.circuit.compile_command_key(
                                                     self.W1, self.W2, self.W3,
