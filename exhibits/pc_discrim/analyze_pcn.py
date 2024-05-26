@@ -3,7 +3,7 @@ import numpy as np
 import sys, getopt as gopt, optparse, time
 ## bring in ngc-learn analysis tools
 from pcn_model import PCN as Model ## bring in model from museum
-from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
+from ngclearn.utils.metric_utils import measure_ACC, measure_CatNLL
 from ngclearn.utils.viz.dim_reduce import extract_tsne_latents, plot_latents
 
 """
