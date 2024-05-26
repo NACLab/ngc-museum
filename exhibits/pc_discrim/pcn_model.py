@@ -10,65 +10,6 @@ import time, sys
 from ngclearn.utils.model_utils import softmax
 from ngclearn.components import GaussianErrorCell as ErrorCell, RateCell, HebbianSynapse
 
-## PCN model co-routines
-def load_model(model_dir, exp_dir="exp", model_name="pc_disc", dt=1., T=10):
-    _key = random.PRNGKey(time.time_ns())
-    ## load circuit from disk
-    circuit = Controller()
-    circuit.load_from_dir(directory=model_dir)
-
-    model = PCN(_key, in_dim=1, out_dim=1, save_init=False)
-    model.circuit = circuit
-    model.exp_dir = exp_dir
-    model.model_dir = "{}/{}/custom".format(exp_dir, model_name)
-    model.dt = dt
-    model.T = T
-    return model
-
-
-def tie_compartments(circuit, target, source, compartmentName):
-    """
-    Ties/shares parameter values from a source (cell) component's compartment with
-    another target (cell) component's compartment of the same name.
-
-    Args:
-        circuit: controller object to perform tying on
-
-        target: target component to give shallow copy of compartment value to
-
-        source: source component to draw compartment value from
-
-        compartmentName: name of compartment to tie/share values across source
-            and target (cell) components
-    """
-    _value = circuit.components[source].compartments[compartmentName]
-    circuit.components[target].compartments[compartmentName] = _value
-
-def tie_parameters(circuit, target, source, transpose_source=False, share_bias=False):
-    """
-    Ties/shares parameter values from a source component synaptic cable with a target
-    component synaptic cable (i.e., gives target a shallow copy of the source's
-    parameters).
-
-    Args:
-        circuit: controller object to perform tying on
-
-        target: target component to give shallow copy of params to
-
-        source: source component to draw param values from
-
-        transpose_source: should source "weights" parameters be transposed
-            before shallow copying (Default: False)
-
-        share_bias: should source "biases" be shared with target (Default: False)
-    """
-    source_W = circuit.components[source].weights
-    if transpose_source == True:
-        source_W = source_W.T
-    circuit.components[target].weights = source_W
-    if share_bias == True:
-        circuit.components[target].biases = circuit.components[source].biases
-
 ## Main PCN model object
 
 class PCN():
@@ -336,7 +277,9 @@ class PCN():
         with Context("Circuit") as circuit:
             self.circuit = circuit
             #self.circuit.load_from_dir(self.exp_dir + "/{}".format(self.model_name))
+            print(">> ",model_directory)
             self.circuit.load_from_dir(model_directory)
+            print("LOADED")
             ## note: redo scanner and anything using decorators
             self.dynamic()
 
