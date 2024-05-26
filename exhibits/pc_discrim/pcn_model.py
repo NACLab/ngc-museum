@@ -286,6 +286,7 @@ class PCN():
         self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
         self.circuit.add_command(wrap_command(jit(self.circuit.advance_state)), name="advance")
         self.circuit.add_command(wrap_command(jit(self.circuit.evolve)), name="evolve")
+        self.circuit.addCommand(wrap_command(jit(self.circuit.project)), name="project")
 
         @Context.dynamicCommand
         def clamp_input(x):
