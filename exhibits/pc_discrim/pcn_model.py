@@ -398,6 +398,9 @@ class PCN():
 
         #y_mu_inf = self.circuit.components["q3"].compartments["z"] ## get projected prediction
         y_mu_inf = self.q3.z.value ## get projected prediction
+        print(y_mu_inf)
+        sys.exit(0)
+
         EFE = 0. ## expected free energy
         y_mu = 0.
         if adapt_synapses == True:
