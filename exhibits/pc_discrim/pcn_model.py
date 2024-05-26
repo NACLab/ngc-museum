@@ -11,7 +11,6 @@ from ngclearn.utils.model_utils import softmax
 from ngclearn.components import GaussianErrorCell as ErrorCell, RateCell, HebbianSynapse
 
 ## Main PCN model object
-
 class PCN():
     """
     Structure for constructing the predictive coding network (PCN) in:
@@ -185,17 +184,7 @@ class PCN():
                                                 compile_key="advance_state", name="project") ## project
                 self.dynamic()
 
-        # ## save JSON structure to disk once
-        # if save_init == True:
-        #     model.save_to_json(directory="exp", model_name=model_name)
-        # self.model_dir = "{}/{}/custom".format(exp_dir, model_name)
-        # if save_init == True:
-        #     model.save(dir=self.model_dir) ## save current parameter arrays
-        # self.circuit = model # embed model construct to agent "circuit"
-
     def dynamic(self):## create dynamic commands for circuit
-        #from ngcsimlib.utils import get_current_context
-        #context = get_current_context()
         vars = self.circuit.get_components("q0", "q1", "q2", "q3", "eq3",
                                            "Q1", "Q2", "Q3",
                                            "z0", "z1", "z2", "z3",
@@ -274,12 +263,11 @@ class PCN():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
+        print(" > Loading model from ",model_directory)
         with Context("Circuit") as circuit:
             self.circuit = circuit
             #self.circuit.load_from_dir(self.exp_dir + "/{}".format(self.model_name))
-            print(">> ",model_directory)
             self.circuit.load_from_dir(model_directory)
-            print("LOADED")
             ## note: redo scanner and anything using decorators
             self.dynamic()
 
@@ -299,60 +287,37 @@ class PCN():
         ## pin/tie feedback synapses to transpose of forward ones
         self.E2.weights.set(jnp.transpose(self.W2.weights.value))
         self.E3.weights.set(jnp.transpose(self.W3.weights.value))
-        # tie_parameters(self.circuit, "Q1", "W1", transpose_source=False, share_bias=True)
-        # tie_parameters(self.circuit, "Q2", "W2", transpose_source=False, share_bias=True)
-        # tie_parameters(self.circuit, "Q3", "W3", transpose_source=False, share_bias=True)
-        # ## pin/tie feedback synapses to transpose of forward ones
-        # tie_parameters(self.circuit, "E2", "W2", transpose_source=True, share_bias=False)
-        # tie_parameters(self.circuit, "E3", "W3", transpose_source=True, share_bias=False)
 
         ## Perform P-step (projection step)
-        # self.circuit.clamp_input(x=obs) ## clamp to q0 & z0 input compartments
-        # self.circuit.clamp_infer_target(target=_lab)
-        # self.circuit.project(t=0, dt=0.) ## do projection/inference
         self.circuit.clamp_input(obs)
         self.circuit.clamp_infer_target(_lab)
         self.circuit.project(0., 1.) ## do projection/inference
 
         ## initialize dynamics of generative model latents to projected states
-        # tie_compartments(self.circuit, "z1", "q1", compartmentName="z")
-        # tie_compartments(self.circuit, "z2", "q2", compartmentName="z")
-        # ###transfer_compartments(self.circuit, "z3", "q3", compartmentName="z")
         self.z1.z.set(self.q1.z.value)
         self.z2.z.set(self.q2.z.value)
+        ## self.z3.z.set(self.q3.z.value)
         # ### Note: e1 = 0, e2 = 0 at initial conditions
-        # tie_compartments(self.circuit, "e3", "eq3", compartmentName="dmu")
-        # tie_compartments(self.circuit, "e3", "eq3", compartmentName="dtarget")
         self.e3.dmu.set(self.eq3.dmu.value)
         self.e3.dtarget.set(self.eq3.dtarget.value)
-
-        #y_mu_inf = self.circuit.components["q3"].compartments["z"] ## get projected prediction
-        y_mu_inf = self.q3.z.value ## get projected prediction
+        ## get projected prediction (from the P-step)
+        y_mu_inf = self.q3.z.value
 
         EFE = 0. ## expected free energy
         y_mu = 0.
         if adapt_synapses == True:
             ## Perform several E-steps
             for ts in range(0, self.T):
-                #print("###################### {} #########################".format(ts))
-                # self.circuit.clamp_input(x=obs) ## clamp data to z0 & q0 input compartments
-                # self.circuit.clamp_target(target=_lab) ## clamp data to e3.target
-                # self.circuit.runCycle(t=ts*self.dt, dt=self.dt)
                 self.circuit.clamp_input(obs) ## clamp data to z0 & q0 input compartments
                 self.circuit.clamp_target(_lab) ## clamp data to e3.target
                 self.circuit.advance(ts, 1.)
-
-            #y_mu = self.circuit.components["e3"].compartments["mu"] ## get settled prediction
             y_mu = self.e3.mu.value ## get settled prediction
-
-            # L1 = self.circuit.components["e1"].compartments["L"]
-            # L2 = self.circuit.components["e2"].compartments["L"]
-            # L3 = self.circuit.components["e3"].compartments["L"]
+            ## calculate approximate EFE
             L1 = self.e1.L.value
             L2 = self.e2.L.value
             L3 = self.e3.L.value
-
             EFE = L3 + L2 + L1
+
             ## Perform (optional) M-step (scheduled synaptic updates)
             if adapt_synapses == True:
                 #self.circuit.evolve(t=self.T, dt=self.dt)
@@ -361,7 +326,6 @@ class PCN():
         return y_mu_inf, y_mu, EFE
 
     def get_latents(self):
-        #return self.circuit.components["q2"].compartments["z"]
         return self.q2.z.value
 
     def _get_norm_string(self): ## debugging routine
@@ -378,18 +342,3 @@ class PCN():
                                                                       jnp.linalg.norm(_b2),
                                                                       jnp.linalg.norm(_b3))
         return _norms
-
-    # def _get_norm_string(self): ## debugging routine
-    #     _W1 = self.circuit.components.get("W1").weights
-    #     _W2 = self.circuit.components.get("W2").weights
-    #     _W3 = self.circuit.components.get("W3").weights
-    #     _b1 = self.circuit.components.get("W1").biases
-    #     _b2 = self.circuit.components.get("W2").biases
-    #     _b3 = self.circuit.components.get("W3").biases
-    #     _norms = "W1: {} W2: {} W3: {}\n b1: {} b2: {} b3: {}".format(jnp.linalg.norm(_W1),
-    #                                                                 jnp.linalg.norm(_W2),
-    #                                                                 jnp.linalg.norm(_W3),
-    #                                                                 jnp.linalg.norm(_b1),
-    #                                                                 jnp.linalg.norm(_b2),
-    #                                                                 jnp.linalg.norm(_b3))
-    #     return _norms

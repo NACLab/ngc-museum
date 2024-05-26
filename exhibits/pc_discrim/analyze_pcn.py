@@ -68,8 +68,7 @@ _X = jnp.load(dataX)
 _Y = jnp.load(dataY)
 
 dkey = random.PRNGKey(time.time_ns())
-model = Model(dkey=dkey, loadDir="exp/pcn")
-#model = load_model("exp/pcn", dt=1., T=20) ## load in pre-trained PCN model
+model = Model(dkey=dkey, loadDir="exp/pcn") ## load in pre-trained PCN model
 
 ## evaluate performance
 nll, acc, latents = eval_model(model, _X, _Y, mb_size=1000)
