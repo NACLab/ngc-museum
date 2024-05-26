@@ -415,7 +415,6 @@ class PCN():
                 #self.circuit.evolve(t=self.T, dt=self.dt)
                 self.circuit.evolve(ts, 1.)
         ## skip E/M steps if just doing test-time inference
-        sys.exit(0)
         return y_mu_inf, y_mu, EFE
 
     def get_latents(self):
