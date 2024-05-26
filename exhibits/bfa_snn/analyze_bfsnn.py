@@ -3,7 +3,7 @@ import numpy as np
 import sys, getopt as gopt, optparse
 from bfasnn_model import load_model
 ## bring in ngc-learn analysis tools
-from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
+from ngclearn.utils.metric_utils import measure_ACC, measure_CatNLL
 from ngclearn.utils.viz.dim_reduce import extract_tsne_latents, plot_latents
 from bfasnn_model import BFA_SNN as Model ## bring in model from museum
 
@@ -25,7 +25,7 @@ $ python analyze_bfsnn.py --dataX="/path/to/data_patterns.npy" \
 """
 
 ## -------------------------------------------------
-## some label prediction hyper-parameters 
+## some label prediction hyper-parameters
 ## (these below used to recover Samadi et al., 2017)
 lab_estimator = "current"
 #lab_estimator = "spikes"
