@@ -80,7 +80,7 @@ class BFA_SNN():
         biasInit = ("constant", 0., 0.) ## init biases from zero values
 
         ### set up jax seeding
-        dkey = random.PRNGKey(1234)
+        #dkey = random.PRNGKey(1234)
         dkey, *subkeys = random.split(dkey, 7) ## <-- chose 7 to get enough unique seeds for components
 
         ################################################################################
