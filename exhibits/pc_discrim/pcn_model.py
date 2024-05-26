@@ -4,7 +4,7 @@ from ngcsimlib.context import Context
 from ngcsimlib.commands import Command
 from ngcsimlib.operations import summation
 from ngclearn.utils.io_utils import makedir
-from jax import numpy as jnp, random
+from jax import numpy as jnp, random, jit
 import time, sys
 
 from ngclearn.utils.model_utils import softmax
