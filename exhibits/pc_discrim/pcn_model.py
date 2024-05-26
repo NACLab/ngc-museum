@@ -385,8 +385,6 @@ class PCN():
 
         #y_mu_inf = self.circuit.components["q3"].compartments["z"] ## get projected prediction
         y_mu_inf = self.q3.z.value ## get projected prediction
-        print(y_mu_inf)
-        sys.exit(0)
 
         EFE = 0. ## expected free energy
         y_mu = 0.
@@ -417,6 +415,7 @@ class PCN():
                 #self.circuit.evolve(t=self.T, dt=self.dt)
                 self.circuit.evolve(ts, 1.)
         ## skip E/M steps if just doing test-time inference
+        sys.exit(0)
         return y_mu_inf, y_mu, EFE
 
     def get_latents(self):
