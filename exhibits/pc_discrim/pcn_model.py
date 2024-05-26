@@ -238,11 +238,10 @@ class PCN():
                 evolve_cmd, evolve_args = self.circuit.compile_command_key(
                                                     self.W1, self.W2, self.W3,
                                                 compile_key="evolve") ## M-step
-                ## FIXME: this might break
-                # project_cmd, project_args = self.circuit.compile_command_key(
-                #                                     self.q0, self.Q1, self.q1, self.Q2,
-                #                                     self.q2, self.Q3, self.q3, self.eq3,
-                #                                 compile_key="project") ## project
+                project_cmd, project_args = self.circuit.compile_command_key(
+                                                    self.q0, self.Q1, self.q1, self.Q2,
+                                                    self.q2, self.Q3, self.q3, self.eq3,
+                                                compile_key="advance_state", name="project") ## project
                 self.dynamic()
 
         # ## save JSON structure to disk once
@@ -300,20 +299,6 @@ class PCN():
         @Context.dynamicCommand
         def clamp_infer_target(y):
             eq3.target.set(y)
-
-        @Context.dynamicCommand
-        def project(x, t, dt):
-            self.q0.j.set(x)
-            self.q0.advance_state(t, dt)
-            self.Q1.advance_state(t, dt)
-            self.q1.advance_state(t, dt)
-            self.Q2.advance_state(t, dt)
-            self.q2.advance_state(t, dt)
-            self.Q3.advance_state(t, dt)
-            self.q3.advance_state(t, dt)
-            self.eq3.advance_state(t, dt)
-
-        self.circuit.add_command((self.circuit.project), name="project")
 
         # @scanner
         # def process(compartment_values, args):
@@ -383,7 +368,7 @@ class PCN():
         # self.circuit.project(t=0, dt=0.) ## do projection/inference
         self.circuit.clamp_input(obs)
         self.circuit.clamp_infer_target(_lab)
-        self.circuit.project(obs, 0., 1.) ## do projection/inference
+        self.circuit.project(0., 1.) ## do projection/inference
 
         ## initialize dynamics of generative model latents to projected states
         # tie_compartments(self.circuit, "z1", "q1", compartmentName="z")
