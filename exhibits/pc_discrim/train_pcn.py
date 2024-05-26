@@ -135,7 +135,6 @@ for i in range(n_iter):
         if verbosity >= 1:
             print("\r EFE = {} over {} samples ".format((train_EFE/n_samp_seen),
                                                         n_samp_seen), end="")
-        sys.exit(0)
     if verbosity >= 1:
         print()
 
