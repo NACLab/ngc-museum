@@ -239,10 +239,10 @@ class PCN():
                                                     self.W1, self.W2, self.W3,
                                                 compile_key="evolve") ## M-step
                 ## FIXME: this might break
-                project_cmd, project_args = self.circuit.compile_command_key(
-                                                    self.q0, self.Q1, self.q1, self.Q2,
-                                                    self.q2, self.Q3, self.q3, self.eq3,
-                                                compile_key="project") ## project
+                # project_cmd, project_args = self.circuit.compile_command_key(
+                #                                     self.q0, self.Q1, self.q1, self.Q2,
+                #                                     self.q2, self.Q3, self.q3, self.eq3,
+                #                                 compile_key="project") ## project
                 self.dynamic()
 
         # ## save JSON structure to disk once
@@ -287,7 +287,6 @@ class PCN():
         self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
         self.circuit.add_command(wrap_command(jit(self.circuit.advance_state)), name="advance")
         self.circuit.add_command(wrap_command(jit(self.circuit.evolve)), name="evolve")
-        self.circuit.add_command(wrap_command(jit(self.circuit.project)), name="project")
 
         @Context.dynamicCommand
         def clamp_input(x):
@@ -301,6 +300,19 @@ class PCN():
         @Context.dynamicCommand
         def clamp_infer_target(y):
             eq3.target.set(y)
+
+        @Context.dynamicCommand
+        def project(t, dt):
+            self.q0.advance_state(t, dt)
+            self.Q1.advance_state(t, dt)
+            self.q1.advance_state(t, dt)
+            self.Q2.advance_state(t, dt)
+            self.q2.advance_state(t, dt)
+            self.Q3.advance_state(t, dt)
+            self.q3.advance_state(t, dt)
+            self.eq3.advance_state(t, dt)
+
+        self.circuit.add_command(jit(self.project), name="project")
 
         # @scanner
         # def process(compartment_values, args):
