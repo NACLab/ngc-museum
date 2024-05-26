@@ -302,7 +302,8 @@ class PCN():
             eq3.target.set(y)
 
         @Context.dynamicCommand
-        def project(t, dt):
+        def project(x, t, dt):
+            self.q0.j.set(x)
             self.q0.advance_state(t, dt)
             self.Q1.advance_state(t, dt)
             self.q1.advance_state(t, dt)
@@ -382,7 +383,7 @@ class PCN():
         # self.circuit.project(t=0, dt=0.) ## do projection/inference
         self.circuit.clamp_input(obs)
         self.circuit.clamp_infer_target(_lab)
-        self.circuit.project(0., 1.) ## do projection/inference
+        self.circuit.project(obs, 0., 1.) ## do projection/inference
 
         ## initialize dynamics of generative model latents to projected states
         # tie_compartments(self.circuit, "z1", "q1", compartmentName="z")
