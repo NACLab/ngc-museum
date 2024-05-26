@@ -414,6 +414,10 @@ class PCN():
             if adapt_synapses == True:
                 #self.circuit.evolve(t=self.T, dt=self.dt)
                 self.circuit.evolve(ts, 1.)
+            print(y_mu_inf)
+            print("...")
+            print(y_mu)
+            sys.exit(0)
         ## skip E/M steps if just doing test-time inference
         return y_mu_inf, y_mu, EFE
 
