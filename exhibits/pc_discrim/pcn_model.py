@@ -312,7 +312,7 @@ class PCN():
             self.q3.advance_state(t, dt)
             self.eq3.advance_state(t, dt)
 
-        self.circuit.add_command(jit(self.circuit.project), name="project")
+        self.circuit.add_command(jit(project), name="project")
 
         # @scanner
         # def process(compartment_values, args):
