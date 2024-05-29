@@ -20,20 +20,6 @@ from ngclearn.components.synapses.hebbian.traceSTDPSynapse import TraceSTDPSynap
 from ngclearn.components.synapses.hebbian.hebbianSynapse import HebbianSynapse
 from ngclearn.utils.model_utils import normalize_matrix
 
-## SNN model co-routines
-def load_model(model_dir, exp_dir="exp", model_name="snn_stdp", dt=1., T=200, in_dim=1):
-    _key = random.PRNGKey(time.time_ns())
-    ## load circuit from disk
-    #circuit = Controller()
-    #circuit.load_from_dir(directory=model_dir)
-
-    model = DC_SNN(_key, in_dim=in_dim, save_init=False, dt=dt, T=T)
-    #model.circuit = circuit
-    model.exp_dir = exp_dir
-    model.model_dir = "{}/{}/custom".format(exp_dir, model_name)
-    model.load_from_disk(model.model_dir)
-    return model
-
 class DC_SNN():
     """
     Structure for constructing the spiking neural model proposed in:
@@ -61,11 +47,12 @@ class DC_SNN():
 
         model_name: unique model name to stamp the output files/dirs with
 
-        save_init: save model at initialization/first configuration time (Default: True)
+        loadDir: directory to load model from, overrides initialization/model
+            object creation if non-None (Default: None)
     """
     # Define Functions
     def __init__(self, dkey, in_dim=1, hid_dim=100, T=200, dt=1., exp_dir="exp",
-                 model_name="snn_stdp", save_init=True, loadDir=None, **kwargs):
+                 model_name="snn_stdp", loadDir=None, **kwargs):
         self.exp_dir = exp_dir
         self.model_name = model_name
         makedir(exp_dir)
@@ -85,7 +72,7 @@ class DC_SNN():
         self.wNorm = 78.4 ## post-stimulus window norm constraint to apply to synapses
 
         dkey, *subkeys = random.split(dkey, 10)
-        
+
         if loadDir is not None:
             ## build from disk
             self.load_from_disk(loadDir)
@@ -200,7 +187,7 @@ class DC_SNN():
             self.circuit.load_from_dir(model_directory)
             ## note: redo scanner and anything using decorators
             self.dynamic()
-        
+
 
     def get_synapse_stats(self):
         """
