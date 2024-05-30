@@ -1,9 +1,9 @@
 from jax import numpy as jnp, random, nn, jit
 import numpy as np
-import sys, getopt as gopt, optparse
-from pcn_model import load_model
+import sys, getopt as gopt, optparse, time
 ## bring in ngc-learn analysis tools
-from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
+from pcn_model import PCN as Model ## bring in model from museum
+from ngclearn.utils.metric_utils import measure_ACC, measure_CatNLL
 from ngclearn.utils.viz.dim_reduce import extract_tsne_latents, plot_latents
 
 """
@@ -67,7 +67,8 @@ print("=> Data X: {} | Y: {}".format(dataX, dataY))
 _X = jnp.load(dataX)
 _Y = jnp.load(dataY)
 
-model = load_model("exp/pcn", dt=1., T=20) ## load in pre-trained PCN model
+dkey = random.PRNGKey(time.time_ns())
+model = Model(dkey=dkey, loadDir="exp/pcn") ## load in pre-trained PCN model
 
 ## evaluate performance
 nll, acc, latents = eval_model(model, _X, _Y, mb_size=1000)

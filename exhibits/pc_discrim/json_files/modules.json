@@ -1,50 +1,14 @@
 [
-  {
-    "absolute_path": "ngcsimlib.commands",
-    "attributes": [
-      {
-        "name": "AdvanceState",
-        "keywords": ["advance"]
-      },
-      {
-        "name": "Clamp",
-        "keywords": ["clamp"]
-      },
-      {
-        "name": "Track",
-        "keywords": ["track"]
-      },
-      {
-        "name": "Reset",
-        "keywords": ["reset"]
-      },
-      {
-        "name": "Save",
-        "keywords": ["save"]
-      }
-    ]
-  },
-  {
-    "absolute_path": "ngcsimlib.bundle_rules",
-    "attributes": [{"name": "overwrite"}]
-  },
-  {
-    "absolute_path": "custom.bundle_rules",
-    "attributes": [{"name": "fast_add"}]
-  },
-  {
-    "absolute_path": "ngclearn.components",
-    "attributes": [
-      {"name": "RateCell",
-	      "keywords": ["rate"]
-      },
-      {"name": "GaussianErrorCell",
-        "keywords": ["error"]
-      },
-      {
-        "name": "HebbianSynapse",
-        "keywords": ["hebbian"]
-      }
-    ]
-  }
+	{"absolute_path": "ngclearn.components", 
+		"attributes": [
+			{"name": "GaussianErrorCell"}, 
+			{"name": "RateCell"},
+			{"name": "HebbianSynapse"}]
+	}, 
+	{"absolute_path": "ngcsimlib.operations",
+		"attributes": [
+			{"name": "overwrite"},
+			{"name": "summation"}]
+	}
+
 ]

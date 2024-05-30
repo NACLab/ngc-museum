@@ -3,8 +3,9 @@ import numpy as np
 import sys, getopt as gopt, optparse
 from bfasnn_model import load_model
 ## bring in ngc-learn analysis tools
-from ngclearn.utils.model_utils import measure_ACC, measure_CatNLL
+from ngclearn.utils.metric_utils import measure_ACC, measure_CatNLL
 from ngclearn.utils.viz.dim_reduce import extract_tsne_latents, plot_latents
+from bfasnn_model import BFA_SNN as Model ## bring in model from museum
 
 """
 ################################################################################
@@ -24,7 +25,7 @@ $ python analyze_bfsnn.py --dataX="/path/to/data_patterns.npy" \
 """
 
 ## -------------------------------------------------
-## some label prediction hyper-parameters 
+## some label prediction hyper-parameters
 ## (these below used to recover Samadi et al., 2017)
 lab_estimator = "current"
 #lab_estimator = "spikes"
@@ -98,7 +99,9 @@ patch_shape = (28, 28)
 
 T = 100 # 80
 dt = 0.25 #1.
-model = load_model("exp/snn_bfa", dt=dt, T=T) ## load in pre-trained SNN model
+dkey = random.PRNGKey(1234)
+model = Model(dkey=dkey, dt=dt, T=T, loadDir="exp/snn_bfa")
+#model = load_model("exp/snn_bfa", dt=dt, T=T) ## load in pre-trained SNN model
 
 ## evaluate performance
 nll, acc, latents = eval_model(model, _X, _Y, mb_size=1000)

@@ -43,7 +43,7 @@ if n_samples > 0:
 n_batches = _X.shape[0] ## num batches is = to num samples (online learning)
 
 ## basic simulation hyper-parameter/configuraiton values go here
-viz_mod = 500
+viz_mod = 1000 #500
 mb_size = 1 ## locked to batch sizes of 1
 patch_shape = (28, 28)
 in_dim = patch_shape[0] * patch_shape[1]
@@ -58,15 +58,20 @@ dkey, *subkeys = random.split(dkey, 3)
 model = Model(subkeys[1], in_dim=in_dim, T=T, dt=dt)
 ################################################################################
 
+model.save_to_disk()
+#sys.exit(0)
+
 sim_start_time = time.time() ## start time profiling
 
 print("------------------------------------")
+print(model.get_synapse_stats())
 ## enter main adaptation loop over data patterns
 for i in range(n_iter):
     dkey, *subkeys = random.split(dkey, 2)
     ptrs = random.permutation(subkeys[0],_X.shape[0])
     X = _X[ptrs,:]
 
+    tstart = time.time()
     n_samps_seen = 0
     for j in range(n_batches):
         idx = j
@@ -77,9 +82,13 @@ for i in range(n_iter):
         n_samps_seen += Xb.shape[0]
         print("\r Seen {} images...".format(n_samps_seen), end="")
         if (j+1) % viz_mod == 0: ## save intermediate receptive fields
+            tend = time.time()
             print()
+            print(" -> Time = {} s".format(tend - tstart))
+            tstart = tend + 0.
             print(model.get_synapse_stats())
-            model.save_to_disk() # save final state of synapses to disk
+            model.viz_receptive_fields(fname="recFields", field_shape=(28, 28))
+            model.save_to_disk(params_only=True) # save final state of synapses to disk
 print()
 
 ## stop time profiling
@@ -87,8 +96,10 @@ sim_end_time = time.time()
 sim_time = sim_end_time - sim_start_time
 sim_time_hr = (sim_time/3600.0) # convert time to hours
 
+model.save_to_disk(params_only=True)
+
 print("------------------------------------")
 print(" Trial.sim_time = {} h  ({} sec)".format(sim_time_hr, sim_time))
 
-print("****")
-model.save_to_disk() # save final state of synapses to disk
+#print("****")
+#model.save_to_disk() # save final state of synapses to disk

@@ -1,64 +1,17 @@
 [
-  {
-    "absolute_path": "ngcsimlib.commands",
-    "attributes": [
-      {
-        "name": "AdvanceState",
-        "keywords": ["advance"]
-      },
-      {
-        "name": "Clamp",
-        "keywords": ["clamp"]
-      },
-      {
-        "name": "Track",
-        "keywords": ["track"]
-      },
-      {
-        "name": "Reset",
-        "keywords": ["reset"]
-      },
-      {
-        "name": "Save",
-        "keywords": ["save"]
-      }
-    ]
-  },
-  {
-    "absolute_path": "ngcsimlib.bundle_rules",
-    "attributes": [{"name": "overwrite"}]
-  },
-  {
-    "absolute_path": "custom.bundle_rules",
-    "attributes": [{"name": "fast_add"}]
-  },
-  {
-    "absolute_path": "ngclearn.components",
-    "attributes": [
-      {"name": "RateCell",
-              "keywords": ["rate"]
-      },
-      {"name": "SLIFCell",
-	      "keywords": ["SLIF"]
-      },
-      {"name": "VarTrace",
-        "keywords": ["trace"]
-      },
-      {
-        "name": "HebbianSynapse",
-        "keywords": ["hebbian"]
-      },
-      {
-        "name": "BernoulliCell",
-        "keywords": ["bernoulli"]
-      },
-      {
-        "name": "PoissonCell",
-        "keywords": ["poiss"]
-      },
-      {"name": "GaussianErrorCell",
-        "keywords": ["error"]
-      }
-    ]
-  }
+	{"absolute_path": "ngclearn.components", 
+		"attributes": [
+			{"name": "VarTrace"},
+			{"name": "GaussianErrorCell"}, 
+			{"name": "RateCell"}, 
+			{"name": "BernoulliCell"},
+			{"name": "SLIFCell"},
+			{"name": "HebbianSynapse"}]
+	}, 
+	{"absolute_path": "ngcsimlib.operations",
+		"attributes": [
+			{"name": "overwrite"},
+			{"name": "summation"}]
+	}
+
 ]
