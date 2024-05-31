@@ -58,14 +58,12 @@ print("=> Plotting raster of sample spike train...")
 ## create a raster plot of for sample data pattern
 x_ref = _X[sample_idx:sample_idx+1,:] ## extract data pattern
 _S = model.process(obs=x_ref, adapt_synapses=False, collect_spike_train=True)
-print(jnp.sum(_S))
-print(_S.shape)
 cnt = jnp.sum(jnp.squeeze(_S), axis=0, keepdims=True) ## get frequencies/firing rates
 
 neural_idx = jnp.squeeze(jnp.argmax(cnt, axis=1)) ## get highest firing rate among neurons
-print("IDX: ",neural_idx)
+print(" >> Neural.Idx {} -> Input Pattern {} ".format(neural_idx, sample_idx))
 field = jnp.expand_dims(model.circuit.components["W1"].weights.value[:,neural_idx], axis=1)
-print(field.shape)
+
 
 import matplotlib #.pyplot as plt
 matplotlib.use('Agg')
