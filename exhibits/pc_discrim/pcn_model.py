@@ -164,21 +164,21 @@ class PCN():
                 ## wire q3 to qe3
                 self.eq3.target << self.q3.z
 
-                reset_cmd, reset_args = self.circuit.compile_command_key(
+                reset_cmd, reset_args = self.circuit.compile_by_key(
                                                 self.q0, self.q1, self.q2, self.q3, self.eq3,
                                                 self.z0, self.z1, self.z2, self.z3,
                                                 self.e1, self.e2, self.e3,
                                             compile_key="reset")
-                advance_cmd, advance_args = self.circuit.compile_command_key(
+                advance_cmd, advance_args = self.circuit.compile_by_key(
                                                     self.E2, self.E3,
                                                     self.z0, self.z1, self.z2, self.z3,
                                                     self.W1, self.W2, self.W3,
                                                     self.e1, self.e2, self.e3,
                                                 compile_key="advance_state") ## E-step
-                evolve_cmd, evolve_args = self.circuit.compile_command_key(
+                evolve_cmd, evolve_args = self.circuit.compile_by_key(
                                                     self.W1, self.W2, self.W3,
                                                 compile_key="evolve") ## M-step
-                project_cmd, project_args = self.circuit.compile_command_key(
+                project_cmd, project_args = self.circuit.compile_by_key(
                                                     self.q0, self.Q1, self.q1, self.Q2,
                                                     self.q2, self.Q3, self.q3, self.eq3,
                                                 compile_key="advance_state", name="project") ## project
@@ -231,16 +231,6 @@ class PCN():
         def clamp_infer_target(y):
             eq3.target.set(y)
 
-        # @scanner
-        # def process(compartment_values, args):
-        #     t = args[0]
-        #     dt = args[1]
-        #     compartment_values = self.circuit.advance_state(compartment_values, t, dt)
-        #     compartment_values = self.circuit.evolve(compartment_values, t, dt)
-        #     return compartment_values, (compartment_values[self.z1.zF.path],
-        #                                 compartment_values[self.z2.zF.path],
-        #                                 compartment_values[self.z3.zF.path])
-
     def save_to_disk(self, params_only=False):
         """
         Saves current model parameter values to disk
@@ -291,7 +281,7 @@ class PCN():
         ## Perform P-step (projection step)
         self.circuit.clamp_input(obs)
         self.circuit.clamp_infer_target(_lab)
-        self.circuit.project(0., 1.) ## do projection/inference
+        self.circuit.project(t=0., dt=1.) ## do projection/inference
 
         ## initialize dynamics of generative model latents to projected states
         self.z1.z.set(self.q1.z.value)
@@ -310,7 +300,7 @@ class PCN():
             for ts in range(0, self.T):
                 self.circuit.clamp_input(obs) ## clamp data to z0 & q0 input compartments
                 self.circuit.clamp_target(_lab) ## clamp data to e3.target
-                self.circuit.advance(ts, 1.)
+                self.circuit.advance(t=ts, dt=1.)
             y_mu = self.e3.mu.value ## get settled prediction
             ## calculate approximate EFE
             L1 = self.e1.L.value
@@ -321,7 +311,7 @@ class PCN():
             ## Perform (optional) M-step (scheduled synaptic updates)
             if adapt_synapses == True:
                 #self.circuit.evolve(t=self.T, dt=self.dt)
-                self.circuit.evolve(ts, 1.)
+                self.circuit.evolve(t=ts, dt=1.)
         ## skip E/M steps if just doing test-time inference
         return y_mu_inf, y_mu, EFE
 
