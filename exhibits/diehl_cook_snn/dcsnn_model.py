@@ -123,12 +123,14 @@ class DC_SNN():
                                             self.tr0, self.tr1,
                                             self.W1, self.W1ie, self.W1ei,
                                             compile_key="reset")
+
                 advance_cmd, advance_args = self.circuit.compile_by_key(
                                                 self.W1, self.W1ie, self.W1ei,
                                                 self.z0, self.z1e, self.z1i,
                                                 self.tr0, self.tr1,
                                                 compile_key="advance_state")
                 evolve_cmd, evolve_args = self.circuit.compile_by_key(self.W1, compile_key="evolve")
+
 
                 #self.circuit.add_command(wrap_command(jit(reset_cmd)), name="reset")
                 self.dynamic()

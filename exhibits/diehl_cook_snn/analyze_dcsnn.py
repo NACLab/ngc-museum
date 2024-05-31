@@ -64,6 +64,7 @@ neural_idx = jnp.squeeze(jnp.argmax(cnt, axis=1)) ## get highest firing rate amo
 print(" >> Neural.Idx {} -> Input Pattern {} ".format(neural_idx, sample_idx))
 field = jnp.expand_dims(model.circuit.components["W1"].weights.value[:,neural_idx], axis=1)
 
+
 import matplotlib #.pyplot as plt
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt

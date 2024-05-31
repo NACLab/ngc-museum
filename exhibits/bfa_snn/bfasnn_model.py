@@ -147,7 +147,6 @@ class BFA_SNN():
                                                 self.E2, self.d1,
                                                 compile_key="advance_state")
                 evolve_cmd, evolve_args = self.circuit.compile_by_key(self.W1, self.W2, compile_key="evolve")
-
                 #self.circuit.add_command(wrap_command(jit(reset_cmd)), name="reset")
                 self.dynamic()
 
@@ -296,6 +295,7 @@ class BFA_SNN():
             #print(">> CLAMP DONE")
             #print(">> ADVANCE START")
             self.circuit.advance(t=ts*self.dt, dt=self.dt)
+
             #print(">> ADVANCE DONE")
             curr_t = ts * self.dt ## track current time
 
@@ -303,6 +303,7 @@ class BFA_SNN():
                 if curr_t > self.burnin_T:
                     #print(">> ADVANCE DONE")
                     self.circuit.evolve(t=ts*self.dt, dt=self.dt)
+
                     #print(">> EVOVLE DONE")
             yCnt = _add(self.z2.s.value, yCnt)
 

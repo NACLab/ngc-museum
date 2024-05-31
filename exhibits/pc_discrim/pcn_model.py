@@ -281,6 +281,7 @@ class PCN():
         ## Perform P-step (projection step)
         self.circuit.clamp_input(obs)
         self.circuit.clamp_infer_target(_lab)
+
         self.circuit.project(t=0., dt=1.) ## do projection/inference
 
         ## initialize dynamics of generative model latents to projected states
@@ -301,6 +302,7 @@ class PCN():
                 self.circuit.clamp_input(obs) ## clamp data to z0 & q0 input compartments
                 self.circuit.clamp_target(_lab) ## clamp data to e3.target
                 self.circuit.advance(t=ts, dt=1.)
+
             y_mu = self.e3.mu.value ## get settled prediction
             ## calculate approximate EFE
             L1 = self.e1.L.value
@@ -311,7 +313,8 @@ class PCN():
             ## Perform (optional) M-step (scheduled synaptic updates)
             if adapt_synapses == True:
                 #self.circuit.evolve(t=self.T, dt=self.dt)
-                self.circuit.evolve(t=ts, dt=1.)
+                self.circuit.evolve(t=self.T, dt=1.)
+
         ## skip E/M steps if just doing test-time inference
         return y_mu_inf, y_mu, EFE
 
