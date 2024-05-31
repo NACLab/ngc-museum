@@ -63,10 +63,12 @@ dkey = random.PRNGKey(1234)
 dkey, *subkeys = random.split(dkey, 10)
 
 ## build model
+print("--- Building Model ---")
 model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=512, hid2_dim=512, T=20,
             dt=1., tau_m=20., act_fx="sigmoid", eta=0.001, exp_dir="exp",
             model_name="pcn")
 model.save_to_disk() # save final state of synapses to disk
+print("--- Starting Simulation ---")
 
 def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference performance
     n_batches = int(Xdev.shape[0]/mb_size)

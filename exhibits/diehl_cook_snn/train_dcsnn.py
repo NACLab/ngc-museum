@@ -52,11 +52,13 @@ T = 200 ## num time steps to simulate (stimulus presentation window length)
 dt = 1. ## integration time constant
 
 ################################################################################
+print("--- Building Model ---")
 dkey = random.PRNGKey(1234)
 dkey, *subkeys = random.split(dkey, 3)
 ## Create model
 model = Model(subkeys[1], in_dim=in_dim, T=T, dt=dt)
 ################################################################################
+print("--- Starting Simulation ---") 
 
 model.save_to_disk()
 #sys.exit(0)
