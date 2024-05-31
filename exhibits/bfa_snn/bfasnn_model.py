@@ -136,17 +136,17 @@ class BFA_SNN():
                 self.W2.pre << self.z1.s
                 self.W2.post << self.e2.dmu
 
-                reset_cmd, reset_args = self.circuit.compile_command_key(
+                reset_cmd, reset_args = self.circuit.compile_by_key(
                                             self.z0, self.W1, self.z1,
                                             self.W2, self.z2, self.e2,
                                             self.E2, self.d1,
                                             compile_key="reset")
-                advance_cmd, advance_args = self.circuit.compile_command_key(
+                advance_cmd, advance_args = self.circuit.compile_by_key(
                                                 self.z0, self.W1, self.z1,
                                                 self.W2, self.z2, self.e2,
                                                 self.E2, self.d1,
                                                 compile_key="advance_state")
-                evolve_cmd, evolve_args = self.circuit.compile_command_key(self.W1, self.W2, compile_key="evolve")
+                evolve_cmd, evolve_args = self.circuit.compile_by_key(self.W1, self.W2, compile_key="evolve")
 
                 #self.circuit.add_command(wrap_command(jit(reset_cmd)), name="reset")
                 self.dynamic()
@@ -187,10 +187,9 @@ class BFA_SNN():
 
         @scanner
         def process(compartment_values, args):
-            t = args[0]
-            dt = args[1]
-            compartment_values = self.circuit.advance_state(compartment_values, t, dt)
-            compartment_values = self.circuit.evolve(compartment_values, t, dt)
+            _t, _dt = args
+            compartment_values = self.circuit.advance_state(compartment_values, t=_t, dt=_dt)
+            compartment_values = self.circuit.evolve(compartment_values, t=_t, dt=_dt)
             return compartment_values, (compartment_values[self.z1.s.path],
                                         compartment_values[self.z2.s.path])
 
@@ -296,14 +295,14 @@ class BFA_SNN():
             self.circuit.clamp(_obs, lab)
             #print(">> CLAMP DONE")
             #print(">> ADVANCE START")
-            self.circuit.advance(ts*self.dt, self.dt)
+            self.circuit.advance(t=ts*self.dt, dt=self.dt)
             #print(">> ADVANCE DONE")
             curr_t = ts * self.dt ## track current time
 
             if adapt_synapses == True:
                 if curr_t > self.burnin_T:
                     #print(">> ADVANCE DONE")
-                    self.circuit.evolve(ts*self.dt, self.dt)
+                    self.circuit.evolve(t=ts*self.dt, dt=self.dt)
                     #print(">> EVOVLE DONE")
             yCnt = _add(self.z2.s.value, yCnt)
 
