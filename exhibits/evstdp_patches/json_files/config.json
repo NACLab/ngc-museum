@@ -1,0 +1,3 @@
+{
+	"logging" : {"logging_level" : "ERROR", "logging_file" : "exp/logging.txt", "hide_console" : true}
+}

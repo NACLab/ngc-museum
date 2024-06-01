@@ -1,0 +1,15 @@
+[
+	{"absolute_path": "ngclearn.components", 
+		"attributes": [
+			{"name": "ExpKernel"},
+			{"name": "BernoulliCell"},
+			{"name": "WTASCell"},
+			{"name": "EventSTDPSynapse"}]
+	}, 
+	{"absolute_path": "ngcsimlib.operations",
+		"attributes": [
+			{"name": "overwrite"},
+			{"name": "summation"}]
+	}
+
+]
