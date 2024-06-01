@@ -1,6 +1,6 @@
 # Diehl and Cook Spiking Neural Network
 
-<b>Version</b>: ngclearn==1.0.beta0, ngcsimlib==0.2.beta1
+<b>Version</b>: ngclearn==1.1.beta1, ngcsimlib==0.3.beta1
 
 This exhibit contains an implementation of the spiking neuronal model proposed
 and studied in:
