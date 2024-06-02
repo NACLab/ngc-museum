@@ -41,6 +41,7 @@ scientific inquiry.
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_dc.html">Walkthrough</a>
 3. Patch-level spiking network, trained with event-driven STDP:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/evstdp_patches">Model</a>
+
 <b>Models with Graded Dynamics</b>:<br>
 1. Discriminative Predictive Coding:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_discrim">Model</a>,
