@@ -16,7 +16,9 @@ as relevant hyper-parameter values need to reproduce experimental results.
 
 For official walkthroughs going over the model exhibits found in this repo, please
 visit the ngc-learn documentation page: https://ngc-learn.readthedocs.io/
-(under the "Model Museum" side-bar). For information, including anything related
+(under the 
+"<a href="https://ngc-learn.readthedocs.io/en/latest/museum/model_museum.html">Model Museum</a>" 
+side-bar). For information, including anything related
 to usage instructions and details related to ngc-learn itself, please refer to
 the official ngc-learn <a href="https://github.com/NACLab/ngc-learn/">repo</a> (and
 its <a href="https://ngc-learn.readthedocs.io/">documentation</a>).
