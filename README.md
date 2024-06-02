@@ -45,7 +45,7 @@ scientific inquiry.
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/evstdp_patches">Model</a>
 5. Sparse coding (both the Cauchy prior model and ISTA), trained with 2-factor Hebbian learning:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/olshausen_sc">Model</a>, 
-   Walkthrough
+   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sparse_coding.html">Walkthrough</a>
 
 This package is distributed under the 3-Clause BSD license.<br>
 It is currently maintained by the
