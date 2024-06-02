@@ -9,7 +9,7 @@ from snn import SNN as Model ## bring in model from museum
 
 """
 ################################################################################
-Event-STDP trained Spiking Neural Network (DC-SNN) Exhibit File:
+Event-STDP trained Spiking Neural Network Exhibit File:
 
 Adapts an SNN to 10x10 patches extracted from the MNIST database.
 
