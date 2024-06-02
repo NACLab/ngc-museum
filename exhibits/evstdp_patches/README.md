@@ -58,8 +58,7 @@ patches sampled from digit image images in the MNIST database.
 
 ## Hyperparameters
 
-This model requires the following hyperparameters, tuned to produce results much akin
-to that of the original Diehl and Cook model:
+This model requires the following hyperparameters:
 
 ```
 T = 50 (number of discrete time steps to simulate)
