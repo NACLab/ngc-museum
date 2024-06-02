@@ -31,19 +31,21 @@ that help ensure various models of biomimetic inference/learning and
 brain-inspired computing see application as well as inspire future lines of
 scientific inquiry.
 
-<b>Current Models in the Museum</b>:<br>
+## Current Models in the Museum
+<b>Models with Spiking Dynamics</b>:<br>
+1. Spiking neural network, trained with broadcast feedback alignment:
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/bfa_snn">Model</a>,
+   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_bfa.html">Walkthrough</a>
+2. Diehl and Cook spiking network, trained with spike-timing-dependent plasticity (STDP):
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/diehl_cook_snn">Model</a>,
+   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_dc.html">Walkthrough</a>
+3. Patch-level spiking network, trained with event-driven STDP:
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/evstdp_patches">Model</a>
+<b>Models with Graded Dynamics</b>:<br>
 1. Discriminative Predictive Coding:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_discrim">Model</a>,
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_discrim.html">Walkthrough</a>
-2. Spiking neural network, trained with broadcast feedback alignment:
-   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/bfa_snn">Model</a>,
-   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_bfa.html">Walkthrough</a>
-3. Diehl and Cook spiking network, trained with spike-timing-dependent plasticity (STDP):
-   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/diehl_cook_snn">Model</a>,
-   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_dc.html">Walkthrough</a>
-4. Patch-level spiking network, trained with event-driven STDP:
-   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/evstdp_patches">Model</a>
-5. Sparse coding (e.g., a Cauchy prior model &amp; ISTA), trained with 2-factor Hebbian learning:
+2. Sparse coding (e.g., a Cauchy prior model &amp; ISTA), trained with 2-factor Hebbian learning:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/olshausen_sc">Model</a>, 
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sparse_coding.html">Walkthrough</a>
 
