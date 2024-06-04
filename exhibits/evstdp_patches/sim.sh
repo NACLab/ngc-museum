@@ -4,7 +4,7 @@
 # Simulate the DC-SNN on the MNIST database
 ################################################################################
 
-DATA_DIR="../data/mnist"
+DATA_DIR="../../data/mnist"
 
 rm -r exp/* ## clear out experimental directory
 python train_patch_snn.py --dataX="$DATA_DIR/trainX.npy" --n_samples=1000 \

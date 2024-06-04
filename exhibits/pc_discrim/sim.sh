@@ -4,7 +4,7 @@
 # Simulate the PCN on the MNIST database
 ################################################################################
 
-DATA_DIR="../data/mnist"
+DATA_DIR="../../data/mnist"
 
 rm -r exp/* ## clear out experimental directory
 python train_pcn.py  --dataX="$DATA_DIR/trainX.npy" \
