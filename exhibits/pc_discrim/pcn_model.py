@@ -1,13 +1,8 @@
 from ngclearn.utils.model_utils import scanner
 from ngcsimlib.compilers import compile_command, wrap_command
 from ngcsimlib.context import Context
-from ngcsimlib.commands import Command
-from ngcsimlib.operations import summation
 from ngclearn.utils.io_utils import makedir
 from jax import numpy as jnp, random, jit
-import time, sys
-
-from ngclearn.utils.model_utils import softmax
 from ngclearn.components import GaussianErrorCell as ErrorCell, RateCell, HebbianSynapse
 
 ## Main PCN model object
