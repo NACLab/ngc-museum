@@ -5,7 +5,7 @@
 			{"name": "PoissonCell"},
 			{"name": "LIFCell"},
 			{"name": "TraceSTDPSynapse"},
-			{"name": "HebbianSynapse"}]
+			{"name": "StaticSynapse"}]
 	}, 
 	{"absolute_path": "ngcsimlib.operations",
 		"attributes": [

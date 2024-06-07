@@ -7,7 +7,7 @@ from ngcsimlib.compilers import compile_command, wrap_command
 
 from ngcsimlib.context import Context
 from ngcsimlib.commands import Command
-from ngclearn.components import GaussianErrorCell as ErrorCell, RateCell, HebbianSynapse, StaticSynapse
+from ngclearn.components import GaussianErrorCell as ErrorCell, RateCell, HebbianSynapse, DenseSynapse
 from ngclearn.utils.model_utils import normalize_matrix
 
 class SparseCoding():
@@ -108,13 +108,13 @@ class SparseCoding():
                 self.e0 = ErrorCell("e0", n_units=in_dim)
                 self.W1 = HebbianSynapse("W1", shape=(hid_dim, in_dim),
                                          eta=eta_w,
-                                         wInit=("fan_in_gaussian", 0., 1.),
-                                         bInit=None, w_bound=0.,
-                                         optim_type="sgd", signVal=-1.,
+                                         weight_init=("fan_in_gaussian", 0., 1.),
+                                         bias_init=None, w_bound=0.,
+                                         optim_type="sgd", sign_value=-1.,
                                          key=subkeys[1])
-                self.E1 = StaticSynapse("E1", shape=(in_dim, hid_dim),
-                                        wInit=("uniform", -0.2, 0.2), Rscale=1.,
-                                        key=subkeys[2])
+                self.E1 = DenseSynapse("E1", shape=(in_dim, hid_dim),
+                                       weight_init=("uniform", -0.2, 0.2), resist_scale=1.,
+                                       key=subkeys[2])
                 ## since this model will operate with batches, we need to
                 ## configure its batch-size here before compiling with the loop-scan
                 self.e0.batch_size = batch_size

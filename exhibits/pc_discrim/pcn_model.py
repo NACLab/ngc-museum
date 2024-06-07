@@ -71,42 +71,38 @@ class PCN():
             self.load_from_disk(loadDir)
         else:
             with Context("Circuit") as self.circuit:
-                self.z0 = RateCell("z0", n_units=in_dim, tau_m=0., act_fx="identity",
-                              key=subkeys[0])
+                self.z0 = RateCell("z0", n_units=in_dim, tau_m=0., act_fx="identity")
                 self.z1 = RateCell("z1", n_units=hid1_dim, tau_m=tau_m, act_fx=act_fx,
-                              prior=("gaussian",0.), integration_type="euler",
-                              key=subkeys[1])
+                                   prior=("gaussian",0.), integration_type="euler")
                 self.e1 = ErrorCell("e1", n_units=hid1_dim)
                 self.z2 = RateCell("z2", n_units=hid2_dim, tau_m=tau_m, act_fx=act_fx,
-                              prior=("gaussian", 0.), integration_type="euler",
-                              key=subkeys[2])
+                                   prior=("gaussian", 0.), integration_type="euler")
                 self.e2 = ErrorCell("e2", n_units=hid2_dim)
-                self.z3 = RateCell("z3", n_units=out_dim, tau_m=0., act_fx="identity",
-                              key=subkeys[3])
+                self.z3 = RateCell("z3", n_units=out_dim, tau_m=0., act_fx="identity")
                 self.e3 = ErrorCell("e3", n_units=out_dim)
                 ### set up generative/forward synapses
                 self.W1 = HebbianSynapse("W1", shape=(in_dim, hid1_dim), eta=eta,
-                                         wInit=("uniform", wlb, wub),
-                                         bInit=("constant", 0., 0.), w_bound=0.,
-                                         optim_type=optim_type, signVal=-1.,
+                                         weight_init=("uniform", wlb, wub),
+                                         bias_init=("constant", 0., 0.), w_bound=0.,
+                                         optim_type=optim_type, sign_value=-1.,
                                          key=subkeys[4])
                 self.W2 = HebbianSynapse("W2", shape=(hid1_dim, hid2_dim), eta=eta,
-                                         wInit=("uniform", wlb, wub),
-                                         bInit=("constant", 0., 0.), w_bound=0.,
-                                         optim_type=optim_type, signVal=-1.,
+                                         weight_init=("uniform", wlb, wub),
+                                         bias_init=("constant", 0., 0.), w_bound=0.,
+                                         optim_type=optim_type, sign_value=-1.,
                                          key=subkeys[5])
                 self.W3 = HebbianSynapse("W3", shape=(hid2_dim, out_dim), eta=eta,
-                                         wInit=("uniform", wlb, wub),
-                                         bInit=("constant", 0., 0.), w_bound=0.,
-                                         optim_type=optim_type, signVal=-1.,
+                                         weight_init=("uniform", wlb, wub),
+                                         bias_init=("constant", 0., 0.), w_bound=0.,
+                                         optim_type=optim_type, sign_value=-1.,
                                          key=subkeys[6])
                 ## set up feedback/error synapses
                 self.E2 = HebbianSynapse("E2", shape=(hid2_dim, hid1_dim), eta=0.,
-                                         wInit=("uniform", wlb, wub), w_bound=0.,
-                                         signVal=-1., key=subkeys[4])
+                                         weight_init=("uniform", wlb, wub), w_bound=0.,
+                                         sign_value=-1., key=subkeys[4])
                 self.E3 = HebbianSynapse("E3", shape=(out_dim, hid2_dim), eta=0.,
-                                         wInit=("uniform", wlb, wub), w_bound=0.,
-                                         signVal=-1., key=subkeys[5])
+                                         weight_init=("uniform", wlb, wub), w_bound=0.,
+                                         sign_value=-1., key=subkeys[5])
 
                 ## wire z0 to e1.mu via W1
                 self.W1.inputs << self.z0.zF
@@ -148,11 +144,11 @@ class PCN():
                 self.q3 = RateCell("q3", n_units=out_dim, tau_m=0., act_fx="identity")
                 self.eq3 = ErrorCell("eq3", n_units=out_dim)
                 self.Q1 = HebbianSynapse("Q1", shape=(in_dim, hid1_dim),
-                                         bInit=("constant", 0., 0.), key=subkeys[0])
+                                         bias_init=("constant", 0., 0.), key=subkeys[0])
                 self.Q2 = HebbianSynapse("Q2", shape=(hid1_dim, hid2_dim),
-                                         bInit=("constant", 0., 0.), key=subkeys[0])
+                                         bias_init=("constant", 0., 0.), key=subkeys[0])
                 self.Q3 = HebbianSynapse("Q3", shape=(hid2_dim, out_dim),
-                                         bInit=("constant", 0., 0.), key=subkeys[0])
+                                         bias_init=("constant", 0., 0.), key=subkeys[0])
                 ## wire q0 -(Q1)-> q1, q1 -(Q2)-> q2, q2 -(Q3)-> q3
                 self.Q1.inputs << self.q0.zF
                 self.q1.j << self.Q1.outputs

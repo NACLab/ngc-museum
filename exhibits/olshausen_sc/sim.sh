@@ -1,11 +1,9 @@
 #!/bin/sh
-
 ################################################################################
 # Simulate sparse coding on the MNIST database
 ################################################################################
-
 DATA_DIR="../../data/natural_scenes"
-## can choose between either ista or sc_cauchy
+## choose between either ista or sc_cauchy (un-comment one of the two lines below)
 MODEL_TYPE="sc_cauchy" 
 #MODEL_TYPE="ista" 
 

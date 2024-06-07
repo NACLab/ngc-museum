@@ -1,4 +1,4 @@
-from jax import numpy as jnp, random, nn, jit
+from jax import numpy as jnp, random
 import sys, getopt as gopt, optparse, time
 from pcn_model import PCN ## bring in model from museum
 ## bring in ngc-learn analysis tools
@@ -28,8 +28,8 @@ options, remainder = gopt.getopt(sys.argv[1:], '',
 # external dataset arguments
 dataX = "../data/mnist/trainX.npy"
 dataY = "../data/mnist/trainY.npy"
-devX = dataX
-devY = dataY
+devX = "../data/mnist/validX.npy"
+devY = "../data/mnist/validY.npy"
 verbosity = 0 ## verbosity level (0 - fairly minimal, 1 - prints multiple lines on I/O)
 for opt, arg in options:
     if opt in ("--dataX"):

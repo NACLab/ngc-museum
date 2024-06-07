@@ -1,19 +1,14 @@
 from ngclearn.utils.io_utils import makedir
-from ngclearn.utils.viz.raster import create_raster_plot
-from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
 import time
-import sys
 
 from ngclearn.utils.model_utils import scanner
-from ngcsimlib.compilers import compile_command, wrap_command
+from ngcsimlib.compilers import wrap_command
 from ngcsimlib.context import Context
-from ngcsimlib.commands import Command
-from ngcsimlib.operations import summation
-
 
 from ngclearn.utils.model_utils import softmax
-from ngclearn.components import GaussianErrorCell, SLIFCell, BernoulliCell, HebbianSynapse
+from ngclearn.components import (GaussianErrorCell, SLIFCell, BernoulliCell,
+                                 HebbianSynapse, StaticSynapse)
 
 
 ## SNN model co-routines
@@ -94,27 +89,27 @@ class BFA_SNN():
             with Context("Circuit") as self.circuit:
                 self.z0 = BernoulliCell(name="z0", n_units=in_dim, key=subkeys[0])
                 self.W1 = HebbianSynapse(name="W1", shape=(in_dim, hid_dim),
-                                       eta=1., wInit=weightInit, bInit=biasInit,
-                                       signVal=-1., optim_type=optim_type, w_bound=0.,
-                                       pre_wght=1., post_wght=eta1_w, is_nonnegative=False,
-                                       key=subkeys[1])
-                self.z1 = SLIFCell(name="z1", n_units=hid_dim, tau_m=tau_m, R_m=R_m,
-                                       thr=v_thr, inhibit_R=0., sticky_spikes=True,
-                                       refract_T=refract_T, thrGain=0., thrLeak=0.,
-                                       thr_jitter=0., key=subkeys[2])
+                                         eta=1., weight_init=weightInit, bias_init=biasInit,
+                                         sign_value=-1., optim_type=optim_type, w_bound=0.,
+                                         pre_wght=1., post_wght=eta1_w, is_nonnegative=False,
+                                         key=subkeys[1])
+                self.z1 = SLIFCell(name="z1", n_units=hid_dim, tau_m=tau_m, resist_m=R_m,
+                                   thr=v_thr, resist_inh=0., sticky_spikes=True,
+                                   refract_time=refract_T, thr_gain=0., thr_leak=0.,
+                                   thr_jitter=0., key=subkeys[2])
                 self.W2 = HebbianSynapse(name="W2", shape=(hid_dim, out_dim),
-                                       eta=1., wInit=weightInit, bInit=biasInit,
-                                       signVal=-1., optim_type=optim_type, w_bound=0.,
-                                       pre_wght=1., post_wght=eta2_w, is_nonnegative=False,
-                                       key=subkeys[3])
-                self.z2 = SLIFCell(name="z2", n_units=out_dim, tau_m=tau_m, R_m=R_m,
-                                       thr=v_thr, inhibit_R=0., sticky_spikes=True,
-                                       refract_T=refract_T, thrGain=0., thrLeak=0.,
-                                       thr_jitter=0., key=subkeys[4])
+                                         eta=1., weight_init=weightInit, bias_init=biasInit,
+                                         sign_value=-1., optim_type=optim_type, w_bound=0.,
+                                         pre_wght=1., post_wght=eta2_w, is_nonnegative=False,
+                                         key=subkeys[3])
+                self.z2 = SLIFCell(name="z2", n_units=out_dim, tau_m=tau_m, resist_m=R_m,
+                                   thr=v_thr, resist_inh=0., sticky_spikes=True,
+                                   refract_time=refract_T, thr_gain=0., thr_leak=0.,
+                                   thr_jitter=0., key=subkeys[4])
                 self.e2 = GaussianErrorCell(name="e2", n_units=out_dim)
-                self.E2 = HebbianSynapse(name="E2", shape=(out_dim, hid_dim),
-                                       eta=0., wInit=weightInit, bInit=None, w_bound=0.,
-                                       is_nonnegative=False, key=subkeys[5])
+                self.E2 = StaticSynapse(name="E2", shape=(out_dim, hid_dim),
+                                        weight_init=weightInit, bias_init=None,
+                                        key=subkeys[5])
                 self.d1 = GaussianErrorCell(name="d1", n_units=hid_dim)
 
 

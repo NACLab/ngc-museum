@@ -17,7 +17,7 @@ processing a sampled MNIST database digit.
 
 Usage:
 $ python analyze_dcsnn.py --dataX="/path/to/train_patterns.npy" \
-                           --verbosity=0
+                          --verbosity=0
 
 @author: The Neural Adaptive Computing Laboratory
 ################################################################################
@@ -28,7 +28,7 @@ options, remainder = gopt.getopt(sys.argv[1:], '', ["dataX=", "sample_idx=",
                                                     "verbosity="])
 
 sample_idx = 0 ## choose a pattern (0 <= idx < _X.shape[0])
-dataX = "../data/baby_mnist/babyX.npy"
+dataX = "../../data/mnist/babyX.npy"
 verbosity = 0 ## verbosity level (0 - fairly minimal, 1 - prints multiple lines on I/O)
 for opt, arg in options:
     if opt in ("--dataX"):
@@ -70,12 +70,12 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 cmap = plt.cm.jet
 
-arr = jnp.reshape(field, newshape=(28,28)) #.T
+arr = jnp.reshape(field, shape=(28,28)) #.T
 plt.imshow(arr)#.T)#, interpolation='nearest')#, cmap='rgb')#, cmap='gray')
 plt.savefig("exp/syn{}_digit{}.png".format(neural_idx, sample_idx))
 plt.clf()
 
-arr = jnp.reshape(x_ref, newshape=(28,28)) #.T
+arr = jnp.reshape(x_ref, shape=(28,28)) #.T
 plt.imshow(arr)#.T)#, interpolation='nearest')#, cmap='rgb')#, cmap='gray')
 plt.savefig("exp/digit{}.png".format(sample_idx))
 plt.clf()

@@ -1,20 +1,9 @@
-#from ngcsimlib.controller import Controller
 from ngclearn.utils.io_utils import makedir
-from ngclearn.utils.viz.raster import create_raster_plot
 from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
-#from jax.lax import scan
 from ngclearn.utils.model_utils import scanner
-import time
-
 from ngcsimlib.compilers import compile_command, wrap_command
-
-#from ngcsimlib.compartment import All_compartments
 from ngcsimlib.context import Context
-from ngcsimlib.commands import Command
-from ngcsimlib.operations import summation
-from ngclearn.components.other.varTrace import VarTrace
-#from ngclearn.components.input_encoders.poissonCell import PoissonCell
 from ngclearn.components.input_encoders.bernoulliCell import BernoulliCell
 from ngclearn.components.synapses.hebbian.eventSTDPSynapse import EventSTDPSynapse
 from ngclearn.components.other.expKernel import ExpKernel
@@ -71,10 +60,10 @@ class SNN():
                 self.k0 = ExpKernel("k0", n_units=in_dim, tau_w=0.5, nu=4., dt=dt, key=subkeys[1])
                 self.W1 = EventSTDPSynapse("W1", shape=(in_dim, hid_dim), eta=eta_w,
                                            lmbda=0.01, w_bound=1.,
-                                           wInit=("uniform", 0.025, 0.8), Rscale=1.,
+                                           weight_init=("uniform", 0.025, 0.8), resist_scale=1.,
                                            key=subkeys[2])
-                self.z1 = WTASCell("z1", n_units=hid_dim, tau_m=tau_m, R_m=1.,
-                                   thrBase=thrBase, thr_gain=thr_gain, refract_T=5.,
+                self.z1 = WTASCell("z1", n_units=hid_dim, tau_m=tau_m, resist_m=1.,
+                                   thrBase=thrBase, thr_gain=thr_gain, refract_time=5.,
                                    thr_jitter=0.055, key=subkeys[3])
 
                 ## wire z0 to z1e via W1 and z1i to z1e via W1ie

@@ -10,7 +10,7 @@ Adapts a DC-SNN to patterns from the MNIST database.
 
 Usage:
 $ python train_dcsnn.py --dataX="/path/to/train_patterns.npy" \
-                         --verbosity=0
+                        --verbosity=0
 
 @author: The Neural Adaptive Computing Laboratory
 ################################################################################

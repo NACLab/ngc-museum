@@ -1,10 +1,8 @@
 from jax import numpy as jnp, random
-import sys, getopt as gopt, optparse, time
-
+import sys, getopt as gopt
 ## bring in ngc-learn tools
 from ngclearn.utils.viz.raster import create_raster_plot
 from ngclearn.utils.patch_utils import generate_patch_set
-
 from snn import SNN as Model ## bring in model from museum
 
 """
