@@ -46,7 +46,7 @@ class PCN():
         save_init: save model at initialization/first configuration time (Default: True)
     """
     def __init__(self, dkey, in_dim=1, out_dim=1, hid1_dim=128, hid2_dim=64, T=10,
-                 dt=1., tau_m=10., act_fx = "tanh", eta=0.001, exp_dir="exp",
+                 dt=1., tau_m=10., act_fx="tanh", eta=0.001, exp_dir="exp",
                  model_name="pc_disc", loadDir=None, **kwargs):
         self.exp_dir = exp_dir
         self.model_name = model_name
