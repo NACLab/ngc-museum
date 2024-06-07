@@ -3,7 +3,7 @@ from ngcsimlib.compilers import compile_command, wrap_command
 from ngcsimlib.context import Context
 from ngclearn.utils.io_utils import makedir
 from jax import numpy as jnp, random, jit
-from ngclearn.components import GaussianErrorCell as ErrorCell, RateCell, HebbianSynapse
+from ngclearn.components import GaussianErrorCell as ErrorCell, RateCell, HebbianSynapse, StaticSynapse
 import ngclearn.utils.weight_distribution as dist
 
 ## Main PCN model object
@@ -94,12 +94,12 @@ class PCN():
                                          optim_type=optim_type, sign_value=-1.,
                                          key=subkeys[6])
                 ## set up feedback/error synapses
-                self.E2 = HebbianSynapse("E2", shape=(hid2_dim, hid1_dim), eta=0.,
+                self.E2 = StaticSynapse("E2", shape=(hid2_dim, hid1_dim), 
                                          weight_init=dist.uniform(amin=wlb, amax=wub),
-                                         w_bound=0., sign_value=-1., key=subkeys[4])
-                self.E3 = HebbianSynapse("E3", shape=(out_dim, hid2_dim), eta=0.,
-                                         weight_init=dist.uniform(amin=wlb, amax=wub),
-                                         w_bound=0., sign_value=-1., key=subkeys[5])
+                                         key=subkeys[4])
+                self.E3 = StaticSynapse("E3", shape=(out_dim, hid2_dim), 
+                                        weight_init=dist.uniform(amin=wlb, amax=wub),
+                                        key=subkeys[5])
 
                 ## wire z0 to e1.mu via W1
                 self.W1.inputs << self.z0.zF
@@ -140,15 +140,15 @@ class PCN():
                 self.q2 = RateCell("q2", n_units=hid2_dim, tau_m=0., act_fx=act_fx)
                 self.q3 = RateCell("q3", n_units=out_dim, tau_m=0., act_fx="identity")
                 self.eq3 = ErrorCell("eq3", n_units=out_dim)
-                self.Q1 = HebbianSynapse("Q1", shape=(in_dim, hid1_dim),
-                                         bias_init=dist.constant(value=0.),
-                                         key=subkeys[0])
-                self.Q2 = HebbianSynapse("Q2", shape=(hid1_dim, hid2_dim),
-                                         bias_init=dist.constant(value=0.),
-                                         key=subkeys[0])
-                self.Q3 = HebbianSynapse("Q3", shape=(hid2_dim, out_dim),
-                                         bias_init=dist.constant(value=0.),
-                                         key=subkeys[0])
+                self.Q1 = StaticSynapse("Q1", shape=(in_dim, hid1_dim),
+                                        bias_init=dist.constant(value=0.),
+                                        key=subkeys[0])
+                self.Q2 = StaticSynapse("Q2", shape=(hid1_dim, hid2_dim),
+                                        bias_init=dist.constant(value=0.),
+                                        key=subkeys[0])
+                self.Q3 = StaticSynapse("Q3", shape=(hid2_dim, out_dim),
+                                        bias_init=dist.constant(value=0.),
+                                        key=subkeys[0])
                 ## wire q0 -(Q1)-> q1, q1 -(Q2)-> q2, q2 -(Q3)-> q3
                 self.Q1.inputs << self.q0.zF
                 self.q1.j << self.Q1.outputs
@@ -251,7 +251,7 @@ class PCN():
         self.Q2.weights.set(self.W2.weights.value)
         self.Q2.biases.set(self.W2.biases.value)
         self.Q3.weights.set(self.W3.weights.value)
-        self.Q3.biases.set(self.Q3.biases.value)
+        self.Q3.biases.set(self.W3.biases.value)
         ## pin/tie feedback synapses to transpose of forward ones
         self.E2.weights.set(jnp.transpose(self.W2.weights.value))
         self.E3.weights.set(jnp.transpose(self.W3.weights.value))
@@ -292,7 +292,6 @@ class PCN():
             if adapt_synapses == True:
                 #self.circuit.evolve(t=self.T, dt=self.dt)
                 self.circuit.evolve(t=self.T, dt=1.)
-
         ## skip E/M steps if just doing test-time inference
         return y_mu_inf, y_mu, EFE
 
