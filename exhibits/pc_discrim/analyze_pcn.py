@@ -54,8 +54,8 @@ def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference
 # read in general program arguments
 options, remainder = gopt.getopt(sys.argv[1:], '', ["dataX=", "dataY="])
 
-dataX = "../data/mnist/testX.npy"
-dataY = "../data/mnist/testY.npy"
+dataX = "../../data/mnist/testX.npy"
+dataY = "../../data/mnist/testY.npy"
 for opt, arg in options:
     if opt in ("--dataX"):
         dataX = arg.strip()

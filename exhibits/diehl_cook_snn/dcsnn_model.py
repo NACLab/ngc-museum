@@ -13,6 +13,7 @@ from ngclearn.components.input_encoders.poissonCell import PoissonCell
 from ngclearn.components.neurons.spiking.LIFCell import LIFCell
 from ngclearn.components.synapses import TraceSTDPSynapse, StaticSynapse
 from ngclearn.utils.model_utils import normalize_matrix
+import ngclearn.utils.weight_distribution as dist
 
 class DC_SNN():
     """
@@ -76,7 +77,7 @@ class DC_SNN():
                 self.W1 = TraceSTDPSynapse("W1", shape=(in_dim, hid_dim),
                                            A_plus=Aplus, A_minus=Aminus, eta=1.,
                                            pretrace_target=0.,
-                                           weight_init=("uniform", 0.0, 0.3),
+                                           weight_init=dist.uniform(0.0, 0.3),
                                            key=subkeys[1])
                 self.z1e = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_e,
                                    resist_m=tau_m_e/dt, thr=-52., v_rest=-65.,
@@ -90,10 +91,10 @@ class DC_SNN():
                 # ie -> inhibitory to excitatory; ei -> excitatory to inhibitory
                 #       (eta = 0 means no learning)
                 self.W1ie = StaticSynapse("W1ie", shape=(hid_dim, hid_dim),
-                                          weight_init=("hollow", -120., 0.),
+                                          weight_init=dist.hollow(-120.),
                                           key=subkeys[4])
                 self.W1ei = StaticSynapse("W1ei", shape=(hid_dim, hid_dim),
-                                          weight_init=("eye", 22.5, 0),
+                                          weight_init=dist.eye(22.5),
                                           key=subkeys[5])
                 self.tr0 = VarTrace("tr0", n_units=in_dim, tau_tr=tau_tr, decay_type="exp",
                                     a_delta=0., key=subkeys[6])

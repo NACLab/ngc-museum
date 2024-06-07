@@ -4,6 +4,7 @@ from ngcsimlib.context import Context
 from ngclearn.utils.io_utils import makedir
 from jax import numpy as jnp, random, jit
 from ngclearn.components import GaussianErrorCell as ErrorCell, RateCell, HebbianSynapse
+import ngclearn.utils.weight_distribution as dist
 
 ## Main PCN model object
 class PCN():
@@ -49,6 +50,7 @@ class PCN():
                  model_name="pc_disc", loadDir=None, **kwargs):
         self.exp_dir = exp_dir
         self.model_name = model_name
+        self.nodes = None
         makedir(exp_dir)
         makedir(exp_dir + "/filters")
 
@@ -68,7 +70,7 @@ class PCN():
             with Context("Circuit") as self.circuit:
                 self.z0 = RateCell("z0", n_units=in_dim, tau_m=0., act_fx="identity")
                 self.z1 = RateCell("z1", n_units=hid1_dim, tau_m=tau_m, act_fx=act_fx,
-                                   prior=("gaussian",0.), integration_type="euler")
+                                   prior=("gaussian", 0.), integration_type="euler")
                 self.e1 = ErrorCell("e1", n_units=hid1_dim)
                 self.z2 = RateCell("z2", n_units=hid2_dim, tau_m=tau_m, act_fx=act_fx,
                                    prior=("gaussian", 0.), integration_type="euler")
@@ -77,27 +79,27 @@ class PCN():
                 self.e3 = ErrorCell("e3", n_units=out_dim)
                 ### set up generative/forward synapses
                 self.W1 = HebbianSynapse("W1", shape=(in_dim, hid1_dim), eta=eta,
-                                         weight_init=("uniform", wlb, wub),
-                                         bias_init=("constant", 0., 0.), w_bound=0.,
+                                         weight_init=dist.uniform(amin=wlb, amax=wub),
+                                         bias_init=dist.constant(value=0.), w_bound=0.,
                                          optim_type=optim_type, sign_value=-1.,
                                          key=subkeys[4])
                 self.W2 = HebbianSynapse("W2", shape=(hid1_dim, hid2_dim), eta=eta,
-                                         weight_init=("uniform", wlb, wub),
-                                         bias_init=("constant", 0., 0.), w_bound=0.,
+                                         weight_init=dist.uniform(amin=wlb, amax=wub),
+                                         bias_init=dist.constant(value=0.), w_bound=0.,
                                          optim_type=optim_type, sign_value=-1.,
                                          key=subkeys[5])
                 self.W3 = HebbianSynapse("W3", shape=(hid2_dim, out_dim), eta=eta,
-                                         weight_init=("uniform", wlb, wub),
-                                         bias_init=("constant", 0., 0.), w_bound=0.,
+                                         weight_init=dist.uniform(amin=wlb, amax=wub),
+                                         bias_init=dist.constant(value=0.), w_bound=0.,
                                          optim_type=optim_type, sign_value=-1.,
                                          key=subkeys[6])
                 ## set up feedback/error synapses
                 self.E2 = HebbianSynapse("E2", shape=(hid2_dim, hid1_dim), eta=0.,
-                                         weight_init=("uniform", wlb, wub), w_bound=0.,
-                                         sign_value=-1., key=subkeys[4])
+                                         weight_init=dist.uniform(amin=wlb, amax=wub),
+                                         w_bound=0., sign_value=-1., key=subkeys[4])
                 self.E3 = HebbianSynapse("E3", shape=(out_dim, hid2_dim), eta=0.,
-                                         weight_init=("uniform", wlb, wub), w_bound=0.,
-                                         sign_value=-1., key=subkeys[5])
+                                         weight_init=dist.uniform(amin=wlb, amax=wub),
+                                         w_bound=0., sign_value=-1., key=subkeys[5])
 
                 ## wire z0 to e1.mu via W1
                 self.W1.inputs << self.z0.zF
@@ -139,11 +141,14 @@ class PCN():
                 self.q3 = RateCell("q3", n_units=out_dim, tau_m=0., act_fx="identity")
                 self.eq3 = ErrorCell("eq3", n_units=out_dim)
                 self.Q1 = HebbianSynapse("Q1", shape=(in_dim, hid1_dim),
-                                         bias_init=("constant", 0., 0.), key=subkeys[0])
+                                         bias_init=dist.constant(value=0.),
+                                         key=subkeys[0])
                 self.Q2 = HebbianSynapse("Q2", shape=(hid1_dim, hid2_dim),
-                                         bias_init=("constant", 0., 0.), key=subkeys[0])
+                                         bias_init=dist.constant(value=0.),
+                                         key=subkeys[0])
                 self.Q3 = HebbianSynapse("Q3", shape=(hid2_dim, out_dim),
-                                         bias_init=("constant", 0., 0.), key=subkeys[0])
+                                         bias_init=dist.constant(value=0.),
+                                         key=subkeys[0])
                 ## wire q0 -(Q1)-> q1, q1 -(Q2)-> q2, q2 -(Q3)-> q3
                 self.Q1.inputs << self.q0.zF
                 self.q1.j << self.Q1.outputs
@@ -181,28 +186,10 @@ class PCN():
                                            "z0", "z1", "z2", "z3",
                                            "e1", "e2", "e3",
                                            "W1", "W2", "W3", "E2", "E3")
-        q0, q1, q2, q3, eq3, Q1, Q2, Q3, z0, z1, z2, z3, e1, e2, e3, W1, W2, W3, E2, E3 = vars
-        self.q0 = q0
-        self.q1 = q1
-        self.q2 = q2
-        self.q3 = q3
-        self.eq3 = eq3
-        self.Q1 = Q1
-        self.Q2 = Q2
-        self.Q3 = Q3
-        self.z0 = z0
-        self.z1 = z1
-        self.z2 = z2
-        self.z3 = z3
-        self.e1 = e1
-        self.e2 = e2
-        self.e3 = e3
-        self.W1 = W1
-        self.W2 = W2
-        self.W3 = W3
-        self.E2 = E2
-        self.E3 = E3
-        self.nodes = [q0, q1, q2, q3, eq3, Q1, Q2, Q3, z0, z1, z2, z3, e1, e2, e3, W1, W2, W3, E2, E3]
+        (self.q0, self.q1, self.q2, self.q3, self.eq3, self.Q1, self.Q2, self.Q3,
+         self.z0, self.z1, self.z2, self.z3, self.e1, self.e2, self.e3, self.W1,
+         self.W2, self.W3, self.E2, self.E3) = vars
+        self.nodes = vars
 
         self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
         self.circuit.add_command(wrap_command(jit(self.circuit.advance_state)), name="advance")
@@ -211,16 +198,16 @@ class PCN():
 
         @Context.dynamicCommand
         def clamp_input(x):
-            z0.j.set(x)
-            q0.j.set(x)
+            self.z0.j.set(x)
+            self.q0.j.set(x)
 
         @Context.dynamicCommand
         def clamp_target(y):
-            z3.j.set(y)
+            self.z3.j.set(y)
 
         @Context.dynamicCommand
         def clamp_infer_target(y):
-            eq3.target.set(y)
+            self.eq3.target.set(y)
 
     def save_to_disk(self, params_only=False):
         """

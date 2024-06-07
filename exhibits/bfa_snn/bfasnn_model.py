@@ -9,6 +9,7 @@ from ngcsimlib.context import Context
 from ngclearn.utils.model_utils import softmax
 from ngclearn.components import (GaussianErrorCell, SLIFCell, BernoulliCell,
                                  HebbianSynapse, StaticSynapse)
+import ngclearn.utils.weight_distribution as dist
 
 
 ## SNN model co-routines
@@ -71,8 +72,8 @@ class BFA_SNN():
 
         v_thr = 0.4
         refract_T = 1.
-        weightInit = ("gaussian", 0., 0.055) ## init synapses from centered Gaussian
-        biasInit = ("constant", 0., 0.) ## init biases from zero values
+        weightInit = dist.gaussian(0., 0.055) ## init synapses from centered Gaussian
+        biasInit = dist.constant(0.) ## init biases from zero values
 
         ### set up jax seeding
         #dkey = random.PRNGKey(1234)

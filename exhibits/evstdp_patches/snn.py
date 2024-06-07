@@ -8,6 +8,7 @@ from ngclearn.components.input_encoders.bernoulliCell import BernoulliCell
 from ngclearn.components.synapses.hebbian.eventSTDPSynapse import EventSTDPSynapse
 from ngclearn.components.other.expKernel import ExpKernel
 from ngclearn.components.neurons.spiking.WTASCell import WTASCell
+import ngclearn.utils.weight_distribution as dist
 
 class SNN():
     """
@@ -60,7 +61,7 @@ class SNN():
                 self.k0 = ExpKernel("k0", n_units=in_dim, tau_w=0.5, nu=4., dt=dt, key=subkeys[1])
                 self.W1 = EventSTDPSynapse("W1", shape=(in_dim, hid_dim), eta=eta_w,
                                            lmbda=0.01, w_bound=1.,
-                                           weight_init=("uniform", 0.025, 0.8), resist_scale=1.,
+                                           weight_init=dist.uniform(0.025, 0.8), resist_scale=1.,
                                            key=subkeys[2])
                 self.z1 = WTASCell("z1", n_units=hid_dim, tau_m=tau_m, resist_m=1.,
                                    thrBase=thrBase, thr_gain=thr_gain, refract_time=5.,

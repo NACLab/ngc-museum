@@ -28,7 +28,7 @@ options, remainder = gopt.getopt(sys.argv[1:], '', ["dataX=", "sample_idx=",
                                                     "verbosity="])
 
 sample_idx = 0 ## choose a pattern (0 <= idx < _X.shape[0])
-dataX = "../../data/mnist/babyX.npy"
+dataX = "../../data/mnist/testX.npy"
 verbosity = 0 ## verbosity level (0 - fairly minimal, 1 - prints multiple lines on I/O)
 for opt, arg in options:
     if opt in ("--dataX"):
