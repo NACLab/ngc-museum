@@ -33,9 +33,9 @@ options, remainder = gopt.getopt(sys.argv[1:], '', ["dataX=", "n_samples=",
                                                     "verbosity="])
 
 model_type = "sc_cauchy" # ista
-n_iter = 1 # 10 ## total number passes through dataset
+n_iter = 200 # 10 ## total number passes through dataset
 n_samples = -1
-dataX = "../../data/mnist/trainX.npy"
+dataX = "../../data/natural_scenes/dataX.npy"
 verbosity = 0 ## verbosity level (0 - fairly minimal, 1 - prints multiple lines on I/O)
 for opt, arg in options:
     if opt in ("--dataX"):
