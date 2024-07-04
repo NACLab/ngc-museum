@@ -60,7 +60,7 @@ class SNN():
                 self.z0 = BernoulliCell("z0", n_units=in_dim, key=subkeys[0])
                 self.k0 = ExpKernel("k0", n_units=in_dim, tau_w=0.5, nu=4., dt=dt, key=subkeys[1])
                 self.W1 = EventSTDPSynapse("W1", shape=(in_dim, hid_dim), eta=eta_w,
-                                           lmbda=0.01, w_bound=1.,
+                                           lmbda=0.01, w_bound=1., presyn_win_len=3.,
                                            weight_init=dist.uniform(0.025, 0.8), resist_scale=1.,
                                            key=subkeys[2])
                 self.z1 = WTASCell("z1", n_units=hid_dim, tau_m=tau_m, resist_m=1.,
