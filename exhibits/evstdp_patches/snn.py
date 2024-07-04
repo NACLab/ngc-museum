@@ -72,7 +72,7 @@ class SNN():
                 self.W1.inputs << self.k0.epsp
                 self.z1.j << self.W1.outputs
                 # wire relevant compartment statistics to synaptic cable W1
-                self.W1.preSpike << self.z0.outputs
+                self.W1.pre_tols << self.z0.tols #self.W1.preSpike << self.z0.outputs
                 self.W1.postSpike << self.z1.s
 
                 reset_cmd, reset_args = self.circuit.compile_by_key(
