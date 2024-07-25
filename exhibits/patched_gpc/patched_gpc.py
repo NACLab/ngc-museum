@@ -1,35 +1,26 @@
 from ngclearn.utils.io_utils import makedir
 from ngclearn.utils.viz.synapse_plot import visualize
 from jax import random, jit
-
 from ngclearn.utils.model_utils import scanner
-from ngcsimlib.commands import Command
-from ngcsimlib.compilers import compile_command, wrap_command
+from ngcsimlib.compilers import wrap_command
 from ngclearn import Context
 from ngclearn import numpy as jnp
-import ngclearn.utils.weight_distribution as dist
 from ngclearn.utils.model_utils import normalize_matrix
-import jax.numpy as jnp
 import numpy as np
 
 from ngclearn.components import (RateCell, GaussianErrorCell as ErrorCell)
 from ngclearn.components.synapses import HebbianPatchedSynapse, StaticPatchedSynapse
-
-from ngclearn.operations import summation
-import matplotlib.pyplot as plt
-import jax
 
 
 
 class HierarchicalPatching_GPC():
     def __init__(self, dkey, D2, D1, D0,
                              n0=1, n1=1, n2=1,
-                             s2_in=0, s1_in=0, s_in=0,
                              weight1_init=None, weight2_init=None, bias_init=None,
                              z2_prior_type=None, z2_lmbda_prior=0., z1_prior_type=None, z1_lmbda_prior=0.,
                              resist_scale1=1., resist_scale2=1., pre_wght1=1., pre_wght2=0.1,
                              w_decay1=0., w_decay2=0., w_bound1=0., w_bound2=0., optim_type1="sgd", optim_type2="sgd",
-                             act_fx2="tanh", act_fx1="identity", eta1=1e-2, eta2=1e-2, T=200, tau_m1 = 20., tau_m2 = 20., dt=1.,
+                             act_fx2="identity", act_fx1="identity", eta1=1e-2, eta2=1e-2, T=200, tau_m1 = 20., tau_m2 = 20., dt=1.,
                              batch_size=1, load_dir=None, exp_dir="exp", **kwargs):
 
         dkey, *subkeys = random.split(dkey, 10)
@@ -50,7 +41,7 @@ class HierarchicalPatching_GPC():
 
         self.bias_init = bias_init
 
-        print(">> Building Patching_GPC model with      {}➔{}➔      hierarchy ...".format(n2, n1))
+        print(">> Building Patching_GPC model with hierarchy ...")
 
         if load_dir is not None:
             self.load_from_disk(load_dir)
@@ -123,6 +114,7 @@ class HierarchicalPatching_GPC():
 
                 self.dynamic()
 
+
     def dynamic(self):  ## create dynamic commands for circuit
         W1, W2, E1, E2, e0, e1, z1, z2 = self.circuit.get_components("W1", "W2",
                                                                                      "E1", "E2",
@@ -153,6 +145,7 @@ class HierarchicalPatching_GPC():
 
             return compartment_values, compartment_values[self.z1.zF.path]
 
+
     def save_to_disk(self, params_only=False):
         if params_only is True:
             model_dir = "{}/{}/custom".format(self.exp_dir, "HGPC")
@@ -160,11 +153,13 @@ class HierarchicalPatching_GPC():
         else:
             self.circuit.save_to_json(self.exp_dir, "HGPC")  ## save current parameter arrays
 
+
     def load_from_disk(self, model_directory):
         with Context("Circuit") as circuit:
             self.circuit = circuit
             self.circuit.load_from_dir(model_directory)
             self.dynamic()
+
 
     def get_synapse_stats(self, W_id='W1'):
         if W_id == 'W1':
