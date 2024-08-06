@@ -138,6 +138,11 @@ def build_model(seed=1234, in_dim=1, is_patch_model=False, algo="tistdp"):
             tr2 = VarTrace("tr2", n_units=out_size, tau_tr=tau_tr,
                            decay_type="exp",
                            a_delta=trace_delta)
+            # wire cells z0 and z1e to their respective traces
+            tr0.inputs << z0.outputs
+            tr1.inputs << z1e.s
+            tr2.inputs << z2e.s
+
             # wire relevant compartment statistics to synaptic cables W1 and W2
             W1.preTrace << tr0.trace
             W1.preSpike << z0.outputs
