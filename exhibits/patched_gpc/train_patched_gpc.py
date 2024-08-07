@@ -22,14 +22,16 @@ def gaussian_filter(shape, sigma):
 # ########################################################################
 # ◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠◠
 # datasets from http://www.rctn.org/bruno/sparsenet/
-imgs = np.load('../../../IMAGES.npy')
-H, W , n_samples = imgs.shape
+imgs = np.load('../../../dataset_Hierarchical_Rao/datasets/IMAGES.npy')
+H, W , _ = imgs.shape
 x_train = imgs.T
 input_scale = 40.
 # ◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡◡
 # ########################################################################
-n_iter = 100
-vis_mod = 20
+n_iter = 200
+viz_mod = 20
+batch_mod = 50
+n_samples = -1
 
 k2 = 0.2      # eta
 k1 = 1/35     # tau_m
@@ -37,6 +39,7 @@ gauss_sigma = 2.5 # 1.7
 
 in_patchShape = (16, 16)
 stride_shape = (5, 5)
+mb_size = 100
 
 n2, n1, n0 = (1, 3, 3)
 d2, d1, d0 = (16, 8, in_patchShape[0] * in_patchShape[1])
@@ -50,6 +53,8 @@ T = 100
 dt = 1.
 
 # ########################################################################
+x_train = x_train[0:n_samples, :]
+
 x_ = []
 for idx in range(len(x_train)):
     _obs = x_train[idx, :]
@@ -64,16 +69,19 @@ train_size, _, _, _ = x_.shape
 x_gauss = np.array([(gauss_filter * x_[:, i, :]) for i in range(n0)]).reshape(train_size, -1)
 x_train = jnp.array((x_gauss - np.mean(x_gauss)) * input_scale)
 
+in_dim = in_patchShape[0] * in_patchShape[1] * n0
+train_size = train_size//mb_size
+x_train = x_train[:train_size * mb_size, :].reshape(train_size, mb_size, in_dim)
+
+n_batches = x_train.shape[0]
 # ########################################################################
 
 dkey = random.PRNGKey(1234)
 dkey, *subkeys = random.split(dkey, 12)
 
-
 D2, D1, D0 = (n2 * d2, n1 * d1, n0 * d0)
 eta1, eta2 = k2, k2
 tau_m1, tau_m2 = 1/k1, 1/k1
-
 
 model = HierarchicalPatching_GPC(dkey=subkeys[0],
                                  D2=D2, D1=D1, D0=D0,
@@ -84,7 +92,7 @@ model = HierarchicalPatching_GPC(dkey=subkeys[0],
                                  w_decay1=w_decay1, w_decay2=w_decay2,
                                  eta1=eta1, eta2=eta2,
                                  tau_m1=tau_m1, tau_m2=tau_m2,
-                                 T=T, dt=dt, batch_size=1,
+                                 T=T, dt=dt, batch_size=mb_size,
                                  load_dir=None, exp_dir="exp")
 
 print(model.get_synapse_stats())
@@ -96,7 +104,7 @@ for iter in range(n_iter):
     ptrs = random.permutation(subkeys[0], x_train.shape[0])
     X = x_train[ptrs, :]
     n_pat_seen = 0
-    print("\n ========= Iter {} ========".format(iter))
+    # print("\n ========= Iter {} ========".format(iter))
     L = 0.
     L1 = 0.
     
@@ -104,20 +112,25 @@ for iter in range(n_iter):
         model.eta1 /= 1.015
         model.eta2 /= 1.015
 
-    for idx in range(train_size):
-        Xb = X[idx: idx + 1, :].reshape(1, -1)
+    for idx in range(n_batches):
+        Xb = X[idx, :]
+
         xs_mu, Lb = model.process(sensory_in=Xb, adapt_synapses=True)
+
         n_pat_seen += Xb.shape[0]
         L = Lb[0] + L
         L1 = Lb[1] + L1
+        print("\r > Iteration {}    Seen {} patterns; Loss L1 = {}   ---   Loss L0{}".format(iter, n_pat_seen,
+                                                                        (L1/mb_size), (L/mb_size)), end="")
 
-        print("\r > Seen {} patterns; L = {}---{}              eta:{}".format(n_pat_seen,
-                                                                        (L1/(idx+1) * 1.), (L/(idx+1) * 1.),
-                                                                           [model.eta1, model.eta2]), end="")
-    if iter % vis_mod == 0 and idx==train_size-1:
-        print()
+        if (iter+1) % 10 == 0 and idx % batch_mod == 0 and idx > 0:
+            print()
+            model.viz_receptive_fields(rf1_shape=in_patchShape)
+            model.save_to_disk(params_only=True)  # save final state of synapses to disk
+            print(model.get_synapse_stats())
+    print()
+    if (iter+1) % viz_mod == 0:
         model.viz_receptive_fields(rf1_shape=in_patchShape)
-        model.save_to_disk(params_only=True)
 
 ## collect a test sample raster plot
 model.save_to_disk(params_only=True)
