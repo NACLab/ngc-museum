@@ -12,7 +12,7 @@ key = random.PRNGKey(1234)
 
 
 
-dfx = cubic_2D
+dfx = linear_2D
 
 if dfx==linear_2D:
     x0 = jnp.array([3, -1.5])
@@ -50,8 +50,8 @@ dx_list = []
 for i in range(n_epoch):
     coeff, d_xpred, efe = model.process(target=dX, z_code=Z_codes)
 
-model.get_coeff(scale=scale)
-model.get_coeff(scale=scale, code_names=code_names, idx_names=['dy', 'dx'])
+model.get_coeff(z_codes=Z_codes, target=dX, scale=scale)
+model.get_coeff(z_codes=Z_codes, target=dX, scale=scale, code_names=code_names, idx_names=['dy', 'dx'])
 
 plt.figure(facecolor='floralwhite')
 plt.plot(ts, dX[:, 0], label=r'$\dot{x}$', linewidth=5, alpha=0.65, color='turquoise')
@@ -63,6 +63,6 @@ plt.legend(loc='best')
 plt.xlabel(r'$time$')
 plt.ylabel(r'$\frac{d\hat{X}}{dt}$')
 plt.title('Sparse Dictionary Coefficients of system: ' + str(dfx.__name__))
-plt.show()
+# plt.show()
 
 
