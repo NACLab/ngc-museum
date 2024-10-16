@@ -7,12 +7,12 @@ from ngclearn import Context, numpy as jnp
 from ngclearn.utils.model_utils import scanner
 from ngclearn.components import (HebbianSynapse,
                                  GaussianErrorCell)
-
+from ngclearn.utils.model_utils import normalize_matrix
 
 
 class SparseDictLearning():
-    def __init__(self, dkey, in_dim, h_dim,batch_size, opt_type="adam", fill=0.05, eta=0.001):
-        
+    def __init__(self, dkey, in_dim, h_dim, batch_size, opt_type="adam", fill=0.05, eta=0.001):
+
         dkey, *subkeys = random.split(dkey, 10)
 
         with Context("circuit") as self.circuit:
@@ -45,16 +45,21 @@ class SparseDictLearning():
         self.circuit.wrap_and_add_command(jit(self.circuit.advance_state), name="advance_state")
         self.circuit.wrap_and_add_command(jit(self.circuit.reset), name="reset")
 
-    def sparsify(self, threshold=0.012):
-        W = self.W_lib.weights.value
-        self.W_lib.weights.set(jnp.where(jnp.abs(W) <= threshold, 0., W))
-        self.circuit.advance_state(t=1, dt=1.)
-        return self.W_lib.weights.value
+    def normalize(self, lib_y, y):
+        dict_norm = jnp.expand_dims(jnp.linalg.norm(lib_y, axis=0), axis=1)
+        pred_norm = jnp.expand_dims(jnp.linalg.norm(y, axis=0), axis=0)
+        coeff_norm = dict_norm * self.W_lib.weights.value / pred_norm
+        return coeff_norm
+
+    def sparsify(self, z_codes, target, scale=1., threshold=0.01):
+        W_norm = self.circuit.normalize(z_codes, target)
+        W_sparse = jnp.where(jnp.abs(W_norm) <= threshold, 0., W_norm)
+        return W_sparse
 
 
-    def get_coeff(self, scale=1., code_names=None, idx_names=None, sparsify=True):
+    def get_coeff(self, z_codes, target, scale=1., code_names=None, idx_names=None, sparsify=True):
         if sparsify:
-            coeff_ = self.sparsify() * scale
+            coeff_ = self.sparsify(z_codes, target) * scale
         else:
             coeff_ = self.W_lib.weights.value * scale
 
@@ -66,8 +71,7 @@ class SparseDictLearning():
         res_names = [s for s, m in zip(code_names, res_idx) if m]
 
         print(pd.DataFrame(res_coeff, columns=res_names, index=idx_names))
-
-
+        
 
     def process(self, target, z_code):
         self.circuit.reset()
@@ -77,5 +81,3 @@ class SparseDictLearning():
 
         lib_coeff = np.array(self.W_lib.weights.value)
         return lib_coeff, self.err.mu.value, self.err.L.value
-
-
