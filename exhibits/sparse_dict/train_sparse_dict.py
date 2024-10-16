@@ -20,10 +20,6 @@ if dfx==linear_2D:
 elif dfx==cubic_2D:
     x0 = jnp.array([2., 0.])
     poly_deg = 3
-# elif dfx==lorenz_model:
-#     x0 = jnp.array([-8, 7, 27])
-#     poly_deg = 3
-
 
 dt = 1e-2
 t0 = 0.
