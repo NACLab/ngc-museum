@@ -5,7 +5,7 @@ from typing import Optional
 
 class Std_SINDy():
     '''
-    STLSQ (Sequential Thresholded Least Squares)
+    Sparse Identification of Non-linear Dynamical systems
     '''
     def __init__(self, threshold=0.5, max_iter=20):
         self.library_type: str = 'polynomial'
