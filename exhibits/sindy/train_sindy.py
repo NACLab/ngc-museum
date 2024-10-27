@@ -71,6 +71,6 @@ for i in range(X.shape[1]):
 
 dX_pred = jnp.array(preds).T
 model.vis_sys(ts, dX, dX_pred, model=dfx)
-print('score', loss)
+print('loss', loss)
 
 
