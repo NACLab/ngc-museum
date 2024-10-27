@@ -42,6 +42,7 @@ class Std_SINDy():
 
         self.coef_ = coef
         self.lib_ = lib
+        self.dx_ = dx
         return coef
 
     def predict(self) -> jnp.ndarray:
@@ -54,6 +55,16 @@ class Std_SINDy():
         '''
 
         return self.lib_ @ self.coef_
+
+
+    def error(self) -> jnp.ndarray:
+        '''
+        Frobenius norm for prediction and taget difference
+
+        :return:
+        '''
+
+        return jnp.linalg.norm(self.predict() - self.dx_)
 
     def get_ode(self, feature_names):
 
