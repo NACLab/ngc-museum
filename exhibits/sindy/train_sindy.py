@@ -57,6 +57,8 @@ print('---------- std-sindy coefficients ----------')
 
 dim_names = ['ẋ', 'ẏ', 'ż']
 preds = []
+preds = []
+loss = 0
 for i in range(X.shape[1]):
     dx = dX[:, i:i+1]
     sparse_coef = model.fit(dx=dx, lib=feature_lib)
@@ -64,9 +66,11 @@ for i in range(X.shape[1]):
     ode_ = model.get_ode(feature_names)
 
     print(dim_names[i] + ' = ', *ode_)
+    loss += model.error()
     preds.append(pred[:, 0])
 
 dX_pred = jnp.array(preds).T
 model.vis_sys(ts, dX, dX_pred, model=dfx)
+print('score', loss)
 
 
