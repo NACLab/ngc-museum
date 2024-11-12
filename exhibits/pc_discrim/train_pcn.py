@@ -26,10 +26,10 @@ options, remainder = gopt.getopt(sys.argv[1:], '',
                                  ["dataX=", "dataY=", "devX=", "devY=", "verbosity="]
                                  )
 # external dataset arguments
-dataX = "../../data/mnist/trainX.npy"
-dataY = "../../data/mnist/trainY.npy"
-devX = "../../data/mnist/validX.npy"
-devY = "../../data/mnist/validY.npy"
+dataX = "../../data/ag_news_dataset/trainX.npy"
+dataY = "../../data/ag_news_dataset/trainY.npy"
+devX = "../../data/ag_news_dataset/validX.npy"
+devY = "../../data/ag_news_dataset/validY.npy"
 verbosity = 0 ## verbosity level (0 - fairly minimal, 1 - prints multiple lines on I/O)
 for opt, arg in options:
     if opt in ("--dataX"):

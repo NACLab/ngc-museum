@@ -1,0 +1,61 @@
+{
+    "reset": {
+        "class": "dynamic_compiled",
+        "components": [
+            "q0",
+            "q1",
+            "q2",
+            "q3",
+            "eq3",
+            "z0",
+            "z1",
+            "z2",
+            "z3",
+            "e1",
+            "e2",
+            "e3"
+        ],
+        "compile_key": "reset"
+    },
+    "advance_state": {
+        "class": "dynamic_compiled",
+        "components": [
+            "E2",
+            "E3",
+            "z0",
+            "z1",
+            "z2",
+            "z3",
+            "W1",
+            "W2",
+            "W3",
+            "e1",
+            "e2",
+            "e3"
+        ],
+        "compile_key": "advance_state"
+    },
+    "evolve": {
+        "class": "dynamic_compiled",
+        "components": [
+            "W1",
+            "W2",
+            "W3"
+        ],
+        "compile_key": "evolve"
+    },
+    "project": {
+        "class": "dynamic_compiled",
+        "components": [
+            "q0",
+            "Q1",
+            "q1",
+            "Q2",
+            "q2",
+            "Q3",
+            "q3",
+            "eq3"
+        ],
+        "compile_key": "advance_state"
+    }
+}

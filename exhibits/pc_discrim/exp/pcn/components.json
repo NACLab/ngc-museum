@@ -1,0 +1,295 @@
+{
+    "components": {
+        "/Circuit/z0": {
+            "class": "RateCell",
+            "args": [
+                "z0"
+            ],
+            "kwargs": {
+                "n_units": 372,
+                "tau_m": 0.0,
+                "act_fx": "identity"
+            }
+        },
+        "/Circuit/z1": {
+            "class": "RateCell",
+            "args": [
+                "z1"
+            ],
+            "kwargs": {
+                "n_units": 512,
+                "tau_m": 20.0,
+                "act_fx": "sigmoid",
+                "prior": [
+                    "gaussian",
+                    0.0
+                ],
+                "integration_type": "euler"
+            }
+        },
+        "/Circuit/e1": {
+            "class": "GaussianErrorCell",
+            "args": [
+                "e1"
+            ],
+            "kwargs": {
+                "n_units": 512
+            }
+        },
+        "/Circuit/z2": {
+            "class": "RateCell",
+            "args": [
+                "z2"
+            ],
+            "kwargs": {
+                "n_units": 512,
+                "tau_m": 20.0,
+                "act_fx": "sigmoid",
+                "prior": [
+                    "gaussian",
+                    0.0
+                ],
+                "integration_type": "euler"
+            }
+        },
+        "/Circuit/e2": {
+            "class": "GaussianErrorCell",
+            "args": [
+                "e2"
+            ],
+            "kwargs": {
+                "n_units": 512
+            }
+        },
+        "/Circuit/z3": {
+            "class": "RateCell",
+            "args": [
+                "z3"
+            ],
+            "kwargs": {
+                "n_units": 4,
+                "tau_m": 0.0,
+                "act_fx": "identity"
+            }
+        },
+        "/Circuit/e3": {
+            "class": "GaussianErrorCell",
+            "args": [
+                "e3"
+            ],
+            "kwargs": {
+                "n_units": 4
+            }
+        },
+        "/Circuit/W1": {
+            "class": "HebbianSynapse",
+            "args": [
+                "W1"
+            ],
+            "kwargs": {
+                "shape": [
+                    372,
+                    512
+                ],
+                "eta": 0.001,
+                "weight_init": {
+                    "dist": "uniform",
+                    "amin": -0.3,
+                    "amax": 0.3
+                },
+                "bias_init": {
+                    "dist": "constant",
+                    "value": 0.0
+                },
+                "w_bound": 0.0,
+                "optim_type": "adam",
+                "sign_value": -1.0
+            }
+        },
+        "/Circuit/W2": {
+            "class": "HebbianSynapse",
+            "args": [
+                "W2"
+            ],
+            "kwargs": {
+                "shape": [
+                    512,
+                    512
+                ],
+                "eta": 0.001,
+                "weight_init": {
+                    "dist": "uniform",
+                    "amin": -0.3,
+                    "amax": 0.3
+                },
+                "bias_init": {
+                    "dist": "constant",
+                    "value": 0.0
+                },
+                "w_bound": 0.0,
+                "optim_type": "adam",
+                "sign_value": -1.0
+            }
+        },
+        "/Circuit/W3": {
+            "class": "HebbianSynapse",
+            "args": [
+                "W3"
+            ],
+            "kwargs": {
+                "shape": [
+                    512,
+                    4
+                ],
+                "eta": 0.001,
+                "weight_init": {
+                    "dist": "uniform",
+                    "amin": -0.3,
+                    "amax": 0.3
+                },
+                "bias_init": {
+                    "dist": "constant",
+                    "value": 0.0
+                },
+                "w_bound": 0.0,
+                "optim_type": "adam",
+                "sign_value": -1.0
+            }
+        },
+        "/Circuit/E2": {
+            "class": "StaticSynapse",
+            "args": [
+                "E2"
+            ],
+            "kwargs": {
+                "shape": [
+                    512,
+                    512
+                ],
+                "weight_init": {
+                    "dist": "uniform",
+                    "amin": -0.3,
+                    "amax": 0.3
+                }
+            }
+        },
+        "/Circuit/E3": {
+            "class": "StaticSynapse",
+            "args": [
+                "E3"
+            ],
+            "kwargs": {
+                "shape": [
+                    4,
+                    512
+                ],
+                "weight_init": {
+                    "dist": "uniform",
+                    "amin": -0.3,
+                    "amax": 0.3
+                }
+            }
+        },
+        "/Circuit/q0": {
+            "class": "RateCell",
+            "args": [
+                "q0"
+            ],
+            "kwargs": {
+                "n_units": 372,
+                "tau_m": 0.0,
+                "act_fx": "identity"
+            }
+        },
+        "/Circuit/q1": {
+            "class": "RateCell",
+            "args": [
+                "q1"
+            ],
+            "kwargs": {
+                "n_units": 512,
+                "tau_m": 0.0,
+                "act_fx": "sigmoid"
+            }
+        },
+        "/Circuit/q2": {
+            "class": "RateCell",
+            "args": [
+                "q2"
+            ],
+            "kwargs": {
+                "n_units": 512,
+                "tau_m": 0.0,
+                "act_fx": "sigmoid"
+            }
+        },
+        "/Circuit/q3": {
+            "class": "RateCell",
+            "args": [
+                "q3"
+            ],
+            "kwargs": {
+                "n_units": 4,
+                "tau_m": 0.0,
+                "act_fx": "identity"
+            }
+        },
+        "/Circuit/eq3": {
+            "class": "GaussianErrorCell",
+            "args": [
+                "eq3"
+            ],
+            "kwargs": {
+                "n_units": 4
+            }
+        },
+        "/Circuit/Q1": {
+            "class": "StaticSynapse",
+            "args": [
+                "Q1"
+            ],
+            "kwargs": {
+                "shape": [
+                    372,
+                    512
+                ],
+                "bias_init": {
+                    "dist": "constant",
+                    "value": 0.0
+                }
+            }
+        },
+        "/Circuit/Q2": {
+            "class": "StaticSynapse",
+            "args": [
+                "Q2"
+            ],
+            "kwargs": {
+                "shape": [
+                    512,
+                    512
+                ],
+                "bias_init": {
+                    "dist": "constant",
+                    "value": 0.0
+                }
+            }
+        },
+        "/Circuit/Q3": {
+            "class": "StaticSynapse",
+            "args": [
+                "Q3"
+            ],
+            "kwargs": {
+                "shape": [
+                    512,
+                    4
+                ],
+                "bias_init": {
+                    "dist": "constant",
+                    "value": 0.0
+                }
+            }
+        }
+    }
+}

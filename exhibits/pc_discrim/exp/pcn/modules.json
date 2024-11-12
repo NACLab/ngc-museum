@@ -1,0 +1,42 @@
+[
+    {
+        "absolute_path": "ngclearn.components.neurons.graded.rateCell",
+        "attributes": [
+            {
+                "name": "RateCell"
+            }
+        ]
+    },
+    {
+        "absolute_path": "ngclearn.components.neurons.graded.gaussianErrorCell",
+        "attributes": [
+            {
+                "name": "GaussianErrorCell"
+            }
+        ]
+    },
+    {
+        "absolute_path": "ngclearn.components.synapses.hebbian.hebbianSynapse",
+        "attributes": [
+            {
+                "name": "HebbianSynapse"
+            }
+        ]
+    },
+    {
+        "absolute_path": "ngclearn.components.synapses.staticSynapse",
+        "attributes": [
+            {
+                "name": "StaticSynapse"
+            }
+        ]
+    },
+    {
+        "absolute_path": "ngcsimlib.operations",
+        "attributes": [
+            {
+                "name": "overwrite"
+            }
+        ]
+    }
+]

@@ -1,0 +1,198 @@
+[
+    {
+        "class": "overwrite",
+        "sources": [
+            "z0/zF"
+        ],
+        "destination": "W1/inputs"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "W1/outputs"
+        ],
+        "destination": "e1/mu"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "z1/z"
+        ],
+        "destination": "e1/target"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "z1/zF"
+        ],
+        "destination": "W2/inputs"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "W2/outputs"
+        ],
+        "destination": "e2/mu"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "z2/z"
+        ],
+        "destination": "e2/target"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "z2/zF"
+        ],
+        "destination": "W3/inputs"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "W3/outputs"
+        ],
+        "destination": "e3/mu"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "z3/z"
+        ],
+        "destination": "e3/target"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "e2/dmu"
+        ],
+        "destination": "E2/inputs"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "E2/outputs"
+        ],
+        "destination": "z1/j"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "e1/dtarget"
+        ],
+        "destination": "z1/j_td"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "e3/dmu"
+        ],
+        "destination": "E3/inputs"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "E3/outputs"
+        ],
+        "destination": "z2/j"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "e2/dtarget"
+        ],
+        "destination": "z2/j_td"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "z0/zF"
+        ],
+        "destination": "W1/pre"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "e1/dmu"
+        ],
+        "destination": "W1/post"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "z1/zF"
+        ],
+        "destination": "W2/pre"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "e2/dmu"
+        ],
+        "destination": "W2/post"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "z2/zF"
+        ],
+        "destination": "W3/pre"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "e3/dmu"
+        ],
+        "destination": "W3/post"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "q0/zF"
+        ],
+        "destination": "Q1/inputs"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "Q1/outputs"
+        ],
+        "destination": "q1/j"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "q1/zF"
+        ],
+        "destination": "Q2/inputs"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "Q2/outputs"
+        ],
+        "destination": "q2/j"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "q2/zF"
+        ],
+        "destination": "Q3/inputs"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "Q3/outputs"
+        ],
+        "destination": "q3/j"
+    },
+    {
+        "class": "overwrite",
+        "sources": [
+            "q3/z"
+        ],
+        "destination": "eq3/target"
+    }
+]

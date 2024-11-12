@@ -1,0 +1,10 @@
+#!/bin/sh
+'''exec' /media/quantap/cd077038-99e4-4618-b3ac-4126f73bcdba/quantap/Documents/icog_pros/office_related_icog/training_task/ngc-museum/ngc_env/bin/python "$0" "$@"
+' '''
+# -*- coding: utf-8 -*-
+import re
+import sys
+from jupyter_client.kernelapp import main
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+    sys.exit(main())
