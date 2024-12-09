@@ -1,12 +1,14 @@
+import pandas as pd
+import matplotlib.pyplot as plt
 import numpy as np
 from ngclearn import Context, numpy as jnp
-from std_sindy import Std_SINDy
+from sindy import Std_SINDy
 from ngclearn.utils.feature_dictionaries.polynomialLibrary import PolynomialLibrary
-from ngclearn.utils.diffeq.ode_utils_scanner import solve_ode
+from ngclearn.utils.diffeq.ode_solver import solve_ode
 from ngclearn.utils.diffeq.odes import (linear_2D, cubic_2D,
-                                        linear_3D, lorenz, oscillator)
+                                        linear_3D, lorenz)
 
-dfx = oscillator
+dfx = cubic_2D
 include_bias = False
 
 if dfx == linear_2D:
@@ -15,13 +17,6 @@ if dfx == linear_2D:
     threshold = 0.01
     T = 2000
     include_bias = False
-elif dfx == oscillator:
-    x0 = jnp.array([-0.5, -0.05, -0.1])
-    # x0 = jnp.array([0.1, 0.1, 0.1])
-    deg = 2
-    threshold = 0.005
-    T = 1200
-    include_bias = True
 elif dfx == cubic_2D:
     x0 = jnp.array([2., 0.])
     deg = 3
@@ -52,25 +47,42 @@ dX = jnp.array(np.gradient(jnp.array(X), ts.ravel(), axis=0))
 lib_creator = PolynomialLibrary(poly_order=deg, include_bias=include_bias)
 feature_lib, feature_names = lib_creator.fit([X[:, i] for i in range(X.shape[1])])
 
-model = Std_SINDy(threshold=threshold, max_iter=100)
+model = Std_SINDy(threshold=0.1, max_iter=20)
 print('---------- std-sindy coefficients ----------')
+sparse_coef = model.fit(dx=dX, lib=feature_lib)
+pred = model.predict() #feature_lib @ sparse_coef
 
-dim_names = ['ẋ', 'ẏ', 'ż']
-preds = []
-preds = []
-loss = 0
-for i in range(X.shape[1]):
-    dx = dX[:, i:i+1]
-    sparse_coef = model.fit(dx=dx, lib=feature_lib)
-    pred = model.predict() #feature_lib @ sparse_coef
-    ode_ = model.get_ode(feature_names)
+ode_ = model.get_ode(feature_names)
+c = jnp.where(sparse_coef==0, False, True)
+idx_ = jnp.any(c == True, axis=1)
+c_ = sparse_coef[idx_]
+n_ = [name_ for name_, i_ in zip(feature_names, idx_) if i_]
 
-    print(dim_names[i] + ' = ', *ode_)
-    loss += model.error()
-    preds.append(pred[:, 0])
+plt.figure(facecolor='floralwhite')
 
-dX_pred = jnp.array(preds).T
-model.vis_sys(ts, dX, dX_pred, model=dfx)
-print('loss', loss)
+if sparse_coef.shape[1]==3:
+    df = pd.DataFrame(jnp.round(sparse_coef, 3), index=feature_names, columns=['ẋ', 'ẏ', 'ż'])
+    plt.plot(ts, dX[:, 0], label=r'$\dot{x}$', linewidth=5, alpha=0.3, color='turquoise')
+    plt.plot(ts, pred[:, 0], label=r'$\hat{\dot{x}}$', linewidth=0.8, ls="--", color='black')
+    plt.plot(ts, dX[:, 1], label=r'$\dot{y}$', linewidth=4, alpha=0.6, color='pink')
+    plt.plot(ts, pred[:, 1], label=r'$\hat{\dot{y}}$', linewidth=0.8, ls='--', color='red')
+    plt.plot(ts, dX[:, 2], label=r'$\dot{z}$', linewidth=2, alpha=0.8, color='yellow')
+    plt.plot(ts, pred[:, 2], label=r'$\hat{\dot{z}}$', linewidth=0.8, ls="--", color='navy')
 
+elif sparse_coef.shape[1]==2:
+    df = pd.DataFrame(jnp.round(sparse_coef, 3), index=feature_names, columns=['ẋ', 'ẏ'])
+    plt.plot(ts, dX[:, 0], label=r'$\dot{x}$', linewidth=5, alpha=0.3, color='turquoise')
+    plt.plot(ts, pred[:, 0], label=r'$\hat{\dot{x}}$', linewidth=0.8, ls="--", color='black')
+    plt.plot(ts, dX[:, 1], label=r'$\dot{y}$', linewidth=4, alpha=0.6, color='pink')
+    plt.plot(ts, pred[:, 1], label=r'$\hat{\dot{y}}$', linewidth=0.8, ls='--', color='red')
 
+print(ode_)
+
+plt.grid(True)
+plt.legend(loc='lower right')
+plt.xlabel(r'$time$', fontsize=10)
+plt.ylabel(r'$\{\dot{x}, \dot{y}, \dot{z}\}$', fontsize=8)
+
+plt.title('Sparse Coefficients of {} model'.format(str(dfx.__name__)))
+# plt.title(f'{ode_}', fontsize=7)
+plt.show()
