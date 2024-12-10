@@ -10,6 +10,11 @@ Brunton, Steven L., Joshua L. Proctor, and J. Nathan Kutz.
 dynamical systems." Proceedings of the national academy of sciences 113.15 
 (2016): 3932-3937.
 
+<p align="center">
+  <img height="350" src="fig/sindy_model_card.jpg"><br>
+  <i>Visual depiction of the PCN architecture.</i>
+</p>
+
 ## Running the Model's Simulation
 
 To train this implementation of SINDy, simply the run the Python script below:
