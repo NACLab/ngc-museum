@@ -11,7 +11,7 @@ dynamical systems." Proceedings of the national academy of sciences 113.15
 (2016): 3932-3937.
 
 <p align="center">
-  <img height="350" src="fig/sindy_model_card.png"><br>
+  <img height="350" src="fig/flow.png"><br>
   <i>Visual depiction of the SINDy architecture/process.</i>
 </p>
 
