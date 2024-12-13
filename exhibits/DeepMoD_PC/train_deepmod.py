@@ -1,7 +1,8 @@
 import jax
 from jax import random, jit
 import numpy as np
-from ngclearn import Context, numpy as jnp
+from ngclearn import Context
+import jax.numpy as jnp
 # print(jax.__version__)
 from deepmod import DeepMoD
 from ngclearn.utils.feature_dictionaries.polynomialLibrary import PolynomialLibrary
