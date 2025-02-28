@@ -296,7 +296,7 @@ class DeepMoD():
         self.model.reset()
         self.model.clamps(input, target)
 
-        z_codes = self.model._process(jnp.array([[self.dt * i, self.dt] for i in range(self.T)]))
+        self.model._process(jnp.array([[self.dt * i, self.dt] for i in range(self.T)]))
         self.model.evolve(t=self.T, dt=self.dt)
 
         return self.e0.mu.value, self.e0.L.value
