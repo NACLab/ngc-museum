@@ -121,7 +121,7 @@ for i in range(n_epochs):
 
     cov_cria = (coeff_track - coeff).mean()
     coeff_track = coeff
-    if jnp.abs(cov_cria) <= 5e-8:
+    if jnp.abs(cov_cria) <= 1e-5:
         print('model converget at', i, 'with coefficients \n', deepmod.thresholding().T)
         break
 print()
