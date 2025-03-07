@@ -1,0 +1,3 @@
+jax[cuda12]==0.4.28
+ngcsimlib==0.3b4
+ngclearn==1.2b3

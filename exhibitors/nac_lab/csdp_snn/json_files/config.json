@@ -1,0 +1,3 @@
+{
+	"logging" : {"logging_level" : "DEBUG", "logging_file": "logging/log.txt", "hide_console" : true}
+}

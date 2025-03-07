@@ -1,4 +1,4 @@
-# Event-Based STDP Spiking Neural Network
+# Event-Based STDP Spiking Neural Network (Tavanaei et al., 2018)
 
 <b>Version</b>: ngclearn==1.1.beta1, ngcsimlib==0.3.beta1
 
