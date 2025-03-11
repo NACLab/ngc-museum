@@ -1,13 +1,12 @@
 from ngclearn.utils.io_utils import makedir
-from ngclearn.utils.viz.raster import create_raster_plot
 from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit, nn
-from ngclearn.utils.model_utils import scanner
 from ngcsimlib.compilers import compile_command, wrap_command
 from ngcsimlib.context import Context
 from ngcsimlib.operations import summation
-from ngclearn.components import (VarTrace, BernoulliCell, SLIFCell, RateCell,
+from ngclearn.components import (VarTrace, BernoulliCell, SLIFCell, #RateCell,
                                  StaticSynapse, HebbianSynapse)
+from custom.rateCell import RateCell
 from custom.CSDPSynapse import CSDPSynapse
 from custom.goodnessModCell import GoodnessModCell
 from custom.maskedErrorCell import MaskedErrorCell as ErrorCell
