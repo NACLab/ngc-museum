@@ -33,7 +33,7 @@ that help ensure various models of biomimetic inference/learning and
 brain-inspired computing see application as well as inspire future lines of
 scientific inquiry.
 
-## Current Models in the Museum
+## Current Model Exhibits in the Museum
 <b>Models with Spiking Dynamics</b>:<br>
 1. Spiking neural network, trained with broadcast feedback alignment:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/bfa_snn">Model</a>,
