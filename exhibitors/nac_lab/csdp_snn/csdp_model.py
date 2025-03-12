@@ -4,15 +4,11 @@ from jax import numpy as jnp, random, jit, nn
 from ngcsimlib.compilers import compile_command, wrap_command
 from ngcsimlib.context import Context
 from ngcsimlib.operations import summation
-from ngclearn.components import (VarTrace, BernoulliCell, SLIFCell, #RateCell,
-                                 StaticSynapse, HebbianSynapse)
-from custom.rateCell import RateCell
-from custom.CSDPSynapse import CSDPSynapse
-from custom.goodnessModCell import GoodnessModCell
-from custom.maskedErrorCell import MaskedErrorCell as ErrorCell
+from ngclearn.components import (SLIFCell)
+from custom import (CSDPSynapse, HebbianSynapse, GoodnessModCell, RateCell, BernoulliCell,
+                    MaskedErrorCell as ErrorCell, VarTrace)
 from ngclearn.utils.model_utils import softmax
-from img_utils import csdp_deform #vrotate, rand_rotate,
-#from ngclearn.utils.model_utils import normalize_matrix
+from img_utils import csdp_deform #vrotate, rand_rotate
 import ngclearn.utils.weight_distribution as dist
 
 def reset_synapse(syn, batch_size, synapse_type="hebb"):
