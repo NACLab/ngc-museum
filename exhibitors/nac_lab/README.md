@@ -12,5 +12,5 @@ group. The focus of the lab's research is on developing models of cognition and 
 
 <b>Models with Graded Dynamics</b>:<br>
 1. Neural generative coding, a variant of predictive coding useful for generative modeling: 
-   <a href="">Model</a>, <a href="">Paper</a>
+   <a href="">Model</a>, <a href="https://www.nature.com/articles/s41467-022-29632-7">Paper</a>, <a href="">Tutorial</a>
 
