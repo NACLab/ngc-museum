@@ -4,7 +4,7 @@ import numpy as np
 from ngclearn import Context, numpy as jnp
 from sindy import Std_SINDy
 from ngclearn.utils.feature_dictionaries.polynomialLibrary import PolynomialLibrary as FunctLib
-from ngclearn.utils.diffeq.ode_solver import solve_ode
+from ngclearn.utils.diffeq.ode_utils import solve_ode
 from ngclearn.utils.diffeq.odes import (linear_2D, cubic_2D,
                                         linear_3D, lorenz)
 
