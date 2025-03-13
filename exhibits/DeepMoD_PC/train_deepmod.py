@@ -7,7 +7,7 @@ import jax.numpy as jnp
 from deepmod import DeepMoD
 from ngclearn.utils.feature_dictionaries.polynomialLibrary import PolynomialLibrary
 from ngclearn.utils.diffeq.odes import cubic_2D, linear_2D, lorenz, oscillator, linear_3D
-from ngclearn.utils.diffeq.ode_solver import solve_ode
+from ngclearn.utils.diffeq.ode_utils import solve_ode
 # -------------------------------------
 np.set_printoptions(suppress=True, precision=3)
 
