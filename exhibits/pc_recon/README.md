@@ -12,6 +12,8 @@ Friston, Karl. "Hierarchical models in the brain." PLoS computational biology 4.
 
 Ororbia, Alexander, and Daniel Kifer. "The neural coding framework for learning 
 generative models." Nature communications 13.1 (2022): 2064.
+
+Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a functional interpretation of some extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
 ```
 
 and, furthermore, incorporating the sparse kurtotic prior (over neural activities) from:
@@ -22,12 +24,10 @@ properties by learning a sparse code for natural images." Nature 381.6583
 (1996): 607-609.
 ```
 
-<!--
 <p align="center">
-  <img height="350" src="fig/pcn_arch.jpg"><br>
-  <i>Visual depiction of the PC architecture.</i>
+  <img height="150" src="fig/pc_estimator_rao1999.jpg"><br>
+  <i>Visual depiction of the PC reconstruction architecture (Rao & Ballard, 1999).</i>
 </p>
--->
 
 <!--
 This model is also discussed in the ngc-learn
