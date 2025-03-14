@@ -5,15 +5,19 @@
 This exhibit contains an implementation of the sparse coding models proposed
 and studied in:
 
+```
 Olshausen, B., Field, D. Emergence of simple-cell receptive field properties
 by learning a sparse code for natural images. Nature 381, 607–609 (1996).
+```
 
 and the model proposed in: 
 
+```
 Daubechies, Ingrid, Michel Defrise, and Christine De Mol. "An iterative
 thresholding algorithm for linear inverse problems with a sparsity constraint."
 Communications on Pure and Applied Mathematics: A Journal Issued by the
 Courant Institute of Mathematical Sciences 57.11 (2004): 1413-1457.
+```
 
 ## Running the Model's Simulation
 

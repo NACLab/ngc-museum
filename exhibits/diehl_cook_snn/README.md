@@ -5,9 +5,11 @@
 This exhibit contains an implementation of the spiking neuronal model proposed
 and studied in:
 
+```
 Diehl, Peter U., and Matthew Cook. "Unsupervised learning of digit recognition
 using spike-timing-dependent plasticity." Frontiers in computational
 neuroscience 9 (2015): 99.
+```
 
 ## Running the Model's Simulation
 

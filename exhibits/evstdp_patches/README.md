@@ -5,9 +5,11 @@
 This exhibit contains an implementation of the spiking neuronal model proposed
 and studied in:
 
+```
 Tavanaei, Amirhossein, Timothée Masquelier, and Anthony Maida.
 "Representation learning using event-based STDP." Neural Networks 105
 (2018): 294-303.
+```
 
 ## Running the Model's Simulation
 

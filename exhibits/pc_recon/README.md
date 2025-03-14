@@ -6,17 +6,21 @@ This exhibit contains an implementation of the predictive coding (PC) model spec
 for the task of reconstruction. This model is effectively a variant that embodies key 
 characteristics across several classical efforts, such as:
 
+```
 Friston, Karl. "Hierarchical models in the brain." PLoS computational biology 4.11 
 (2008): e1000211.
 
 Ororbia, Alexander, and Daniel Kifer. "The neural coding framework for learning 
 generative models." Nature communications 13.1 (2022): 2064.
+```
 
-incorporating the sparse kurtotic prior in:
+and, furthermore, incorporating the sparse kurtotic prior (over neural activities) from:
 
+```
 Olshausen, Bruno A., and David J. Field. "Emergence of simple-cell receptive field 
 properties by learning a sparse code for natural images." Nature 381.6583 
 (1996): 607-609.
+```
 
 <!--
 <p align="center">

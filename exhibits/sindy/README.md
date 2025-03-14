@@ -5,10 +5,12 @@
 This exhibit contains an implementation of the sparse identification of non-linear 
 dynamical systems(SINDy) model proposed and studied in:
 
+```
 Brunton, Steven L., Joshua L. Proctor, and J. Nathan Kutz. 
 "Discovering governing equations from data by sparse identification of nonlinear 
 dynamical systems." Proceedings of the national academy of sciences 113.15 
 (2016): 3932-3937.
+```
 
 <p align="center">
   <img height="350" src="fig/flow.png"><br>

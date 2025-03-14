@@ -6,9 +6,11 @@ This exhibit contains an implementation of the spiking neural network trained
 with broadcast feedback alignment (ngc-learn refers to this model as the
 BFA-SNN) proposed and studied in:
 
+```
 Samadi, Arash, Timothy P. Lillicrap, and Douglas B. Tweed. "Deep learning with
 dynamic spiking neurons and fixed feedback weights." Neural computation 29.3
 (2017): 578-602.
+```
 
 <p align="center">
   <img height="350" src="fig/bfasnn_arch.jpg"><br>

@@ -5,9 +5,11 @@
 This exhibit contains an implementation of the predictive coding (PC) model (
 also known as the predictive coding network or PCN) proposed and studied in:
 
+```
 Whittington, James CR, and Rafal Bogacz. "An approximation of the error
 backpropagation algorithm in a predictive coding network with local hebbian
 synaptic plasticity." Neural computation 29.5 (2017): 1229-1262.
+```
 
 <p align="center">
   <img height="350" src="fig/pcn_arch.jpg"><br>
