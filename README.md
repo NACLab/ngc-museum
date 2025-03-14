@@ -37,10 +37,10 @@ scientific inquiry.
 <b>Models with Spiking Dynamics</b>:<br>
 1. Spiking neural network, trained with broadcast feedback alignment:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/bfa_snn">Model</a>,
-   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_bfa.html">Walkthrough</a>
+   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_bfa.html">Walkthrough / Tutorial</a>
 2. Diehl and Cook spiking network, trained with spike-timing-dependent plasticity (STDP):
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/diehl_cook_snn">Model</a>,
-   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_dc.html">Walkthrough</a>
+   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_dc.html">Walkthrough / Tutorial</a>
 3. Patch-level spiking network, trained with event-driven STDP:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/evstdp_patches">Model</a>
 4. A self-supervised spiking neural circuit, trained via contrastive-signal dependent plasticity (CSDP):
@@ -49,16 +49,16 @@ scientific inquiry.
 <b>Models with Graded Dynamics</b>:<br>
 1. Discriminative predictive coding:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_discrim">Model</a>,
-   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_discrim.html">Walkthrough</a>
+   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_discrim.html">Walkthrough / Tutorial</a>
 2. Sparse coding (e.g., a Cauchy prior model &amp; ISTA), trained with 2-factor Hebbian learning:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/olshausen_sc">Model</a>, 
-   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sparse_coding.html">Walkthrough</a>
+   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sparse_coding.html">Walkthrough / Tutorial</a>
 3. Reconstructive predictive coding:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_recon">Model</a>
    <!--<a href="">Walkthrough</a>-->
 4. Sparse identification of nonlinear dynamics (SINDy): 
-   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/sindy">Model</a><!--, 
-   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sindy.html">Walkthrough</a>-->
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/sindy">Model</a>, 
+   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sindy.html">Walkthrough / Tutorial</a> 
 
 This package is distributed under the 3-Clause BSD license.<br>
 It is currently maintained by the
