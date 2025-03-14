@@ -47,13 +47,16 @@ scientific inquiry.
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibitors/nac_lab/csdp_snn">Model</a> <!--<a href="">Paper</a>-->
 
 <b>Models with Graded Dynamics</b>:<br>
-1. Discriminative Predictive Coding:
+1. Discriminative predictive coding:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_discrim">Model</a>,
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_discrim.html">Walkthrough</a>
 2. Sparse coding (e.g., a Cauchy prior model &amp; ISTA), trained with 2-factor Hebbian learning:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/olshausen_sc">Model</a>, 
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sparse_coding.html">Walkthrough</a>
-3. Sparse identification of nonlinear dynamics (SINDy): 
+3. Reconstructive predictive coding:
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_recon">Model</a>,
+   <!--<a href="">Walkthrough</a>-->
+4. Sparse identification of nonlinear dynamics (SINDy): 
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/sindy">Model</a><!--, 
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sindy.html">Walkthrough</a>-->
 
