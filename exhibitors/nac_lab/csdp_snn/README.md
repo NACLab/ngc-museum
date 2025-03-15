@@ -8,7 +8,7 @@ Alexander G. Ororbia. "Contrastive signal–dependent plasticity: Self-supervise
 
 <p align="center">
   <img height="300" src="fig/csdp_circuit.jpg"><br>
-  <i>Visual depiction of the SINDy architecture/process.</i>
+  <i>Visual depiction of a spiking cell (and connecting synapses) in a CSDP architecture/process.</i>
 </p>
 
 ## Running the Model's Simulation
