@@ -19,7 +19,7 @@ To train this implementation of SINDy, simply the run the provided Bash script a
 $ ./sim_csdp.sh 0 ## the integer is the index of the GPU
 ```
 
-which will execute and run the model simulation for CSDP-trained SNN. (Note that you can modify the `sim_csdp.sh` script to point to other datasets, beyond the MNIST and K-MNIST databases used in the original work.
+which will execute and run the model simulation for CSDP-trained SNN. (Note that you can modify the `sim_csdp.sh` script to point to other datasets, beyond the MNIST databas used in the original work. If KMNIST is to be used, you will need to download and place it in the correct spot, i.e., the `/data/` folder.)
 
 <!--
 This model is also discussed in the ngc-learn
