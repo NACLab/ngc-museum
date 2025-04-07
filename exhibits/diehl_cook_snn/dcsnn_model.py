@@ -1,13 +1,9 @@
-#from ngcsimlib.controller import Controller
 from ngclearn.utils.io_utils import makedir
-#from ngclearn.utils.viz.raster import create_raster_plot
 from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
-#from jax.lax import scan
 from ngclearn.utils.model_utils import scanner
 from ngcsimlib.context import Context
-#from ngcsimlib.compilers import compile_command, wrap_command
-from ngcsimlib.compilers.process import Process #, transition
+from ngcsimlib.compilers.process import Process
 from ngcsimlib.operations import summation
 from ngclearn.components.other.varTrace import VarTrace
 from ngclearn.components.input_encoders.poissonCell import PoissonCell
@@ -127,7 +123,6 @@ class DC_SNN():
                                    >> self.z1i.advance_state
                                    >> self.tr0.advance_state
                                    >> self.tr1.advance_state)
-                # self.circuit.wrap_and_add_command(jit(advance_process.pure), name="advance")
 
                 reset_process = (Process(name="reset_process")
                                  >> self.z0.reset
@@ -138,19 +133,14 @@ class DC_SNN():
                                  >> self.W1.reset
                                  >> self.W1ie.reset
                                  >> self.W1ei.reset)
-                # self.circuit.wrap_and_add_command(jit(reset_process.pure), name="reset")
 
                 evolve_process = (Process(name="evolve_process")
                                   >> self.W1.evolve)
-                # self.circuit.wrap_and_add_command(jit(evovle_process.pure), name="evolve")
-                # '''
                 
                 processes = (reset_process, advance_process, evolve_process)
                 self._dynamic(processes)
 
     def _dynamic(self, processes):## create dynamic commands for circuit
-        #from ngcsimlib.utils import get_current_context
-        #context = get_current_context()
         W1, z0, z1e = self.circuit.get_components("W1", "z0", "z1e")
         self.W1 = W1
         self.z0 = z0
@@ -158,8 +148,6 @@ class DC_SNN():
         reset_proc, advance_proc, evolve_proc = processes
 
         self.circuit.wrap_and_add_command(jit(reset_proc.pure), name="reset")
-        #self.circuit.wrap_and_add_command(jit(advance_proc.pure), name="advance")
-        #self.circuit.wrap_and_add_command(jit(evolve_proc.pure), name="evolve")
 
         @Context.dynamicCommand
         def norm():
@@ -199,13 +187,8 @@ class DC_SNN():
             model_directory: directory/path to saved model parameter/config values
         """
         with Context("Circuit") as self.circuit:
-
             self.circuit.load_from_dir(model_directory)
             processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
-            #self.circuit.wrap_and_add_command(reset_process.pure, name="run")
-
-            ##self.circuit.load_from_dir(model_directory)
-            ### note: redo scanner and anything using decorators
             self._dynamic(processes)
 
 
@@ -259,40 +242,13 @@ class DC_SNN():
         """
         batch_dim = obs.shape[0]
         assert batch_dim == 1 ## batch-length must be one for DC-SNN
-        z0, z1e, z1i, W1 = self.circuit.get_components("z0", "z1e", "z1i", "W1")
+        #z0, z1e, z1i, W1 = self.circuit.get_components("z0", "z1e", "z1i", "W1")
 
-        #'''
         self.circuit.reset()
         self.circuit.clamp(obs)
         out = self.circuit.process(
             jnp.array([[self.dt*i,self.dt] for i in range(self.T)])
         )
-        #'''
-
-        '''
-        out = []
-        self.circuit.reset()
-        #self.circuit.clamp(obs)
-        z0.inputs.set(obs)
-        for i in range(self.T):
-            #z0.inputs.set(obs)
-            self.circuit.advance(t=self.dt*i, dt=self.dt)
-            print(jnp.sum(z0.outputs.value))
-            print(jnp.sum(W1.outputs.value))
-            print(jnp.sum(z1e.j.value))
-            print("---")
-            if i == 2:
-                exit()
-            self.circuit.evolve(t=self.dt*i, dt=self.dt)
-            out.append(z1e.s.value)
-        out = jnp.concatenate(out, axis=0)
-        '''
-
         if self.wNorm > 0.:
             self.circuit.norm()
-        #print(jnp.sum(out))
-        # self.reset()
-        # self.z0.inputs.set(obs)
-        # out = self.circuit.process(jnp.array([[self.dt*i,self.dt] for i in range(self.T)]))
-        # self.W1.weights.set(normalize_matrix(self.W1.weights.value, 78.4, order=1, axis=0))
         return out
