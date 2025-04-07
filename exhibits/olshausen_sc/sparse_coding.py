@@ -150,9 +150,9 @@ class SparseCoding():
 
                 ## call the compiler to set up jit-i-fied commands and any
                 ## dynamically called command functions
-                self.dynamic(processes)
+                self._dynamic(processes)
 
-    def dynamic(self, processes): ## create dynamic commands for circuit
+    def _dynamic(self, processes): ## create dynamic commands for circuit
         W1, E1, e0, z1 = self.circuit.get_components("W1", "E1", "e0", "z1")
         self.W1 = W1
         self.e0 = e0
@@ -185,11 +185,12 @@ class SparseCoding():
         Args:
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
-        if params_only is True:
+        if params_only:
             model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
             self.W1.save(model_dir)
         else:
-            self.circuit.save_to_json(self.exp_dir, self.model_name) ## save current parameter arrays
+            self.circuit.save_to_json(self.exp_dir, model_name=self.model_name, overwrite=True)
+            #self.circuit.save_to_json(self.exp_dir, self.model_name)
 
     def load_from_disk(self, model_directory):
         """
@@ -198,10 +199,10 @@ class SparseCoding():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        with Context("Circuit") as circuit:
-            self.circuit = circuit
+        with Context("Circuit") as self.circuit:
             self.circuit.load_from_dir(model_directory)
-            self.dynamic()
+            processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
+            self._dynamic(processes)
 
     def get_synapse_stats(self):
         """

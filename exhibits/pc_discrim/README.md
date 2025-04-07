@@ -1,6 +1,6 @@
 # Discriminative Predictive Coding
 
-<b>Version</b>: ngclearn==1.1.beta1, ngcsimlib==0.3.beta1
+<b>Version</b>: ngclearn==2.0.0, ngcsimlib==1.0.0
 
 This exhibit contains an implementation of the predictive coding (PC) model (
 also known as the predictive coding network or PCN) proposed and studied in:

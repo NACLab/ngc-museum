@@ -92,16 +92,13 @@ class SNN():
 
                 processes = (reset_process, advance_process, evolve_process)
 
-                self.dynamic(processes)
+                self._dynamic(processes)
 
-    def dynamic(self, processes):## create dynamic commands for circuit
+    def _dynamic(self, processes):## create dynamic commands for circuit
         W1, z0, z1 = self.circuit.get_components("W1", "z0", "z1")
         self.W1 = W1
         self.z0 = z0
         self.z1 = z1
-        """
-        self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
-        """
 
         reset_proc, advance_proc, evolve_proc = processes
 
