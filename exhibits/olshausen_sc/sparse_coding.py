@@ -2,12 +2,9 @@ from ngclearn.utils.io_utils import makedir
 from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
 from ngclearn.utils.model_utils import scanner
-
-from ngcsimlib.compilers import compile_command, wrap_command
-
 from ngcsimlib.context import Context
-from ngcsimlib.commands import Command
-from ngclearn.components import GaussianErrorCell as ErrorCell, RateCell, HebbianSynapse, DenseSynapse
+from ngcsimlib.compilers.process import Process
+from ngclearn.components import GaussianErrorCell as ErrorCell, HebbianSynapse, DenseSynapse, RateCell
 from ngclearn.utils.model_utils import normalize_matrix
 import ngclearn.utils.weight_distribution as dist
 
@@ -134,24 +131,38 @@ class SparseCoding():
                 self.W1.pre << self.z1.zF
                 self.W1.post << self.e0.dmu
 
-                reset_cmd, reset_args = self.circuit.compile_by_key(
-                                            self.W1, self.E1, self.z1, self.e0,
-                                            compile_key="reset")
-                advance_cmd, advance_args = self.circuit.compile_by_key(
-                                                self.W1, self.E1, self.z1, self.e0,
-                                                compile_key="advance_state")
-                evolve_cmd, evolve_args = self.circuit.compile_by_key(self.W1, compile_key="evolve")
+                advance_process = (Process(name="advance_process")
+                                   >> self.W1.advance_state
+                                   >> self.E1.advance_state
+                                   >> self.z1.advance_state
+                                   >> self.e0.advance_state)
+
+                reset_process = (Process(name="reset_process")
+                                 >> self.W1.reset
+                                 >> self.E1.reset
+                                 >> self.z1.reset
+                                 >> self.e0.reset)
+
+                evolve_process = (Process(name="evolve_process")
+                                  >> self.W1.evolve)
+
+                processes = (reset_process, advance_process, evolve_process)
 
                 ## call the compiler to set up jit-i-fied commands and any
                 ## dynamically called command functions
-                self.dynamic()
+                self.dynamic(processes)
 
-    def dynamic(self): ## create dynamic commands for circuit
+    def dynamic(self, processes): ## create dynamic commands for circuit
         W1, E1, e0, z1 = self.circuit.get_components("W1", "E1", "e0", "z1")
         self.W1 = W1
         self.e0 = e0
         self.z1 = z1
         self.E1 = E1
+
+        reset_proc, advance_proc, evolve_proc = processes
+
+        self.circuit.wrap_and_add_command(jit(reset_proc.pure), name="reset")
+        self.circuit.wrap_and_add_command(jit(evolve_proc.pure), name="evolve")
 
         @Context.dynamicCommand
         def clamp(x):
@@ -161,15 +172,10 @@ class SparseCoding():
         def norm():
             W1.weights.set(normalize_matrix(W1.weights.value, 1., order=2, axis=1))
 
-        self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
-        self.circuit.add_command(wrap_command(jit(self.circuit.advance_state)), name="advance")
-        self.circuit.add_command(wrap_command(jit(self.circuit.evolve)), name="evolve")
-
         @scanner
         def process(compartment_values, args):
             _t, _dt = args
-            compartment_values = self.circuit.advance_state(
-                compartment_values, t=_t, dt=_dt)
+            compartment_values = advance_proc.pure(compartment_values, t=_t, dt=_dt)
             return compartment_values, compartment_values[self.z1.zF.path]
 
     def save_to_disk(self, params_only=False):
@@ -242,9 +248,6 @@ class SparseCoding():
             an array containing spike vectors (will be empty; length = 0 if
                 collect_spike_train is False)
         """
-        #batch_dim = obs.shape[0]
-        #assert batch_dim == 1 ## batch-length must be one for DC-SNN
-
         ## check and configure batch size
         ## note: we need to make the components in our model aware of the
         ##       typically dynamic batch size
@@ -252,28 +255,21 @@ class SparseCoding():
         self.z1.batch_size = obs.shape[0]
         self.W1.batch_size = obs.shape[0]
 
+        ########################################################################
         ## pin/tie feedback synapses to transpose of forward ones
         self.E1.weights.set(jnp.transpose(self.W1.weights.value))
         ## reset/set all components to their resting values / initial conditions
         self.circuit.reset()
-        ########################################################################
         ## Perform several E-steps
         self.circuit.clamp(obs)  ## clamp data to z0
-        z1_codes = self.circuit.process(jnp.array([[self.dt * i, self.dt]
-                                                  for i in range(self.T)]))
-        ## ---------------------------------------------------------------------
-        ## NOTE: the below commented-out code block also runs the above scanned E-step
-        ## loop an explicit, event-driven-like way; this gives more design control
-        ## at the cost of some simulation speed
-        # for ts in range(0, self.T):
-        #     self.circuit.clamp(obs) ## clamp data to z0
-        #     self.circuit.advance(t=ts * self.dt, dt=self.dt)
-        ## ---------------------------------------------------------------------
-
+        z1_codes = self.circuit.process(
+            jnp.array([[self.dt * i, self.dt] for i in range(self.T)])
+        )
         ## Perform (optional) M-step (scheduled synaptic updates)
         if adapt_synapses is True:
             self.circuit.evolve(t=self.T, dt=1.)
             self.circuit.norm() ## post-update synaptic normalization step
+        ########################################################################
 
         ## Post-processing / probing desired model outputs
         obs_mu = self.e0.mu.value  ## get settled prediction
