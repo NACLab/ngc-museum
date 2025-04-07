@@ -61,7 +61,6 @@ model = Model(subkeys[1], in_dim=in_dim, T=T, dt=dt)
 print("--- Starting Simulation ---") 
 
 model.save_to_disk()
-#sys.exit(0)
 
 sim_start_time = time.time() ## start time profiling
 
@@ -81,9 +80,12 @@ for i in range(n_iter):
 
         _S = model.process(obs=Xb, adapt_synapses=True)
 
+        # print(model.get_synapse_stats())
+        # exit()
+
         n_samps_seen += Xb.shape[0]
         print("\r Seen {} images...".format(n_samps_seen), end="")
-        if (j+1) % viz_mod == 0: ## save intermediate receptive fields
+        if (j+1) % viz_mod == 0 or j == n_batches-1: ## save intermediate receptive fields
             tend = time.time()
             print()
             print(" -> Time = {} s".format(tend - tstart))
