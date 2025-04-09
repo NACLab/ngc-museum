@@ -1,6 +1,6 @@
 # Reconstructive Predictive Coding
 
-<b>Version</b>: ngclearn==1.2.beta3, ngcsimlib==0.3.beta4
+<b>Version</b>: ngclearn==2.0.0, ngcsimlib==1.0.0
 
 This exhibit contains an implementation of the predictive coding (PC) model specialized 
 for the task of reconstruction. This model is effectively a variant that embodies key 
