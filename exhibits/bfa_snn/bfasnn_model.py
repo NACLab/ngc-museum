@@ -5,6 +5,7 @@ import time
 from ngclearn.utils.model_utils import scanner
 from ngcsimlib.compilers import wrap_command
 from ngcsimlib.context import Context
+from ngcsimlib.compilers.process import Process
 
 from ngclearn.utils.model_utils import softmax
 from ngclearn.components import (GaussianErrorCell, SLIFCell, BernoulliCell,
@@ -132,19 +133,45 @@ class BFA_SNN():
                 self.W2.pre << self.z1.s
                 self.W2.post << self.e2.dmu
 
-                reset_cmd, reset_args = self.circuit.compile_by_key(
-                                            self.z0, self.W1, self.z1,
-                                            self.W2, self.z2, self.e2,
-                                            self.E2, self.d1,
-                                            compile_key="reset")
-                advance_cmd, advance_args = self.circuit.compile_by_key(
-                                                self.z0, self.W1, self.z1,
-                                                self.W2, self.z2, self.e2,
-                                                self.E2, self.d1,
-                                                compile_key="advance_state")
-                evolve_cmd, evolve_args = self.circuit.compile_by_key(self.W1, self.W2, compile_key="evolve")
+                # reset_cmd, reset_args = self.circuit.compile_by_key(
+                #                             self.z0, self.W1, self.z1,
+                #                             self.W2, self.z2, self.e2,
+                #                             self.E2, self.d1,
+                #                             compile_key="reset")
+                # advance_cmd, advance_args = self.circuit.compile_by_key(
+                #                                 self.z0, self.W1, self.z1,
+                #                                 self.W2, self.z2, self.e2,
+                #                                 self.E2, self.d1,
+                #                                 compile_key="advance_state")
+                # evolve_cmd, evolve_args = self.circuit.compile_by_key(self.W1, self.W2, compile_key="evolve")
                 #self.circuit.add_command(wrap_command(jit(reset_cmd)), name="reset")
-                self.dynamic()
+                # Create Process objects for reset, advance, and evolve
+                reset_process = (Process(name="reset_process")
+                                >> self.z0.reset
+                                >> self.W1.reset
+                                >> self.z1.reset
+                                >> self.W2.reset
+                                >> self.z2.reset
+                                >> self.e2.reset
+                                >> self.E2.reset
+                                >> self.d1.reset)
+
+                advance_process = (Process(name="advance_process")
+                                  >> self.z0.advance_state
+                                  >> self.W1.advance_state
+                                  >> self.z1.advance_state
+                                  >> self.W2.advance_state
+                                  >> self.z2.advance_state
+                                  >> self.e2.advance_state
+                                  >> self.E2.advance_state
+                                  >> self.d1.advance_state)
+
+                evolve_process = (Process(name="evolve_process")
+                                 >> self.W1.evolve
+                                 >> self.W2.evolve)
+
+                processes = (reset_process, advance_process, evolve_process)
+                self._dynamic(processes)
 
             # reset, _ = reset.compile()
             # self.reset = wrapper(jit(reset))
@@ -153,9 +180,10 @@ class BFA_SNN():
             # evolve, _ = evolve.compile()
             # self.evolve = wrapper(jit(evolve))
 
-    def dynamic(self):## create dynamic commands for circuit
+    # def dynamic(self):## create dynamic commands for circuit
         #from ngcsimlib.utils import get_current_context
         #context = get_current_context()
+    def _dynamic(self, processes):
         z0, W1, z1, W2, z2, e2, E2, d1 = self.circuit.get_components("z0", "W1", "z1", "W2", "z2", "e2", "E2", "d1")
         self.z0 = z0
         self.W1 = W1
@@ -167,9 +195,14 @@ class BFA_SNN():
         self.d1 = d1
         self.nodes = [z0, W1, z1, W2, z2, e2, E2, d1]
 
-        self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
-        self.circuit.add_command(wrap_command(jit(self.circuit.advance_state)), name="advance")
-        self.circuit.add_command(wrap_command(jit(self.circuit.evolve)), name="evolve")
+        reset_process, advance_process, evolve_process = processes
+        # self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
+        # self.circuit.add_command(wrap_command(jit(self.circuit.advance_state)), name="advance")
+        # self.circuit.add_command(wrap_command(jit(self.circuit.evolve)), name="evolve")
+        self.circuit.wrap_and_add_command(jit(reset_process.pure), name="reset")
+        self.circuit.wrap_and_add_command(jit(evolve_process.pure), name="evolve")
+        self.circuit.wrap_and_add_command(jit(advance_process.pure), name="advance")
+        # reset_proc, advance_proc, evolve_proc = processes
 
         # @Context.dynamicCommand
         # def norm():
@@ -183,8 +216,8 @@ class BFA_SNN():
         @scanner
         def process(compartment_values, args):
             _t, _dt = args
-            compartment_values = self.circuit.advance_state(compartment_values, t=_t, dt=_dt)
-            compartment_values = self.circuit.evolve(compartment_values, t=_t, dt=_dt)
+            compartment_values = advance_process.pure(compartment_values, t=_t, dt=_dt)
+            compartment_values = evolve_process.pure(compartment_values, t=_t, dt=_dt)
             return compartment_values, (compartment_values[self.z1.s.path],
                                         compartment_values[self.z2.s.path])
 
@@ -196,14 +229,14 @@ class BFA_SNN():
         Args:
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
-        if params_only == True:
+        if params_only:
             model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
             self.W1.save(model_dir)
             self.z1.save(model_dir)
             self.W2.save(model_dir)
             self.z2.save(model_dir)
         else:
-            self.circuit.save_to_json(self.exp_dir, self.model_name) ## save current parameter arrays
+            self.circuit.save_to_json(self.exp_dir, self.model_name, overwrite=True) ## save current parameter arrays
 
     def load_from_disk(self, model_directory):
         """
@@ -212,12 +245,12 @@ class BFA_SNN():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        with Context("Circuit") as circuit:
-            self.circuit = circuit
+        with Context("Circuit") as self.circuit:
             #self.circuit.load_from_dir(self.exp_dir + "/{}".format(self.model_name))
             self.circuit.load_from_dir(model_directory)
             ## note: redo scanner and anything using decorators
-            self.dynamic()
+            processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
+            self._dynamic(processes)
 
     def get_synapse_stats(self):
         """

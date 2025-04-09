@@ -12,6 +12,7 @@ from ngclearn.utils.model_utils import scanner
 from ngclearn.modules.regression.lasso import Iterative_Lasso as Lasso
 from ngclearn.modules.regression.elastic_net import Iterative_ElasticNet as ElasticNet
 from ngclearn.modules.regression.ridge import Iterative_Ridge as Ridge
+from ngcsimlib.compilers.process import Process
 
 
 
@@ -226,25 +227,45 @@ class DeepMoD():
             self.W3.post << self.e2.dmu
 
             # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            advance_cmd, advance_args =self.model.compile_by_key(self.E2, self.E1,  ## execute feedback first
-                                                               self.z3, self.z2, self.z1,
-                                                               self.W3, self.W2, self.W1, ## execute prediction synapses
-                                                               self.e2, self.e1, self.e0, ## finally, execute error neurons
-                                                               compile_key="advance_state", name='advance_state')
+            # Replace compile_by_key with Process definitions
+            advance_process = (Process(name="advance_process")
+                              >> self.E2.advance_state  # execute feedback first
+                              >> self.E1.advance_state
+                              >> self.z3.advance_state
+                              >> self.z2.advance_state
+                              >> self.z1.advance_state
+                              >> self.W3.advance_state  # execute prediction synapses
+                              >> self.W2.advance_state
+                              >> self.W1.advance_state
+                              >> self.e2.advance_state  # finally, execute error neurons
+                              >> self.e1.advance_state
+                              >> self.e0.advance_state)
 
-            evolve_cmd, evolve_args =self.model.compile_by_key(self.W1, self.W2, self.W3,
-                                                             compile_key="evolve")
+            evolve_process = (Process(name="evolve_process")
+                             >> self.W1.evolve
+                             >> self.W2.evolve
+                             >> self.W3.evolve)
 
-            reset_cmd, reset_args =self.model.compile_by_key(self.z3, self.z2, self.z1,
-                                                           self.e2, self.e1, self.e0,
-                                                           self.W3, self.W2, self.W1,
-                                                           self.E1, self.E2,
-                                                           compile_key="reset")
+            reset_process = (Process(name="reset_process")
+                            >> self.z3.reset
+                            >> self.z2.reset
+                            >> self.z1.reset
+                            >> self.e2.reset
+                            >> self.e1.reset
+                            >> self.e0.reset
+                            >> self.W3.reset
+                            >> self.W2.reset
+                            >> self.W1.reset
+                            >> self.E1.reset
+                            >> self.E2.reset)
 
-            # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            self.dynamic()
+            # Store processes for use in dynamic method
+            processes = (reset_process, advance_process, evolve_process)
 
-    def dynamic(self):  ## create dynamic commands forself.circuit
+            # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            self._dynamic(processes)
+
+    def _dynamic(self, processes):  ## create dynamic commands for the model
         z3, z2, z1, W3, W2, W1, E1, E2, e0, e1, e2 = self.model.get_components("z3", "z2", "z1",
                                                                                  "W3", "W2", "W1",
                                                                                  "E1", "E2",
@@ -253,6 +274,8 @@ class DeepMoD():
         self.e0, self.e1, self.e2 = (e0, e1, e2)
         self.z1, self.z2, self.z3 = (z1, z2, z3)
         self.E1, self.E2 = (E1, E2)
+
+        reset_proc, advance_proc, evolve_proc = processes
 
         @Context.dynamicCommand
         def clamps(input, target):
@@ -276,15 +299,15 @@ class DeepMoD():
             self.E2.batch_size = batch_size
             self.E1.batch_size = batch_size
 
-        self.model.wrap_and_add_command(jit(self.model.evolve), name="evolve")
-        # self.model.wrap_and_add_command(jit(self.model.advance_state), name="advance")
-        self.model.wrap_and_add_command(jit(self.model.reset), name="reset")
+        # Replace the old command wrappers with the new process-based ones
+        self.model.wrap_and_add_command(jit(evolve_proc.pure), name="evolve")
+        self.model.wrap_and_add_command(jit(advance_proc.pure), name="advance_state")
+        self.model.wrap_and_add_command(jit(reset_proc.pure), name="reset")
 
         @scanner
         def _process(compartment_values, args):
             _t, _dt = args
-            compartment_values = self.model.advance_state(
-                compartment_values, t=_t, dt=_dt)
+            compartment_values = advance_proc.pure(compartment_values, t=_t, dt=_dt)
             return compartment_values, compartment_values[self.W1.outputs.path]
 
 
