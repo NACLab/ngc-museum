@@ -150,7 +150,7 @@ class DC_SNN():
         reset_proc, advance_proc, evolve_proc = processes
 
         self.circuit.wrap_and_add_command(jit(reset_proc.pure), name="reset")
-        self.circuit.wrap_and_add_command(jit(advance_proc.pure), name="advance")
+        #self.circuit.wrap_and_add_command(jit(advance_proc.pure), name="advance")
 
         @Context.dynamicCommand
         def norm():
