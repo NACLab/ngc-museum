@@ -1,4 +1,4 @@
-# DeepMod/Neural ODE: Deep learning driven Model Discovery
+# DeepMod/Neural ODE: Deep Learning-Driven Model Discovery
 
 <b>Version</b>: ngclearn==2.0.0, ngcsimlib==1.0.0
 
