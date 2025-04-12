@@ -5,8 +5,7 @@ import time
 from ngclearn.utils.model_utils import scanner
 from ngcsimlib.compilers import wrap_command
 from ngcsimlib.context import Context
-from ngcsimlib.compilers.process import Process
-
+from ngclearn.utils import JaxProcess
 from ngclearn.utils.model_utils import softmax
 from ngclearn.components import (GaussianErrorCell, SLIFCell, BernoulliCell,
                                  HebbianSynapse, StaticSynapse)
@@ -82,8 +81,6 @@ class BFA_SNN():
 
         ################################################################################
         ## Create/configure model and simulation object
-        # circuit = Controller()
-
         if loadDir is not None:
             ## build from disk
             self.load_from_disk(loadDir)
@@ -133,20 +130,8 @@ class BFA_SNN():
                 self.W2.pre << self.z1.s
                 self.W2.post << self.e2.dmu
 
-                # reset_cmd, reset_args = self.circuit.compile_by_key(
-                #                             self.z0, self.W1, self.z1,
-                #                             self.W2, self.z2, self.e2,
-                #                             self.E2, self.d1,
-                #                             compile_key="reset")
-                # advance_cmd, advance_args = self.circuit.compile_by_key(
-                #                                 self.z0, self.W1, self.z1,
-                #                                 self.W2, self.z2, self.e2,
-                #                                 self.E2, self.d1,
-                #                                 compile_key="advance_state")
-                # evolve_cmd, evolve_args = self.circuit.compile_by_key(self.W1, self.W2, compile_key="evolve")
-                #self.circuit.add_command(wrap_command(jit(reset_cmd)), name="reset")
                 # Create Process objects for reset, advance, and evolve
-                reset_process = (Process(name="reset_process")
+                reset_process = (JaxProcess(name="reset_process")
                                 >> self.z0.reset
                                 >> self.W1.reset
                                 >> self.z1.reset
@@ -156,7 +141,7 @@ class BFA_SNN():
                                 >> self.E2.reset
                                 >> self.d1.reset)
 
-                advance_process = (Process(name="advance_process")
+                advance_process = (JaxProcess(name="advance_process")
                                   >> self.z0.advance_state
                                   >> self.W1.advance_state
                                   >> self.z1.advance_state
@@ -166,23 +151,13 @@ class BFA_SNN():
                                   >> self.E2.advance_state
                                   >> self.d1.advance_state)
 
-                evolve_process = (Process(name="evolve_process")
+                evolve_process = (JaxProcess(name="evolve_process")
                                  >> self.W1.evolve
                                  >> self.W2.evolve)
 
                 processes = (reset_process, advance_process, evolve_process)
                 self._dynamic(processes)
 
-            # reset, _ = reset.compile()
-            # self.reset = wrapper(jit(reset))
-            # advance, _ = advance.compile()
-            # self.advance = wrapper(jit(advance))
-            # evolve, _ = evolve.compile()
-            # self.evolve = wrapper(jit(evolve))
-
-    # def dynamic(self):## create dynamic commands for circuit
-        #from ngcsimlib.utils import get_current_context
-        #context = get_current_context()
     def _dynamic(self, processes):
         z0, W1, z1, W2, z2, e2, E2, d1 = self.circuit.get_components("z0", "W1", "z1", "W2", "z2", "e2", "E2", "d1")
         self.z0 = z0
@@ -196,17 +171,9 @@ class BFA_SNN():
         self.nodes = [z0, W1, z1, W2, z2, e2, E2, d1]
 
         reset_process, advance_process, evolve_process = processes
-        # self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
-        # self.circuit.add_command(wrap_command(jit(self.circuit.advance_state)), name="advance")
-        # self.circuit.add_command(wrap_command(jit(self.circuit.evolve)), name="evolve")
         self.circuit.wrap_and_add_command(jit(reset_process.pure), name="reset")
         self.circuit.wrap_and_add_command(jit(evolve_process.pure), name="evolve")
         self.circuit.wrap_and_add_command(jit(advance_process.pure), name="advance")
-        # reset_proc, advance_proc, evolve_proc = processes
-
-        # @Context.dynamicCommand
-        # def norm():
-        #     W1.weights.set(normalize_matrix(W1.weights.value, self.wNorm, order=1, axis=0))
 
         @Context.dynamicCommand
         def clamp(x, y):
@@ -246,9 +213,7 @@ class BFA_SNN():
             model_directory: directory/path to saved model parameter/config values
         """
         with Context("Circuit") as self.circuit:
-            #self.circuit.load_from_dir(self.exp_dir + "/{}".format(self.model_name))
             self.circuit.load_from_dir(model_directory)
-            ## note: redo scanner and anything using decorators
             processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
             self._dynamic(processes)
 
@@ -264,9 +229,10 @@ class BFA_SNN():
         msg = "W1.n = {}  W2.n = {}".format(jnp.linalg.norm(_W1), jnp.linalg.norm(_W2))
         return msg
 
-    def process(self, obs, lab, adapt_synapses=True, collect_spike_train=False,
-                label_dist_estimator="spikes", get_latent_rates=False,
-                input_gain=0.25):
+    def process(
+            self, obs, lab, adapt_synapses=True, collect_spike_train=False, label_dist_estimator="spikes", 
+            get_latent_rates=False, input_gain=0.25
+    ):
         """
         Processes an observation (sensory stimulus pattern) for a fixed
         stimulus window time T. Note that the observed pattern will be converted
@@ -309,31 +275,19 @@ class BFA_SNN():
         rGamma = 1.
         _S = []
         if get_latent_rates == True:
-            # _S = jnp.zeros((obs.shape[0], self.circuit.components["z1"].n_units))
             _S = jnp.zeros((obs.shape[0], self.z1.n_units))
-        # yMu = jnp.zeros((obs.shape[0], self.circuit.components["z2"].n_units))
         yMu = jnp.zeros((obs.shape[0], self.z2.n_units))
         yCnt = yMu + 0
-        #print(">> RESET START")
         self.circuit.reset()
-        #print(">> RESET DONE")
         T_learn = 0.
         for ts in range(1, self.T):
-            #print(">> CLAMP START")
             self.circuit.clamp(_obs, lab)
-            #print(">> CLAMP DONE")
-            #print(">> ADVANCE START")
             self.circuit.advance(t=ts*self.dt, dt=self.dt)
-
-            #print(">> ADVANCE DONE")
             curr_t = ts * self.dt ## track current time
 
             if adapt_synapses == True:
                 if curr_t > self.burnin_T:
-                    #print(">> ADVANCE DONE")
                     self.circuit.evolve(t=ts*self.dt, dt=self.dt)
-
-                    #print(">> EVOVLE DONE")
             yCnt = _add(self.z2.s.value, yCnt)
 
             ## estimate output distribution
@@ -350,44 +304,8 @@ class BFA_SNN():
                 _S = _add(_S, self.z1.s.value)
             else:
                 _S.append(self.z1.s.value)
-
-        ## viet's old code
-        # _S = []
-        # if get_latent_rates == True:
-        #     # _S = jnp.zeros((obs.shape[0], self.circuit.components["z1"].n_units))
-        #     _S = jnp.zeros((obs.shape[0], self.z1.n_units))
-        # # yMu = jnp.zeros((obs.shape[0], self.circuit.components["z2"].n_units))
-        # yMu = jnp.zeros((obs.shape[0], self.z2.n_units))
-        # yCnt = yMu + 0
-        # self.reset()
-        # T_learn = 0.
-        # for ts in range(1, self.T):
-        #     # print(f"---- [TIME {ts}] ----")
-        #     self.z0.inputs.set(_obs)
-        #     self.e2.target.set(lab)
-        #     # print(f"[Step {ts}] z0.inputs: {self.z0.outputs.value.shape}, W1.outputs: {self.W1.outputs.value}, z1.s: {self.z1.s.value.shape}")
-        #     self.advance(ts*self.dt, self.dt)
-        #     curr_t = ts * self.dt ## track current time
-        #     if adapt_synapses == True:
-        #         if curr_t > self.burnin_T:
-        #             self.evolve(self.T, self.dt)
-        #     yCnt = _add(self.z2.s.value, yCnt)
-        #     ## estimate output distribution
-        #     if curr_t > self.burnin_T:
-        #         T_learn += 1.
-        #         if label_dist_estimator == "current":
-        #             yMu = _add(self.z2.j.value, yMu)
-        #         elif label_dist_estimator == "voltage":
-        #             yMu = _add(self.z2.v.value, yMu)
-        #         else:
-        #             yMu = _add(self.z2.s.value, yMu)
-        #     ## collect internal/hidden spikes at t
-        #     if get_latent_rates == True:
-        #         _S = _add(_S, self.z1.s.value)
-        #     else:
-        #         _S.append(self.z1.s.value)
-
-        _yMu = softmax(yMu/T_learn) #self.T) ## estimate approximate label distribution
+        
+        _yMu = softmax(yMu/T_learn) ## estimate approximate label distribution
         if get_latent_rates == True:
             _S = (_S * rGamma)/self.T
 
