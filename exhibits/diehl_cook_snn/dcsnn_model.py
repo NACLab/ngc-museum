@@ -3,7 +3,8 @@ from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
 from ngclearn.utils.model_utils import scanner
 from ngcsimlib.context import Context
-from ngcsimlib.compilers.process import Process
+#from ngcsimlib.compilers.process import Process
+from ngclearn.utils import JaxProcess
 from ngcsimlib.operations import summation
 from ngclearn.components.other.varTrace import VarTrace
 from ngclearn.components.input_encoders.poissonCell import PoissonCell
@@ -114,7 +115,7 @@ class DC_SNN():
                 self.W1.postTrace << self.tr1.trace
                 self.W1.postSpike << self.z1e.s
 
-                advance_process = (Process(name="advance_process")
+                advance_process = (JaxProcess(name="advance_process")
                                    >> self.W1.advance_state
                                    >> self.W1ie.advance_state
                                    >> self.W1ei.advance_state
@@ -122,9 +123,10 @@ class DC_SNN():
                                    >> self.z1e.advance_state
                                    >> self.z1i.advance_state
                                    >> self.tr0.advance_state
-                                   >> self.tr1.advance_state)
-
-                reset_process = (Process(name="reset_process")
+                                   >> self.tr1.advance_state
+                                   >> self.W1.evolve)
+                self.advance_proc = advance_process
+                reset_process = (JaxProcess(name="reset_process")
                                  >> self.z0.reset
                                  >> self.z1e.reset
                                  >> self.z1i.reset
@@ -133,10 +135,10 @@ class DC_SNN():
                                  >> self.W1.reset
                                  >> self.W1ie.reset
                                  >> self.W1ei.reset)
-
-                evolve_process = (Process(name="evolve_process")
+               
+                evolve_process = (JaxProcess(name="evolve_process")
                                   >> self.W1.evolve)
-                
+                self.evolve_proc = evolve_process 
                 processes = (reset_process, advance_process, evolve_process)
                 self._dynamic(processes)
 
@@ -148,6 +150,7 @@ class DC_SNN():
         reset_proc, advance_proc, evolve_proc = processes
 
         self.circuit.wrap_and_add_command(jit(reset_proc.pure), name="reset")
+        self.circuit.wrap_and_add_command(jit(advance_proc.pure), name="advance")
 
         @Context.dynamicCommand
         def norm():
@@ -157,12 +160,14 @@ class DC_SNN():
         def clamp(x):
             z0.inputs.set(x)
 
+        '''
         @scanner
         def process(compartment_values, args):
             _t, _dt = args
             compartment_values = advance_proc.pure(compartment_values, t=_t, dt=_dt)
             compartment_values = evolve_proc.pure(compartment_values, t=_t, dt=_dt)
             return compartment_values, compartment_values[self.z1e.s.path]
+        '''
 
     def save_to_disk(self, params_only=False):
         """
@@ -228,7 +233,7 @@ class DC_SNN():
         Note that this model assumes batch sizes of one (online learning).
 
         Args:
-            obs: observed pattern to have spiking model process
+            obs: observed pattern to input to this spiking neural model
 
             adapt_synapses: if True, synaptic efficacies will be adapted in
                 accordance with trace-based spike-timing-dependent plasticity
@@ -242,13 +247,17 @@ class DC_SNN():
         """
         batch_dim = obs.shape[0]
         assert batch_dim == 1 ## batch-length must be one for DC-SNN
-        #z0, z1e, z1i, W1 = self.circuit.get_components("z0", "z1e", "z1i", "W1")
+        z0, z1e, z1i, W1 = self.circuit.get_components("z0", "z1e", "z1i", "W1")
 
         self.circuit.reset()
         self.circuit.clamp(obs)
+        '''
         out = self.circuit.process(
             jnp.array([[self.dt*i,self.dt] for i in range(self.T)])
         )
+        '''
+        state_data = self.advance_proc.scan(compartments_to_monitor=[z1e.s], dt=self.dt, t=[i*self.dt for i in range(self.T)])
+        out = state_data[1][0] ## grab stacked excitatory spike train
         if self.wNorm > 0.:
             self.circuit.norm()
         return out
