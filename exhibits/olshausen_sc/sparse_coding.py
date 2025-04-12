@@ -3,7 +3,7 @@ from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
 from ngclearn.utils.model_utils import scanner
 from ngcsimlib.context import Context
-from ngcsimlib.compilers.process import Process
+from ngclearn.utils import JaxProcess
 from ngclearn.components import GaussianErrorCell as ErrorCell, HebbianSynapse, DenseSynapse, RateCell
 from ngclearn.utils.model_utils import normalize_matrix
 import ngclearn.utils.weight_distribution as dist
@@ -131,19 +131,19 @@ class SparseCoding():
                 self.W1.pre << self.z1.zF
                 self.W1.post << self.e0.dmu
 
-                advance_process = (Process(name="advance_process")
+                advance_process = (JaxProcess(name="advance_process")
                                    >> self.W1.advance_state
                                    >> self.E1.advance_state
                                    >> self.z1.advance_state
                                    >> self.e0.advance_state)
 
-                reset_process = (Process(name="reset_process")
+                reset_process = (JaxProcess(name="reset_process")
                                  >> self.W1.reset
                                  >> self.E1.reset
                                  >> self.z1.reset
                                  >> self.e0.reset)
 
-                evolve_process = (Process(name="evolve_process")
+                evolve_process = (JaxProcess(name="evolve_process")
                                   >> self.W1.evolve)
 
                 processes = (reset_process, advance_process, evolve_process)

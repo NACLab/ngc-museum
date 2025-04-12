@@ -3,21 +3,20 @@ from jax import numpy as jnp, random, jit
 from ngclearn.utils.model_utils import scanner
 
 from ngcsimlib.context import Context
+from ngclearn.utils import JaxProcess
 from ngcsimlib.compilers import wrap_command, compile_command
 from ngclearn.components import (RateCell, HebbianSynapse,
-                                 GaussianErrorCell,
-                                 StaticSynapse)
+                                 GaussianErrorCell, StaticSynapse)
 import ngclearn.utils.weight_distribution as dist
 from ngclearn.utils.model_utils import normalize_matrix
 from ngclearn.utils.viz.synapse_plot import visualize
-from ngcsimlib.compilers.process import Process
 
 class PCRecon():
     """
     Structure for constructing a predictive coding (PC) model for reconstruction tasks.
 
     Note this model imposes a laplacian prior to induce sparsity in the latent activities
-    z1, z2, z3 (the latent codebook). Synapses are initialized from a (He initialization) gaussian
+    z1, z2, z3 (the latent codebooks). Synapses are initialized from a (He initialization) gaussian
     distribution with std=sqrt(2/hidden_dim).
 
     This model would be named, under the NGC computational framework naming convention
@@ -167,28 +166,7 @@ class PCRecon():
                 self.E3.inputs << self.e2.dmu
                 self.z3.j << self.E3.outputs
 
-                # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                # advance_cmd, advance_args = self.circuit.compile_by_key(
-                #     self.E1, self.E2, self.E3, ## execute feedback first
-                #      self.z3, self.z2, self.z1, ## execute state neurons
-                #      self.W3, self.W2, self.W1, ## execute prediction synapses
-                #      self.e2, self.e1, self.e0, ## finally, execute error neurons
-                #      compile_key="advance_state", name='advance_state'
-                # )
-                # evolve_cmd, evolve_args = self.circuit.compile_by_key(
-                #     self.W1, self.W2, self.W3,
-                #     compile_key="evolve", name='evolve'
-                # )
-                # reset_cmd, reset_args = self.circuit.compile_by_key(
-                #     self.z3, self.z2, self.z1,
-                #     self.e2, self.e1, self.e0,
-                #     self.W1, self.W2, self.W3,
-                #     self.E1, self.E2, self.E3,
-                #     compile_key="reset", name='reset'
-                # )
-                # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-                reset_process = (Process(name="reset_process")
+                reset_process = (JaxProcess(name="reset_process")
                                 >> self.z3.reset
                                 >> self.z2.reset
                                 >> self.z1.reset
@@ -201,7 +179,7 @@ class PCRecon():
                                 >> self.E1.reset
                                 >> self.E2.reset
                                 >> self.E3.reset)
-                advance_process = (Process(name="advance_process")
+                advance_process = (JaxProcess(name="advance_process")
                                 >> self.E1.advance_state
                                 >> self.E2.advance_state
                                 >> self.E3.advance_state
@@ -214,7 +192,7 @@ class PCRecon():
                                 >> self.e2.advance_state
                                 >> self.e1.advance_state
                                 >> self.e0.advance_state)
-                evolve_process = (Process(name="evolve_process")
+                evolve_process = (JaxProcess(name="evolve_process")
                                 >> self.W1.evolve
                                 >> self.W2.evolve
                                 >> self.W3.evolve)
@@ -244,10 +222,6 @@ class PCRecon():
             W2.weights.set(normalize_matrix(W2.weights.value, 1., order=2, axis=1))
             W3.weights.set(normalize_matrix(W3.weights.value, 1., order=2, axis=1))
 
-
-        # self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
-        # self.circuit.add_command(wrap_command(jit(self.circuit.advance_state)), name="advance")
-        # self.circuit.add_command(wrap_command(jit(self.circuit.evolve)), name="evolve")
         reset_process, advance_process, evolve_process = processes
         self.circuit.wrap_and_add_command(jit(reset_process.pure), name="reset")
         self.circuit.wrap_and_add_command(jit(evolve_process.pure), name="evolve")
@@ -389,7 +363,7 @@ class PCRecon():
         if adapt_synapses:
             self.circuit.evolve(t=self.T, dt=1.)
             self.circuit.norm()
-
+        ########################################################################
         ## Post-processing / probing desired model outputs
         obs_mu = self.e0.mu.value  ## get reconstructed signal
         L0 = self.e0.L.value  ## calculate reconstruction loss

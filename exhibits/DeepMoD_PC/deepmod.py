@@ -12,8 +12,7 @@ from ngclearn.utils.model_utils import scanner
 from ngclearn.modules.regression.lasso import Iterative_Lasso as Lasso
 from ngclearn.modules.regression.elastic_net import Iterative_ElasticNet as ElasticNet
 from ngclearn.modules.regression.ridge import Iterative_Ridge as Ridge
-from ngcsimlib.compilers.process import Process
-
+from ngclearn.utils import JaxProcess
 
 
 class DeepMoD():
@@ -228,7 +227,7 @@ class DeepMoD():
 
             # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             # Replace compile_by_key with Process definitions
-            advance_process = (Process(name="advance_process")
+            advance_process = (JaxProcess(name="advance_process")
                               >> self.E2.advance_state  # execute feedback first
                               >> self.E1.advance_state
                               >> self.z3.advance_state
@@ -241,12 +240,12 @@ class DeepMoD():
                               >> self.e1.advance_state
                               >> self.e0.advance_state)
 
-            evolve_process = (Process(name="evolve_process")
+            evolve_process = (JaxProcess(name="evolve_process")
                              >> self.W1.evolve
                              >> self.W2.evolve
                              >> self.W3.evolve)
 
-            reset_process = (Process(name="reset_process")
+            reset_process = (JaxProcess(name="reset_process")
                             >> self.z3.reset
                             >> self.z2.reset
                             >> self.z1.reset
@@ -266,10 +265,9 @@ class DeepMoD():
             self._dynamic(processes)
 
     def _dynamic(self, processes):  ## create dynamic commands for the model
-        z3, z2, z1, W3, W2, W1, E1, E2, e0, e1, e2 = self.model.get_components("z3", "z2", "z1",
-                                                                                 "W3", "W2", "W1",
-                                                                                 "E1", "E2",
-                                                                                 "e0", "e1", "e2")
+        z3, z2, z1, W3, W2, W1, E1, E2, e0, e1, e2 = self.model.get_components(
+            "z3", "z2", "z1", "W3", "W2", "W1", "E1", "E2", "e0", "e1", "e2"
+        )
         self.W1, self.W2, self.W3 = (W1, W2, W3)
         self.e0, self.e1, self.e2 = (e0, e1, e2)
         self.z1, self.z2, self.z3 = (z1, z2, z3)

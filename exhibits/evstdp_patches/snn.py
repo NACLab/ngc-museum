@@ -3,7 +3,7 @@ from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
 from ngclearn.utils.model_utils import scanner
 from ngcsimlib.context import Context
-from ngcsimlib.compilers.process import Process
+from ngclearn.utils import JaxProcess
 from ngclearn.components.input_encoders.bernoulliCell import BernoulliCell
 from ngclearn.components.synapses.hebbian.eventSTDPSynapse import EventSTDPSynapse
 from ngclearn.components.other.expKernel import ExpKernel
@@ -75,19 +75,19 @@ class SNN():
                 self.W1.pre_tols << self.z0.tols #self.W1.preSpike << self.z0.outputs
                 self.W1.postSpike << self.z1.s
 
-                advance_process = (Process(name="advance_process")
+                advance_process = (JaxProcess(name="advance_process")
                                    >> self.W1.advance_state
                                    >> self.z0.advance_state
                                    >> self.k0.advance_state
                                    >> self.z1.advance_state)
 
-                reset_process = (Process(name="reset_process")
+                reset_process = (JaxProcess(name="reset_process")
                                  >> self.z0.reset
                                  >> self.k0.reset
                                  >> self.z1.reset
                                  >> self.W1.reset)
 
-                evolve_process = (Process(name="evolve_process")
+                evolve_process = (JaxProcess(name="evolve_process")
                                   >> self.W1.evolve)
 
                 processes = (reset_process, advance_process, evolve_process)

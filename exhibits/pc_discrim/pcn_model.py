@@ -1,7 +1,7 @@
 from ngclearn.utils.model_utils import scanner
 from ngcsimlib.compilers import compile_command, wrap_command
 from ngcsimlib.context import Context
-from ngcsimlib.compilers.process import Process
+from ngclearn.utils import JaxProcess
 from ngclearn.utils.io_utils import makedir
 from jax import numpy as jnp, random, jit
 from ngclearn.components import GaussianErrorCell as ErrorCell, RateCell, HebbianSynapse, StaticSynapse
@@ -162,7 +162,7 @@ class PCN():
                 ## wire q3 to qe3
                 self.eq3.target << self.q3.z
 
-                advance_process = (Process(name="advance_process")
+                advance_process = (JaxProcess(name="advance_process")
                                    >> self.E2.advance_state
                                    >> self.E3.advance_state
                                    >> self.z0.advance_state
@@ -176,7 +176,7 @@ class PCN():
                                    >> self.e2.advance_state
                                    >> self.e3.advance_state)
 
-                reset_process = (Process(name="reset_process")
+                reset_process = (JaxProcess(name="reset_process")
                                  >> self.q0.reset
                                  >> self.q1.reset
                                  >> self.q2.reset
@@ -190,12 +190,12 @@ class PCN():
                                  >> self.e2.reset
                                  >> self.e3.reset)
 
-                evolve_process = (Process(name="evolve_process")
+                evolve_process = (JaxProcess(name="evolve_process")
                                   >> self.W1.evolve
                                   >> self.W2.evolve
                                   >> self.W3.evolve)
 
-                project_process = (Process(name="project_process")
+                project_process = (JaxProcess(name="project_process")
                                    >> self.q0.advance_state
                                    >> self.Q1.advance_state
                                    >> self.q1.advance_state
