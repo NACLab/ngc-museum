@@ -64,9 +64,10 @@ dkey, *subkeys = random.split(dkey, 10)
 
 ## build model
 print("--- Building Model ---")
-model = PCN(subkeys[1], x_dim, y_dim, hid1_dim=512, hid2_dim=512, T=20,
-            dt=1., tau_m=20., act_fx="sigmoid", eta=0.001, exp_dir="exp",
-            model_name="pcn")
+model = PCN(
+    subkeys[1], x_dim, y_dim, hid1_dim=512, hid2_dim=512, T=20, dt=1., tau_m=25., act_fx="sigmoid", eta=0.001,
+    exp_dir="exp", model_name="pcn"
+)
 model.save_to_disk() # save final state of synapses to disk
 print("--- Starting Simulation ---")
 
@@ -74,7 +75,7 @@ def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference
     n_batches = int(Xdev.shape[0]/mb_size)
 
     n_samp_seen = 0
-    nll = 0. ## negative Categorical log liklihood
+    nll = 0. ## negative Categorical log likelihood
     acc = 0. ## accuracy
     for j in range(n_batches):
         ## extract data block/batch
@@ -109,7 +110,7 @@ if verbosity >= 2:
 trAcc_set.append(tr_acc) ## random guessing is where models typically start
 acc_set.append(acc)
 efe_set.append(-2000.)
-jnp.save("exp/dev_acc.npy", jnp.asarray(acc_set))
+jnp.save("exp/acc.npy", jnp.asarray(acc_set))
 jnp.save("exp/efe.npy", jnp.asarray(efe_set))
 
 for i in range(n_iter):

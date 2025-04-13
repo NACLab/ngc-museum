@@ -1,6 +1,7 @@
 from ngclearn.utils.model_utils import scanner
 from ngcsimlib.compilers import compile_command, wrap_command
 from ngcsimlib.context import Context
+from ngclearn.utils import JaxProcess
 from ngclearn.utils.io_utils import makedir
 from jax import numpy as jnp, random, jit
 from ngclearn.components import GaussianErrorCell as ErrorCell, RateCell, HebbianSynapse, StaticSynapse
@@ -69,37 +70,38 @@ class PCN():
         else:
             with Context("Circuit") as self.circuit:
                 self.z0 = RateCell("z0", n_units=in_dim, tau_m=0., act_fx="identity")
-                self.z1 = RateCell("z1", n_units=hid1_dim, tau_m=tau_m, act_fx=act_fx,
-                                   prior=("gaussian", 0.), integration_type="euler")
+                self.z1 = RateCell(
+                    "z1", n_units=hid1_dim, tau_m=tau_m, act_fx=act_fx, prior=("gaussian", 0.),
+                    integration_type="euler"
+                )
                 self.e1 = ErrorCell("e1", n_units=hid1_dim)
-                self.z2 = RateCell("z2", n_units=hid2_dim, tau_m=tau_m, act_fx=act_fx,
-                                   prior=("gaussian", 0.), integration_type="euler")
+                self.z2 = RateCell(
+                    "z2", n_units=hid2_dim, tau_m=tau_m, act_fx=act_fx, prior=("gaussian", 0.),
+                    integration_type="euler"
+                )
                 self.e2 = ErrorCell("e2", n_units=hid2_dim)
                 self.z3 = RateCell("z3", n_units=out_dim, tau_m=0., act_fx="identity")
                 self.e3 = ErrorCell("e3", n_units=out_dim)
                 ### set up generative/forward synapses
-                self.W1 = HebbianSynapse("W1", shape=(in_dim, hid1_dim), eta=eta,
-                                         weight_init=dist.uniform(amin=wlb, amax=wub),
-                                         bias_init=dist.constant(value=0.), w_bound=0.,
-                                         optim_type=optim_type, sign_value=-1.,
-                                         key=subkeys[4])
-                self.W2 = HebbianSynapse("W2", shape=(hid1_dim, hid2_dim), eta=eta,
-                                         weight_init=dist.uniform(amin=wlb, amax=wub),
-                                         bias_init=dist.constant(value=0.), w_bound=0.,
-                                         optim_type=optim_type, sign_value=-1.,
-                                         key=subkeys[5])
-                self.W3 = HebbianSynapse("W3", shape=(hid2_dim, out_dim), eta=eta,
-                                         weight_init=dist.uniform(amin=wlb, amax=wub),
-                                         bias_init=dist.constant(value=0.), w_bound=0.,
-                                         optim_type=optim_type, sign_value=-1.,
-                                         key=subkeys[6])
+                self.W1 = HebbianSynapse(
+                    "W1", shape=(in_dim, hid1_dim), eta=eta, weight_init=dist.uniform(amin=wlb, amax=wub),
+                    bias_init=dist.constant(value=0.), w_bound=0., optim_type=optim_type, sign_value=-1., key=subkeys[4]
+                )
+                self.W2 = HebbianSynapse(
+                    "W2", shape=(hid1_dim, hid2_dim), eta=eta, weight_init=dist.uniform(amin=wlb, amax=wub),
+                    bias_init=dist.constant(value=0.), w_bound=0., optim_type=optim_type, sign_value=-1., key=subkeys[5]
+                )
+                self.W3 = HebbianSynapse(
+                    "W3", shape=(hid2_dim, out_dim), eta=eta, weight_init=dist.uniform(amin=wlb, amax=wub),
+                    bias_init=dist.constant(value=0.), w_bound=0., optim_type=optim_type, sign_value=-1., key=subkeys[6]
+                )
                 ## set up feedback/error synapses
-                self.E2 = StaticSynapse("E2", shape=(hid2_dim, hid1_dim), 
-                                         weight_init=dist.uniform(amin=wlb, amax=wub),
-                                         key=subkeys[4])
-                self.E3 = StaticSynapse("E3", shape=(out_dim, hid2_dim), 
-                                        weight_init=dist.uniform(amin=wlb, amax=wub),
-                                        key=subkeys[5])
+                self.E2 = StaticSynapse(
+                    "E2", shape=(hid2_dim, hid1_dim), weight_init=dist.uniform(amin=wlb, amax=wub), key=subkeys[4]
+                )
+                self.E3 = StaticSynapse(
+                    "E3", shape=(out_dim, hid2_dim), weight_init=dist.uniform(amin=wlb, amax=wub), key=subkeys[5]
+                )
 
                 ## wire z0 to e1.mu via W1
                 self.W1.inputs << self.z0.zF
@@ -140,15 +142,15 @@ class PCN():
                 self.q2 = RateCell("q2", n_units=hid2_dim, tau_m=0., act_fx=act_fx)
                 self.q3 = RateCell("q3", n_units=out_dim, tau_m=0., act_fx="identity")
                 self.eq3 = ErrorCell("eq3", n_units=out_dim)
-                self.Q1 = StaticSynapse("Q1", shape=(in_dim, hid1_dim),
-                                        bias_init=dist.constant(value=0.),
-                                        key=subkeys[0])
-                self.Q2 = StaticSynapse("Q2", shape=(hid1_dim, hid2_dim),
-                                        bias_init=dist.constant(value=0.),
-                                        key=subkeys[0])
-                self.Q3 = StaticSynapse("Q3", shape=(hid2_dim, out_dim),
-                                        bias_init=dist.constant(value=0.),
-                                        key=subkeys[0])
+                self.Q1 = StaticSynapse(
+                    "Q1", shape=(in_dim, hid1_dim), bias_init=dist.constant(value=0.), key=subkeys[0]
+                )
+                self.Q2 = StaticSynapse(
+                    "Q2", shape=(hid1_dim, hid2_dim), bias_init=dist.constant(value=0.), key=subkeys[0]
+                )
+                self.Q3 = StaticSynapse(
+                    "Q3", shape=(hid2_dim, out_dim), bias_init=dist.constant(value=0.), key=subkeys[0]
+                )
                 ## wire q0 -(Q1)-> q1, q1 -(Q2)-> q2, q2 -(Q3)-> q3
                 self.Q1.inputs << self.q0.zF
                 self.q1.j << self.Q1.outputs
@@ -160,27 +162,54 @@ class PCN():
                 ## wire q3 to qe3
                 self.eq3.target << self.q3.z
 
-                reset_cmd, reset_args = self.circuit.compile_by_key(
-                                                self.q0, self.q1, self.q2, self.q3, self.eq3,
-                                                self.z0, self.z1, self.z2, self.z3,
-                                                self.e1, self.e2, self.e3,
-                                            compile_key="reset")
-                advance_cmd, advance_args = self.circuit.compile_by_key(
-                                                    self.E2, self.E3,
-                                                    self.z0, self.z1, self.z2, self.z3,
-                                                    self.W1, self.W2, self.W3,
-                                                    self.e1, self.e2, self.e3,
-                                                compile_key="advance_state") ## E-step
-                evolve_cmd, evolve_args = self.circuit.compile_by_key(
-                                                    self.W1, self.W2, self.W3,
-                                                compile_key="evolve") ## M-step
-                project_cmd, project_args = self.circuit.compile_by_key(
-                                                    self.q0, self.Q1, self.q1, self.Q2,
-                                                    self.q2, self.Q3, self.q3, self.eq3,
-                                                compile_key="advance_state", name="project") ## project
-                self.dynamic()
+                advance_process = (JaxProcess(name="advance_process")
+                                   >> self.E2.advance_state
+                                   >> self.E3.advance_state
+                                   >> self.z0.advance_state
+                                   >> self.z1.advance_state
+                                   >> self.z2.advance_state
+                                   >> self.z3.advance_state
+                                   >> self.W1.advance_state
+                                   >> self.W2.advance_state
+                                   >> self.W3.advance_state
+                                   >> self.e1.advance_state
+                                   >> self.e2.advance_state
+                                   >> self.e3.advance_state)
 
-    def dynamic(self):## create dynamic commands for circuit
+                reset_process = (JaxProcess(name="reset_process")
+                                 >> self.q0.reset
+                                 >> self.q1.reset
+                                 >> self.q2.reset
+                                 >> self.q3.reset
+                                 >> self.eq3.reset
+                                 >> self.z0.reset
+                                 >> self.z1.reset
+                                 >> self.z2.reset
+                                 >> self.z3.reset
+                                 >> self.e1.reset
+                                 >> self.e2.reset
+                                 >> self.e3.reset)
+
+                evolve_process = (JaxProcess(name="evolve_process")
+                                  >> self.W1.evolve
+                                  >> self.W2.evolve
+                                  >> self.W3.evolve)
+
+                project_process = (JaxProcess(name="project_process")
+                                   >> self.q0.advance_state
+                                   >> self.Q1.advance_state
+                                   >> self.q1.advance_state
+                                   >> self.Q2.advance_state
+                                   >> self.q2.advance_state
+                                   >> self.Q3.advance_state
+                                   >> self.q3.advance_state
+                                   >> self.eq3.advance_state)
+
+                processes = (reset_process, advance_process, evolve_process, project_process)
+
+                self._dynamic(processes)
+
+    def _dynamic(self, processes):## create dynamic commands for circuit
         vars = self.circuit.get_components("q0", "q1", "q2", "q3", "eq3",
                                            "Q1", "Q2", "Q3",
                                            "z0", "z1", "z2", "z3",
@@ -191,10 +220,17 @@ class PCN():
          self.W2, self.W3, self.E2, self.E3) = vars
         self.nodes = vars
 
-        self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
-        self.circuit.add_command(wrap_command(jit(self.circuit.advance_state)), name="advance")
-        self.circuit.add_command(wrap_command(jit(self.circuit.evolve)), name="evolve")
-        self.circuit.add_command(wrap_command(jit(self.circuit.project)), name="project")
+        reset_proc, advance_proc, evolve_proc, project_proc = processes
+
+        self.circuit.wrap_and_add_command(jit(reset_proc.pure), name="reset")
+        self.circuit.wrap_and_add_command(jit(advance_proc.pure), name="advance")
+        self.circuit.wrap_and_add_command(jit(project_proc.pure), name="project")
+        self.circuit.wrap_and_add_command(jit(evolve_proc.pure), name="evolve")
+
+        # self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
+        # self.circuit.add_command(wrap_command(jit(self.circuit.advance_state)), name="advance")
+        # self.circuit.add_command(wrap_command(jit(self.circuit.evolve)), name="evolve")
+        # self.circuit.add_command(wrap_command(jit(self.circuit.project)), name="project")
 
         @Context.dynamicCommand
         def clamp_input(x):
@@ -216,13 +252,14 @@ class PCN():
         Args:
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
-        if params_only == True:
+        if params_only:
             model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
             self.W1.save(model_dir)
             self.W2.save(model_dir)
             self.W3.save(model_dir)
         else:
-            self.circuit.save_to_json(self.exp_dir, self.model_name) ## save current parameter arrays
+            self.circuit.save_to_json(self.exp_dir, model_name=self.model_name, overwrite=True)
+            #self.circuit.save_to_json(self.exp_dir, self.model_name)
 
     def load_from_disk(self, model_directory):
         """
@@ -232,14 +269,16 @@ class PCN():
             model_directory: directory/path to saved model parameter/config values
         """
         print(" > Loading model from ",model_directory)
-        with Context("Circuit") as circuit:
-            self.circuit = circuit
-            #self.circuit.load_from_dir(self.exp_dir + "/{}".format(self.model_name))
+        with Context("Circuit") as self.circuit:
             self.circuit.load_from_dir(model_directory)
-            ## note: redo scanner and anything using decorators
-            self.dynamic()
+            processes = (
+                self.circuit.reset_process, self.circuit.advance_process,
+                self.circuit.evolve_process, self.circuit.project_process
+            )
+            self._dynamic(processes)
 
     def process(self, obs, lab, adapt_synapses=True):
+        ## can think of the PCN as doing "PEM" -- projection, expectation, then maximization
         eps = 0.001
         _lab = jnp.clip(lab, eps, 1. - eps)
         #self.circuit.reset(do_reset=True)
@@ -259,7 +298,6 @@ class PCN():
         ## Perform P-step (projection step)
         self.circuit.clamp_input(obs)
         self.circuit.clamp_infer_target(_lab)
-
         self.circuit.project(t=0., dt=1.) ## do projection/inference
 
         ## initialize dynamics of generative model latents to projected states
@@ -274,7 +312,7 @@ class PCN():
 
         EFE = 0. ## expected free energy
         y_mu = 0.
-        if adapt_synapses == True:
+        if adapt_synapses:
             ## Perform several E-steps
             for ts in range(0, self.T):
                 self.circuit.clamp_input(obs) ## clamp data to z0 & q0 input compartments

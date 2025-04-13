@@ -1,6 +1,6 @@
 # SINDy (Brunton et al., 2016)
 
-<b>Version</b>: ngclearn>=1.2.beta3, ngcsimlib>=0.3.beta4
+<b>Version</b>: ngclearn>=2.0.0, ngcsimlib>=1.0.0
 
 This exhibit contains an implementation of the sparse identification of non-linear 
 dynamical systems(SINDy) model proposed and studied in:
@@ -13,7 +13,7 @@ dynamical systems." Proceedings of the national academy of sciences 113.15
 ```
 
 <p align="center">
-  <img height="350" src="fig/flow.png"><br>
+  <img height="200" src="fig/flow.png"><br>
   <i>Visual depiction of the SINDy architecture/process.</i>
 </p>
 

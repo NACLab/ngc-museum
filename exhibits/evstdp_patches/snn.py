@@ -2,8 +2,8 @@ from ngclearn.utils.io_utils import makedir
 from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
 from ngclearn.utils.model_utils import scanner
-from ngcsimlib.compilers import compile_command, wrap_command
 from ngcsimlib.context import Context
+from ngclearn.utils import JaxProcess
 from ngclearn.components.input_encoders.bernoulliCell import BernoulliCell
 from ngclearn.components.synapses.hebbian.eventSTDPSynapse import EventSTDPSynapse
 from ngclearn.components.other.expKernel import ExpKernel
@@ -75,24 +75,34 @@ class SNN():
                 self.W1.pre_tols << self.z0.tols #self.W1.preSpike << self.z0.outputs
                 self.W1.postSpike << self.z1.s
 
-                reset_cmd, reset_args = self.circuit.compile_by_key(
-                                            self.z0, self.k0, self.z1,
-                                            self.W1,
-                                            compile_key="reset")
-                advance_cmd, advance_args = self.circuit.compile_by_key(
-                                                self.W1,
-                                                self.z0, self.k0, self.z1,
-                                                compile_key="advance_state")
-                evolve_cmd, evolve_args = self.circuit.compile_by_key(self.W1, compile_key="evolve")
-                self.dynamic()
+                advance_process = (JaxProcess(name="advance_process")
+                                   >> self.W1.advance_state
+                                   >> self.z0.advance_state
+                                   >> self.k0.advance_state
+                                   >> self.z1.advance_state)
 
-    def dynamic(self):## create dynamic commands for circuit
+                reset_process = (JaxProcess(name="reset_process")
+                                 >> self.z0.reset
+                                 >> self.k0.reset
+                                 >> self.z1.reset
+                                 >> self.W1.reset)
+
+                evolve_process = (JaxProcess(name="evolve_process")
+                                  >> self.W1.evolve)
+
+                processes = (reset_process, advance_process, evolve_process)
+
+                self._dynamic(processes)
+
+    def _dynamic(self, processes):## create dynamic commands for circuit
         W1, z0, z1 = self.circuit.get_components("W1", "z0", "z1")
         self.W1 = W1
         self.z0 = z0
         self.z1 = z1
 
-        self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
+        reset_proc, advance_proc, evolve_proc = processes
+
+        self.circuit.wrap_and_add_command(jit(reset_proc.pure), name="reset")
 
         @Context.dynamicCommand
         def clamp(x):
@@ -101,10 +111,8 @@ class SNN():
         @scanner
         def process(compartment_values, args):
             _t, _dt = args
-            compartment_values = self.circuit.advance_state(
-                compartment_values, t=_t, dt=_dt)
-            compartment_values = self.circuit.evolve(
-                compartment_values, t=_t, dt=_dt)
+            compartment_values = advance_proc.pure(compartment_values, t=_t, dt=_dt)
+            compartment_values = evolve_proc.pure(compartment_values, t=_t, dt=_dt)
             return compartment_values, compartment_values[self.z1.s.path]
 
     def save_to_disk(self, params_only=False):
@@ -114,12 +122,13 @@ class SNN():
         Args:
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
-        if params_only is True:
+        if params_only is True: ## this condition allows to only write actual parameter values w/in components to disk
             model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
             self.W1.save(model_dir)
             self.z1.save(model_dir)
-        else:
-            self.circuit.save_to_json(self.exp_dir, self.model_name) ## save current parameter arrays
+        else: ## this saves the whole model form (JSON structure as well as parameter values)
+            self.circuit.save_to_json(self.exp_dir, model_name=self.model_name, overwrite=True)
+            #self.circuit.save_to_json(self.exp_dir, self.model_name)
 
     def load_from_disk(self, model_directory):
         """
@@ -128,10 +137,10 @@ class SNN():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        with Context("Circuit") as circuit:
-            self.circuit = circuit
+        with Context("Circuit") as self.circuit:
             self.circuit.load_from_dir(model_directory)
-            self.dynamic()
+            processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
+            self.dynamic(processes)
 
     def get_synapse_stats(self):
         """

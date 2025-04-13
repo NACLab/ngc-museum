@@ -3,21 +3,20 @@ from jax import numpy as jnp, random, jit
 from ngclearn.utils.model_utils import scanner
 
 from ngcsimlib.context import Context
+from ngclearn.utils import JaxProcess
 from ngcsimlib.compilers import wrap_command, compile_command
 from ngclearn.components import (RateCell, HebbianSynapse,
-                                 GaussianErrorCell,
-                                 StaticSynapse)
+                                 GaussianErrorCell, StaticSynapse)
 import ngclearn.utils.weight_distribution as dist
 from ngclearn.utils.model_utils import normalize_matrix
 from ngclearn.utils.viz.synapse_plot import visualize
-
 
 class PCRecon():
     """
     Structure for constructing a predictive coding (PC) model for reconstruction tasks.
 
     Note this model imposes a laplacian prior to induce sparsity in the latent activities
-    z1, z2, z3 (the latent codebook). Synapses are initialized from a (He initialization) gaussian
+    z1, z2, z3 (the latent codebooks). Synapses are initialized from a (He initialization) gaussian
     distribution with std=sqrt(2/hidden_dim).
 
     This model would be named, under the NGC computational framework naming convention
@@ -167,30 +166,41 @@ class PCRecon():
                 self.E3.inputs << self.e2.dmu
                 self.z3.j << self.E3.outputs
 
-                # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                advance_cmd, advance_args = self.circuit.compile_by_key(
-                    self.E1, self.E2, self.E3, ## execute feedback first
-                     self.z3, self.z2, self.z1, ## execute state neurons
-                     self.W3, self.W2, self.W1, ## execute prediction synapses
-                     self.e2, self.e1, self.e0, ## finally, execute error neurons
-                     compile_key="advance_state", name='advance_state'
-                )
-                evolve_cmd, evolve_args = self.circuit.compile_by_key(
-                    self.W1, self.W2, self.W3,
-                    compile_key="evolve", name='evolve'
-                )
-                reset_cmd, reset_args = self.circuit.compile_by_key(
-                    self.z3, self.z2, self.z1,
-                    self.e2, self.e1, self.e0,
-                    self.W1, self.W2, self.W3,
-                    self.E1, self.E2, self.E3,
-                    compile_key="reset", name='reset'
-                )
-                # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                reset_process = (JaxProcess(name="reset_process")
+                                >> self.z3.reset
+                                >> self.z2.reset
+                                >> self.z1.reset
+                                >> self.e2.reset
+                                >> self.e1.reset
+                                >> self.e0.reset
+                                >> self.W1.reset
+                                >> self.W2.reset
+                                >> self.W3.reset
+                                >> self.E1.reset
+                                >> self.E2.reset
+                                >> self.E3.reset)
+                advance_process = (JaxProcess(name="advance_process")
+                                >> self.E1.advance_state
+                                >> self.E2.advance_state
+                                >> self.E3.advance_state
+                                >> self.z3.advance_state
+                                >> self.z2.advance_state
+                                >> self.z1.advance_state
+                                >> self.W3.advance_state
+                                >> self.W2.advance_state
+                                >> self.W1.advance_state
+                                >> self.e2.advance_state
+                                >> self.e1.advance_state
+                                >> self.e0.advance_state)
+                evolve_process = (JaxProcess(name="evolve_process")
+                                >> self.W1.evolve
+                                >> self.W2.evolve
+                                >> self.W3.evolve)
 
-                self.dynamic()
+                processes = (reset_process, advance_process, evolve_process)
+                self._dynamic(processes)
 
-    def dynamic(self):  ## create dynamic commands for circuit
+    def _dynamic(self, processes):  ## create dynamic commands for circuit
         W3, W2, W1, E3, E2, E1, e2, e1, e0, z3, z2, z1 = self.circuit.get_components(
             "W3", "W2", "W1",
             "E3", "E2", "E1",
@@ -212,15 +222,15 @@ class PCRecon():
             W2.weights.set(normalize_matrix(W2.weights.value, 1., order=2, axis=1))
             W3.weights.set(normalize_matrix(W3.weights.value, 1., order=2, axis=1))
 
-
-        self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
-        # self.circuit.add_command(wrap_command(jit(self.circuit.advance_state)), name="advance")
-        self.circuit.add_command(wrap_command(jit(self.circuit.evolve)), name="evolve")
+        reset_process, advance_process, evolve_process = processes
+        self.circuit.wrap_and_add_command(jit(reset_process.pure), name="reset")
+        self.circuit.wrap_and_add_command(jit(evolve_process.pure), name="evolve")
+        self.circuit.wrap_and_add_command(jit(advance_process.pure), name="advance")
 
         @scanner
         def process(compartment_values, args): ## advance is defined within this scan-able process function
             _t, _dt = args
-            compartment_values = self.circuit.advance_state(
+            compartment_values = advance_process.pure(
                 compartment_values, t=_t, dt=_dt)
             return compartment_values, compartment_values[self.z3.zF.path]
 
@@ -232,11 +242,11 @@ class PCRecon():
         Args:
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
-        if params_only is True:
+        if params_only:
             model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
             self.W1.save(model_dir)
         else:
-            self.circuit.save_to_json(self.exp_dir, self.model_name)  ## save current parameter arrays
+            self.circuit.save_to_json(self.exp_dir, self.model_name, overwrite=True)  ## save current parameter arrays
 
 
 
@@ -247,10 +257,10 @@ class PCRecon():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        with Context("Circuit") as circuit:
-            self.circuit = circuit
+        with Context("Circuit") as self.circuit:
             self.circuit.load_from_dir(model_directory)
-            self.dynamic()
+            processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
+            self._dynamic(processes)
 
 
     def get_synapse_stats(self, W_id='W1'):
@@ -353,7 +363,7 @@ class PCRecon():
         if adapt_synapses:
             self.circuit.evolve(t=self.T, dt=1.)
             self.circuit.norm()
-
+        ########################################################################
         ## Post-processing / probing desired model outputs
         obs_mu = self.e0.mu.value  ## get reconstructed signal
         L0 = self.e0.L.value  ## calculate reconstruction loss

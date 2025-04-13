@@ -1,6 +1,6 @@
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11-blue.svg)](https://www.python.org/downloads)[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://GitHub.com/Naereen/StrapDown.js/graphs/commit-activity)
 
-# NGC-Museum: Biomimetic Models with NGC-Learn
+# NGC-Museum: Neuroscience Models and Biomimetic Agents with NGC-Learn
 
 <b>ngc-museum</b> is a public repository for
 <i><a href="https://github.com/NACLab/ngc-learn/">ngc-learn</a></i> that
@@ -59,6 +59,8 @@ scientific inquiry.
 4. Sparse identification of nonlinear dynamics (SINDy): 
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/sindy">Model</a>, 
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sindy.html">Walkthrough / Tutorial</a> 
+5. NeuralODE / Deep learning-driven model discovery (DeepMod): 
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/DeepMoD_PC">Model</a>
 
 This package is distributed under the 3-Clause BSD license.<br>
 It is currently maintained by the
