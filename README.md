@@ -45,6 +45,8 @@ scientific inquiry.
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/evstdp_patches">Model</a>
 4. A self-supervised spiking neural circuit, trained via contrastive-signal dependent plasticity (CSDP):
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibitors/nac_lab/csdp_snn">Model</a> <!--<a href="">Paper</a>-->
+5. An spiking neural circuit for reinforcement learning (trained via MSTDP-ET):
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/rl_snn">Model</a> <!--<a href="">Paper</a>-->
 
 <b>Models with Graded Dynamics</b>:<br>
 1. Discriminative predictive coding:
