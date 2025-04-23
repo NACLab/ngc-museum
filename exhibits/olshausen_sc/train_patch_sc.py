@@ -71,8 +71,9 @@ if n_samples > 0:
     print("-> Fitting model to only {} samples".format(n_samples))
 n_batches = _X.shape[0]
 
-model = Model(subkeys[0], in_dim=in_dim, hid_dim=hid_dim, T=T, dt=dt,
-              batch_size=num_patches, model_type=model_type)
+model = Model(
+    subkeys[0], in_dim=in_dim, hid_dim=hid_dim, T=T, dt=dt, batch_size=num_patches, model_type=model_type
+)
 model.save_to_disk()
 
 print(model.get_synapse_stats())
@@ -81,32 +82,36 @@ model.viz_receptive_fields(fname="recFields_init", field_shape=patch_shape)
 ################################################################################
 ## begin simulation of the model using the loaded data
 
+p_seed = 0
 for i in range(n_iter):
     dkey, *subkeys = random.split(dkey, 2)
     ptrs = random.permutation(subkeys[0], _X.shape[0])
     X = _X[ptrs, :]
 
     n_pat_seen = 0
-    print("========= Iter {} ========".format(i))
+    #print("========= Iter {} ========".format(i))
     L = 0.
     for j in range(n_batches):
         idx = j
         Xb = X[idx: idx + mb_size, :]
         ## generate a set of patches from current pattern
-        Xb = generate_patch_set(Xb, patch_shape, num_patches, center=True)
+        Xb = generate_patch_set(Xb, patch_shape, num_patches, center=True, seed=p_seed)
+        p_seed += 1
 
         xs_mu, Lb = model.process(obs=Xb, adapt_synapses=True)
         n_pat_seen += Xb.shape[0]
 
         L = Lb + L ## track current global loss
-        print("\r > Seen {} patches so far ({} patterns); L = {}".format(n_pat_seen,
-                                                                        (j+1), (L/(j+1) * 1.)), end="")
+        print("\r {} > Seen {} patches ({} patterns); L = {}".format(
+            i, n_pat_seen, (j+1), (L/(j+1) * 1.)), end=""
+        )
         if j % batch_mod == 0 and j > 0:
             print()
             model.viz_receptive_fields(fname="recFields", field_shape=patch_shape)
             model.save_to_disk(params_only=True) # save final state of synapses to disk
             print(model.get_synapse_stats())
     print()
+
     if (i+1) % viz_mod == 0:
         model.viz_receptive_fields(fname="recFields", field_shape=patch_shape)
 

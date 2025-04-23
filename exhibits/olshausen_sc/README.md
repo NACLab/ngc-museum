@@ -1,6 +1,6 @@
 # Sparse Coding (Olshausen &amp; Field, 1996)
 
-<b>Version</b>: ngclearn>=1.1.beta1, ngcsimlib>=0.3.beta1
+<b>Version</b>: ngclearn>=2.0.0, ngcsimlib>=1.0.0
 
 This exhibit contains an implementation of the sparse coding models proposed
 and studied in:
