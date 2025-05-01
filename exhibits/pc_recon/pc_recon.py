@@ -11,7 +11,7 @@ import ngclearn.utils.weight_distribution as dist
 from ngclearn.utils.model_utils import normalize_matrix
 from ngclearn.utils.viz.synapse_plot import visualize
 
-class PCRecon():
+class PC_Recon():
     """
     Structure for constructing a predictive coding (PC) model for reconstruction tasks.
 
@@ -64,6 +64,7 @@ class PCRecon():
         self.model_name = "pc_recon"
         makedir(exp_dir)
         makedir(exp_dir + "/filters")
+        makedir(exp_dir + "/img_recons")
         makedir(exp_dir + "/raster")
 
         ## meta-parameters for model dynamics
@@ -310,7 +311,7 @@ class PCRecon():
         visualize([_W1], [(28, 28)], prefix=self.exp_dir + "/filters/{}".format(fname))
 
 
-    def viz_recons(self, X_test, Xmu_test, fname='recon', field_shape=(28, 28)):
+    def viz_recons(self, X_test, Xmu_test, field_shape=(28, 28), fname='recon'):
         """
         Generates and saves a plot of the reconstructed images for the
         given test input.
@@ -325,7 +326,8 @@ class PCRecon():
             field_shape: 2-tuple specifying expected shape of receptive fields to plot (default=(28, 28))
         """
 
-        visualize([X_test.T, Xmu_test.T], [field_shape, field_shape], prefix=fname)
+        visualize([X_test.T, Xmu_test.T], [field_shape, field_shape], prefix=self.exp_dir + "/img_recons/{}".format(fname))
+
 
 
 

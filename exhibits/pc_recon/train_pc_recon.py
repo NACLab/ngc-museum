@@ -1,7 +1,7 @@
 from jax import jit, random
 import os
 from ngclearn import Context, numpy as jnp
-from pc_model import PCRecon as Model
+from pc_recon import PC_Recon
 import sys, getopt as gopt, optparse, time
 
 
@@ -59,7 +59,7 @@ iter_mod = 1
 viz_mod = 5
 mb_size = 100
 
-h3_dim, h2_dim, h1_dim = (196, 225, 256) 
+h3_dim, h2_dim, h1_dim = (196, 225, 256)
 n_samples_test = -1
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -90,10 +90,10 @@ io_dim = x_train.shape[1]
 ################################################################################
 ## initialize and compile the model with fixed hyper-parameters
 
-model = Model(dkey, h3_dim, h2_dim, h1_dim, io_dim, batch_size=mb_size)
+model = PC_Recon(dkey, h3_dim, h2_dim, h1_dim, io_dim, batch_size=mb_size)
 model.save_to_disk()
 print(model.get_synapse_stats())
-model.viz_receptive_fields(fname='erf_init')
+model.viz_receptive_fields(fname='erf_t0')
 ################################################################################
 
 ## begin simulation of the model using the loaded data
@@ -120,16 +120,17 @@ for i in range(n_iter):
         dkey, *subkeys2 = random.split(dkey, nb)
         X_test = x_test[random.permutation(subkeys2[0], x_test.shape[0]), :][:mb_size, :]
         Xmu_test, L_test = model.process(X_test, adapt_synapses=False) ## only perform E-steps/inference
-        model.viz_recons(X_test, Xmu_test)
+        model.viz_recons(X_test, Xmu_test, fname=f"recons_t{(i % iter_mod)+1}")
         print("\r                                            >  Test-Recon-Loss = {} ".format(L_test / mb_size))
 
-        model.viz_receptive_fields(fname=f"erf_{i % iter_mod}")
+        model.viz_receptive_fields(fname=f"erf_t{(i % iter_mod)+1}")
         model.save_to_disk(params_only=True)  ## save final state of synapses to disk
 
     print()
     if (i+1) % viz_mod == 0:
         print(model.get_synapse_stats())
-        model.viz_receptive_fields(fname=f"erf_{i % iter_mod}")
+        model.viz_receptive_fields(fname=f"erf_t{(i % iter_mod)+1}")
+        model.viz_recons(X_test, Xmu_test, fname=f"recons_t{(i % iter_mod)+1}")
 
 ## collect a test sample raster plot
 model.save_to_disk(params_only=True) ## save final model parameters to disk
