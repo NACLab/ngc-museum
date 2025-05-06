@@ -1,3 +1,6 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
 from ngclearn.utils.io_utils import makedir
 from jax import numpy as jnp, random, jit
 from ngclearn.utils.model_utils import scanner
@@ -5,8 +8,10 @@ from ngclearn.utils.model_utils import scanner
 from ngcsimlib.context import Context
 from ngclearn.utils import JaxProcess
 from ngcsimlib.compilers import wrap_command, compile_command
-from ngclearn.components import (RateCell, HebbianSynapse,
-                                 GaussianErrorCell, StaticSynapse)
+from ngclearn.components import (RateCell, HebbianPatchedSynapse as HebbianSynapse,
+                                 GaussianErrorCell, StaticPatchedSynapse as StaticSynapse)
+from sklearn.feature_extraction.image import extract_patches_2d, reconstruct_from_patches_2d
+
 import ngclearn.utils.weight_distribution as dist
 from ngclearn.utils.model_utils import normalize_matrix
 from ngclearn.utils.viz.synapse_plot import visualize
@@ -25,18 +30,26 @@ class PC_Recon():
     | p(z3) ; z3 -(z3-mu2)-> mu2 ;e2; z2
     | p(z2) ; z2 -(z2-mu1)-> mu1 ;e1; z1
     | p(z1) ; z1 -(z1-mu0)-> mu0 ;e0; z0
-    | Laplacian prior applied for p(z3), p(z2), p(z1)
+    | prior type applied for p(z3), p(z2), p(z1)
 
     Args:
         dkey: JAX seeding key
 
-        io_dim: input dimensionality
+        h3_dim: full dimensionality of the 3rd (deepest) representation layer of neuronal cells
 
-        h1_dim: dimensionality of the 1st representation layer of neuronal cells
+        h2_dim: full dimensionality of the 2nd representation layer of neuronal cells
 
-        h2_dim: dimensionality of the 2nd representation layer of neuronal cells
+        h1_dim: full dimensionality of the 1st representation (lowest) layer of neuronal cells
 
-        h3_dim: dimensionality of the 3rd (deepest) representation layer of neuronal cells
+        in_dim: input dimensionality
+
+        n_p3: number of dense synaptic modules in 3rd (deepest) layer of neuronal cells
+
+        n_p2: number of dense synaptic modules in 2nd layer of neuronal cells
+
+        n_p1: number of dense synaptic modules in 1st (lowest) layer of neuronal cells
+
+        n_inPatch: number of patches in input image
 
         T: number of discrete time steps to simulate neuronal dynamics; also
             known as the number of steps to take when conducting iterative
@@ -56,67 +69,102 @@ class PC_Recon():
             configuration on disk (default: None)
     """
     # Define Functions
-    def __init__(self, dkey, h3_dim, h2_dim, h1_dim, io_dim, T=30, dt=1., batch_size=1,
-                 exp_dir="exp", load_dir=None, **kwargs):
+    def __init__(self, dkey, h3_dim, h2_dim, h1_dim, in_dim,
+                 n_p3=1, n_p2=1, n_p1=1, n_inPatch=1,
+                 T=30, dt=1., batch_size=1, exp_dir="exp", load_dir=None, **kwargs):
 
         dkey, *subkeys = random.split(dkey, 10)
         self.exp_dir = exp_dir
-        self.model_name = "pc_recon"
         makedir(exp_dir)
         makedir(exp_dir + "/filters")
         makedir(exp_dir + "/img_recons")
         makedir(exp_dir + "/raster")
+        self.model_name = "pc_recon"
 
-        ## meta-parameters for model dynamics
-        self.T = T ## number of E-steps to take (stimulus time = T * dt ms)
-        self.dt = dt ## integration time constant (ms)
-        tau_m = 20.  # beta = 0.05 = (dt=1)/(tau=20) ## time constant for latent trajectories
+        ############ meta-parameters for model structure and dynamics
+        self.in_dim = in_dim
+        self.h1_dim = h1_dim
+        self.h2_dim = h2_dim
+        self.h3_dim = h3_dim
 
+        self.n_inPatch = n_inPatch
+        self.n_p1 = n_p1
+        self.n_p2 = n_p2
+        self.n_p3 = n_p3
+
+        self.inPatch_dim = in_dim // n_inPatch
         self.batch_size = batch_size
-        self.eta = 0.005 #1e-2 ## M-step learning rate/step-size
 
-        # latent prior type
-        act_fx = "relu"
-        opt_type = "sgd"
-        prior_type = "laplacian"
-        lmbda = 0.14 ## strength of Laplacian prior over latents
-        w_bound = 1. ## norm constraint value
+        self.T = T                         ## number of E-steps to take (stimulus time = T * dt ms)
+        self.dt = dt                       ## neural activity integration time constant (ms)
 
-        ## He initialization
-        w3_init = dist.gaussian(0., jnp.sqrt(2/h3_dim))
-        w2_init = dist.gaussian(0., jnp.sqrt(2/h2_dim))
-        w1_init = dist.gaussian(0., jnp.sqrt(2/h1_dim))
+        #############    Synaptses parameters
+        eta = 0.005                                             ##   M-step learning rate/step-size
+        w_bound = 1.                                            ## norm constraint value
+        opt_type = "sgd"                                        ##   synaptic (weights) optimization type
+        w3_init = dist.gaussian(0., jnp.sqrt(2/h3_dim))         ## He initialization for layer-3 synapses
+        w2_init = dist.gaussian(0., jnp.sqrt(2/h2_dim))         ## He initialization for layer-2 synapses
+        w1_init = dist.gaussian(0., jnp.sqrt(2/h1_dim))         ## He initialization for layer-1  synapses
+
+        #############    Neurons/Cells parameters
+        act_fx = "relu"                    ## neural activation function
+        tau_m = 20.                        ## beta = 0.05 = (dt=1)/(tau=20) ## time constant for latent trajectories
+        prior_type = "laplacian"           ## neural activation/latent prior type
+        lmbda = 0.14                       ## strength of neural activation prior
 
 
+
+        #################################################################
         if load_dir is not None:
             ## build from disk
             self.load_from_disk(load_dir)
         else:
-
             with Context("Circuit") as self.circuit:
                 self.z3 = RateCell("z3", n_units=h3_dim, tau_m=tau_m, act_fx=act_fx, prior=(prior_type, lmbda))
-                self.W3 = HebbianSynapse("W3", shape=(h3_dim, h2_dim), eta=self.eta, signVal = -1.,
-                                    weight_init=w3_init, optim_type=opt_type, w_bound=w_bound, key=subkeys[2])
+                self.z2 = RateCell("z2", n_units=h2_dim, tau_m=tau_m, act_fx=act_fx, prior=(prior_type, lmbda))
+                self.z1 = RateCell("z1", n_units=h1_dim, tau_m=tau_m, act_fx=act_fx, prior=(prior_type, lmbda))
+
+                self.W3 = HebbianSynapse("W3",
+                                         shape=(h3_dim, h2_dim),
+                                         n_sub_models=self.n_p3,     ## number of modules in the layer
+                                         sign_value=-1.,                  ## -1 means M-step solve minimization problem
+                                         optim_type=opt_type,
+                                         eta=eta,
+                                         weight_init=w3_init,
+                                         w_bound=w_bound,
+                                         key=subkeys[2]
+                                         )
+                self.W2 = HebbianSynapse("W2",
+                                         shape=(h2_dim, h1_dim),
+                                         n_sub_models=self.n_p2,     ## number of modules in the layer
+                                         sign_value=-1.,                  ## -1 means M-step solve minimization problem
+                                         optim_type=opt_type,
+                                         eta=eta,
+                                         weight_init=w2_init,
+                                         w_bound=w_bound,
+                                         key=subkeys[1]
+                                         )
+                self.W1 = HebbianSynapse("W1", shape=(h1_dim, in_dim),
+                                         n_sub_models=n_p1,              ## number of modules in the layer
+                                         sign_value=-1.,                 ## -1 means M-step solve minimization problem
+                                         optim_type=opt_type,
+                                         eta=eta,
+                                         weight_init=w1_init,
+                                         w_bound=w_bound,
+                                         key=subkeys[0]
+                                         )
 
                 self.e2 = GaussianErrorCell("e2", n_units=h2_dim)
-                self.z2 = RateCell("z2", n_units=h2_dim, tau_m=tau_m, act_fx=act_fx, prior=(prior_type, lmbda))
-                self.W2 = HebbianSynapse("W2", shape=(h2_dim, h1_dim), eta=self.eta, sign_value = -1.,
-                                    weight_init=w2_init, optim_type=opt_type, w_bound=w_bound, key=subkeys[0])
-
                 self.e1 = GaussianErrorCell("e1", n_units=h1_dim)
-                self.z1 = RateCell("z1", n_units=h1_dim, tau_m=tau_m, act_fx=act_fx, prior=(prior_type, lmbda))
-                self.W1 = HebbianSynapse("W1", shape=(h1_dim, io_dim), eta=self.eta, sign_value = -1.,
-                                         weight_init=w1_init, optim_type=opt_type, w_bound=w_bound, key=subkeys[1])
+                self.e0 = GaussianErrorCell("e0", n_units=in_dim)
 
-                self.e0 = GaussianErrorCell("e0", n_units=io_dim)
+                self.E3 = StaticSynapse("E3", shape=(h2_dim, h3_dim), n_sub_models=self.n_p3, key=subkeys[2])
+                self.E2 = StaticSynapse("E2", shape=(h1_dim, h2_dim), n_sub_models=self.n_p2, key=subkeys[1])
+                self.E1 = StaticSynapse("E1", shape=(in_dim, h1_dim), n_sub_models=self.n_p1, key=subkeys[0])
 
-                self.E1 = StaticSynapse("E1", shape=(io_dim, h1_dim), key=subkeys[0])
-                self.E2 = StaticSynapse("E2", shape=(h1_dim, h2_dim), key=subkeys[1])
-                self.E3 = StaticSynapse("E3", shape=(h2_dim, h3_dim), key=subkeys[2])
-
-                # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                ############################################################
                 ## since this model will operate with batches, we need to
-                ## configure its batch-size here before compiling with the loop-scan
+                ## its batch-size here before compiling with the loop-scan
                 self.z3.batch_size = batch_size
                 self.z2.batch_size = batch_size
                 self.z1.batch_size = batch_size
@@ -133,40 +181,49 @@ class PC_Recon():
                 self.E2.batch_size = batch_size
                 self.E1.batch_size = batch_size
 
-                # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                # wiring
-
-                # f(z3) →🅆3-→ mu2-→ⓔ←-z2
+                ############################################################
+                # wiring (signal pathway is according to Rao & Ballard 1999 paper)
+                ############################################################
+                ######### feedback (Top-down) #########
                 self.W3.inputs << self.z3.zF
-                self.W3.pre << self.z3.zF
-                self.e2.mu << self.W3.outputs
-                self.e2.target << self.z2.z
-
-                # f(z2) →🅆2-→ mu1-→ⓔ←-z1
                 self.W2.inputs << self.z2.zF
-                self.W2.pre << self.z2.zF
+                self.W1.inputs << self.z1.zF
+
+                ## Top-down prediction
+                self.e2.mu << self.W3.outputs
                 self.e1.mu << self.W2.outputs
+                self.e0.mu << self.W1.outputs
+                ## actual neural activation
+                self.e2.target << self.z2.z
                 self.e1.target << self.z1.z
 
-                # f(z1) →🅆1-→ Xmu-→ⓔ←- X
-                self.W1.inputs << self.z1.zF
-                self.W1.pre << self.z1.zF
-                self.e0.mu << self.W1.outputs
-
+                ## Top-down prediction errors
                 self.z1.j_td << self.e1.dtarget
-                self.W1.post << self.e0.dmu
+                self.z2.j_td << self.e2.dtarget
+
+
+                ######### forward (Bottom-up) #########
+                ## feedforward the errors via synapses
+                self.E3.inputs << self.e2.dmu
+                self.E2.inputs << self.e1.dmu
                 self.E1.inputs << self.e0.dmu
+                ## Bottom-up modulated errors
+                self.z3.j << self.E3.outputs
+                self.z2.j << self.E2.outputs
                 self.z1.j << self.E1.outputs
 
-                self.z2.j_td << self.e2.dtarget
-                self.W2.post << self.e1.dmu
-                self.E2.inputs << self.e1.dmu
-                self.z2.j << self.E2.outputs
 
+                ######## Hebbian learning #########
+                ## Pre Synaptic Activation
+                self.W3.pre << self.z3.zF
+                self.W2.pre << self.z2.zF
+                self.W1.pre << self.z1.zF
+                ## Post Synaptic residual error
                 self.W3.post << self.e2.dmu
-                self.E3.inputs << self.e2.dmu
-                self.z3.j << self.E3.outputs
+                self.W2.post << self.e1.dmu
+                self.W1.post << self.e0.dmu
 
+                ############################################################
                 reset_process = (JaxProcess(name="reset_process")
                                 >> self.z3.reset
                                 >> self.z2.reset
@@ -201,6 +258,7 @@ class PC_Recon():
                 processes = (reset_process, advance_process, evolve_process)
                 self._dynamic(processes)
 
+    ############################################################
     def _dynamic(self, processes):  ## create dynamic commands for circuit
         W3, W2, W1, E3, E2, E1, e2, e1, e0, z3, z2, z1 = self.circuit.get_components(
             "W3", "W2", "W1",
@@ -235,7 +293,6 @@ class PC_Recon():
                 compartment_values, t=_t, dt=_dt)
             return compartment_values, compartment_values[self.z3.zF.path]
 
-
     def save_to_disk(self, params_only=False):
         """
         Saves current model parameter values to disk
@@ -248,7 +305,6 @@ class PC_Recon():
             self.W1.save(model_dir)
         else:
             self.circuit.save_to_json(self.exp_dir, self.model_name, overwrite=True)  ## save current parameter arrays
-
 
 
     def load_from_disk(self, model_directory):
@@ -276,42 +332,81 @@ class PC_Recon():
         """
         if W_id == 'W1':
             _W1 = self.W1.weights.value
-            msg = "W1:\n  min {} ;  max {} \n  mu {} ;  norm {}".format(jnp.amin(_W1),
-                                                                        jnp.amax(_W1),
-                                                                        jnp.mean(_W1),
-                                                                        jnp.linalg.norm(_W1))
+            msg = "W1: ---Sparsity {} \n  min {} ;  max {} \n  mu {} ;  norm {}".format(
+                                                    100 * (jnp.sum(jnp.where(_W1 == 0, 1, 0)) // _W1.size),
+                                                    jnp.amin(_W1),
+                                                    jnp.amax(_W1),
+                                                    jnp.mean(_W1),
+                                                    jnp.linalg.norm(_W1))
         if W_id == 'W2':
             _W2 = self.W2.weights.value
-            msg = "W2:\n  min {} ;  max {} \n  mu {} ;  norm {}".format(jnp.amin(_W2),
-                                                                        jnp.amax(_W2),
-                                                                        jnp.mean(_W2),
-                                                                        jnp.linalg.norm(_W2))
-
+            msg = "W2: ---Sparsity {} \n  min {} ;  max {} \n  mu {} ;  norm {}".format(
+                                                    100 * (jnp.sum(jnp.where(_W2 == 0, 1, 0)) // _W2.size),
+                                                    jnp.amin(_W2),
+                                                    jnp.amax(_W2),
+                                                    jnp.mean(_W2),
+                                                    jnp.linalg.norm(_W2))
         if W_id == 'W3':
             _W3 = self.W3.weights.value
-            msg = "W3:\n  min {} ;  max {} \n  mu {} ;  norm {}".format(jnp.amin(_W3),
-                                                                            jnp.amax(_W3),
-                                                                            jnp.mean(_W3),
-                                                                            jnp.linalg.norm(_W3))
-
+            msg = "W3: ---Sparsity {} \n  min {} ;  max {} \n  mu {} ;  norm {}".format(
+                                                    100 * (jnp.sum(jnp.where(_W3 == 0, 1, 0)) // _W3.size),
+                                                    jnp.amin(_W3),
+                                                    jnp.amax(_W3),
+                                                    jnp.mean(_W3),
+                                                    jnp.linalg.norm(_W3))
         return msg
 
 
-
-    def viz_receptive_fields(self, fname='receptive_fields'):
+    def viz_receptive_fields(self, patch_shape, stride_shape=(0, 0), max_filter=100, fname='receptive_fields'):
         """
         Generates and saves a plot of the receptive fields for the current state
         of the model's synaptic efficacy values in W1.
 
         Args:
+            patch_shape: input image patch shape
+
+            stride_shape: the overlapping dimensions of input image patches
+
+            max_filter: maximum number of receptive fields to visualize
+
             fname: plot file-name name (appended to end of experimental directory)
 
         """
-        _W1 = self.W1.weights.value.T
-        visualize([_W1], [(28, 28)], prefix=self.exp_dir + "/filters/{}".format(fname))
+        _W1 = self.W1.weights.value
+
+        if self.n_p1 == 1: ## if each level-1 neuron's receptive field spans the whole input
+            visualize([_W1.T], [patch_shape], prefix=self.exp_dir + "/filters/{}".format(fname))
+
+        else:             ## if each level-1 neuron's receptive field spans a portion of input
+            d1_pre, d1_erf = self.W1.sub_shape
+            list_filter = []
+            for i in range(self.n_p1):
+                rf_pre = _W1[i * d1_pre:(i+1) * d1_pre,
+                             i * d1_erf:(i+1) * d1_erf]
+                list_filter.append(rf_pre)
+            h1_rf = jnp.array(list_filter)     # (n_modules, dim_module, n_inPatch * dim_inPatch)
+
+            module_idx = 0
+            rf_vis = h1_rf[module_idx, :, :].reshape(-1, self.inPatch_dim)
+            visualize([rf_vis[:max_filter, :].T],
+                      [patch_shape], prefix=self.exp_dir + "/filters/{}".format(fname))
 
 
-    def viz_recons(self, X_test, Xmu_test, field_shape=(28, 28), fname='recon'):
+            if stride_shape!=(0, 0):
+                # TODO: the effective receptive field is the summation of individual neurons RF
+                #  which will be calculated with considering overlapping pixel's
+
+                erf_vis = rf_vis.reshape(-1, self.inPatch_dim * (self.n_inPatch//self.n_p1))
+                visualize([erf_vis[:max_filter, :].T],
+                          [(patch_shape[0] * (self.n_inPatch//self.n_p1), patch_shape[1])],
+                          prefix=self.exp_dir + "/filters/{}".format(fname))
+
+
+
+
+
+
+    def viz_recons(self, X_test, Xmu_test, image_shape=(28, 28), fname='recon'):
         """
         Generates and saves a plot of the reconstructed images for the
         given test input.
@@ -321,12 +416,18 @@ class PC_Recon():
 
             Xmu_test: model's reconstruction of the given input
 
+            patch_shape: the shape of cropped image (patches)
+
             fname: plot file-name name (appended to end of experimental directory)
 
             field_shape: 2-tuple specifying expected shape of receptive fields to plot (default=(28, 28))
         """
 
-        visualize([X_test.T, Xmu_test.T], [field_shape, field_shape], prefix=self.exp_dir + "/img_recons/{}".format(fname))
+
+        X_test = X_test.reshape(-1, image_shape[0] * image_shape[1])
+        Xmu_test = Xmu_test.reshape(-1, image_shape[0] * image_shape[1])
+
+        visualize([X_test.T, Xmu_test.T], [image_shape, image_shape], prefix=self.exp_dir + "/img_recons/{}".format(fname))
 
 
 
@@ -354,6 +455,7 @@ class PC_Recon():
         self.E1.weights.set(jnp.transpose(self.W1.weights.value))
         self.E2.weights.set(jnp.transpose(self.W2.weights.value))
         self.E3.weights.set(jnp.transpose(self.W3.weights.value))
+
         ## reset/set all components to their resting values / initial conditions
         self.circuit.reset()
         ########################################################################
