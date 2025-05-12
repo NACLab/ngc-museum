@@ -8,8 +8,8 @@ from ngclearn.utils.model_utils import scanner
 from ngcsimlib.context import Context
 from ngclearn.utils import JaxProcess
 from ngcsimlib.compilers import wrap_command, compile_command
-from ngclearn.components import (RateCell, HebbianPatchedSynapse as HebbianSynapse,
-                                 GaussianErrorCell, StaticPatchedSynapse as StaticSynapse)
+from ngclearn.components import (RateCell, HebbianPatchedSynapse as BackwardSynapse,
+                                 GaussianErrorCell, StaticPatchedSynapse as ForwardSynapse)
 from sklearn.feature_extraction.image import extract_patches_2d, reconstruct_from_patches_2d
 
 import ngclearn.utils.weight_distribution as dist
@@ -124,7 +124,7 @@ class PC_Recon():
                 self.z2 = RateCell("z2", n_units=h2_dim, tau_m=tau_m, act_fx=act_fx, prior=(prior_type, lmbda))
                 self.z1 = RateCell("z1", n_units=h1_dim, tau_m=tau_m, act_fx=act_fx, prior=(prior_type, lmbda))
 
-                self.W3 = HebbianSynapse("W3",
+                self.W3 = BackwardSynapse("W3",
                                          shape=(h3_dim, h2_dim),
                                          n_sub_models=self.n_p3,     ## number of modules in the layer
                                          sign_value=-1.,                  ## -1 means M-step solve minimization problem
@@ -134,7 +134,7 @@ class PC_Recon():
                                          w_bound=w_bound,
                                          key=subkeys[2]
                                          )
-                self.W2 = HebbianSynapse("W2",
+                self.W2 = BackwardSynapse("W2",
                                          shape=(h2_dim, h1_dim),
                                          n_sub_models=self.n_p2,     ## number of modules in the layer
                                          sign_value=-1.,                  ## -1 means M-step solve minimization problem
@@ -144,7 +144,7 @@ class PC_Recon():
                                          w_bound=w_bound,
                                          key=subkeys[1]
                                          )
-                self.W1 = HebbianSynapse("W1", shape=(h1_dim, in_dim),
+                self.W1 = BackwardSynapse("W1", shape=(h1_dim, in_dim),
                                          n_sub_models=n_p1,              ## number of modules in the layer
                                          sign_value=-1.,                 ## -1 means M-step solve minimization problem
                                          optim_type=opt_type,
@@ -158,9 +158,9 @@ class PC_Recon():
                 self.e1 = GaussianErrorCell("e1", n_units=h1_dim)
                 self.e0 = GaussianErrorCell("e0", n_units=in_dim)
 
-                self.E3 = StaticSynapse("E3", shape=(h2_dim, h3_dim), n_sub_models=self.n_p3, key=subkeys[2])
-                self.E2 = StaticSynapse("E2", shape=(h1_dim, h2_dim), n_sub_models=self.n_p2, key=subkeys[1])
-                self.E1 = StaticSynapse("E1", shape=(in_dim, h1_dim), n_sub_models=self.n_p1, key=subkeys[0])
+                self.E3 = ForwardSynapse("E3", shape=(h2_dim, h3_dim), n_sub_models=self.n_p3, key=subkeys[2])
+                self.E2 = ForwardSynapse("E2", shape=(h1_dim, h2_dim), n_sub_models=self.n_p2, key=subkeys[1])
+                self.E1 = ForwardSynapse("E1", shape=(in_dim, h1_dim), n_sub_models=self.n_p1, key=subkeys[0])
 
                 ############################################################
                 ## since this model will operate with batches, we need to
@@ -388,8 +388,10 @@ class PC_Recon():
 
             module_idx = 0
             rf_vis = h1_rf[module_idx, :, :].reshape(-1, self.inPatch_dim)
-            visualize([rf_vis[:max_filter, :].T],
+            rnd_idx = np.random.randint(0, len(rf_vis), max_filter)
+            visualize([rf_vis[rnd_idx, :].T],
                       [patch_shape], prefix=self.exp_dir + "/filters/{}".format(fname))
+
 
 
             if stride_shape!=(0, 0):

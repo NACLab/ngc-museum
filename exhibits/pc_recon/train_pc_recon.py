@@ -111,7 +111,6 @@ else:  # Patch case
     images_per_batch = 1
 
 
-
 print("Network Dimensions: {} >> {} >> {} >> {}".format(h3_dim, h2_dim, h1_dim, in_dim))
 print("Network Dimensions: {}{} >> {}{} >> {}{} >> {}{}".format(
                                                 n_p3, p3_size,
@@ -119,6 +118,7 @@ print("Network Dimensions: {}{} >> {}{} >> {}{} >> {}{}".format(
                                                 n_p1, p1_size,
                                                 n_inPatch, pin_size,
 ))
+
 
 print("    mini-batch size : ", mb_size)
 print("    number of images per mini-batch: {}".format(mb_size))
@@ -182,8 +182,8 @@ for i in range(n_iter):
             Xt_mu, L_test = model.process(Xb_test.reshape(mb_size, -1), adapt_synapses=False)
             Xtest_mu = Xt_mu.reshape(mb_size * n_inPatch, -1) + x_test_mean
             ###############################################
-            print("\r >  Test Recon Loss = {} ".format(L_test / mb_size))
-            model.viz_recons(Xtest, Xtest_mu, image_shape=image_shape, fname=f"recons_t{(i % iter_mod) + 1}")
+            print("\r >  Test Recon Loss = {} ".format(L_test / mb_vis_size))
+            model.viz_recons(Xtest, Xtest_mu, image_shape=image_shape, fname=f"recons_t{i+1}")
 
         ## for patched inputs
         elif images_per_batch == 1:
@@ -197,11 +197,12 @@ for i in range(n_iter):
                 Xt_mu, L_test = model.process(Xb_test.reshape(mb_size, -1), adapt_synapses=False)
                 l0 = l0 + L_test
                 ## reconstruct images from patches
-                X_mu = reconstruct_from_patches_2d(np.asarray(Xt_mu).reshape(-1, *patch_shape), image_shape)
+                Xtest_mu = Xt_mu.reshape(mb_size * n_inPatch, -1) + x_test_mean
+                X_mu = reconstruct_from_patches_2d(np.asarray(Xtest_mu).reshape(-1, *patch_shape), image_shape)
                 Xmu_list.append(X_mu.reshape(image_shape[0] * image_shape[1]))
             ###############################################
-            print("\r  >  Test Recon Loss = {} ".format(l0 / mb_size))
-            model.viz_recons(Xtest, np.asarray(Xmu_list), image_shape=image_shape, fname=f"recons_t{(i % iter_mod) + 1}")
+            print("\r  >  Test Recon Loss = {} ".format(l0 / (mb_vis_size * mb_size)))
+            model.viz_recons(Xtest, np.asarray(Xmu_list), image_shape=image_shape, fname=f"recons_t{i+1}")
 
         ###############################################
         model.save_to_disk(params_only=True)                                    ## save final state of synapses to disk
@@ -209,7 +210,7 @@ for i in range(n_iter):
     print()
     if i % viz_mod == 0:
         print(model.get_synapse_stats())
-        model.viz_receptive_fields(patch_shape, max_filter=max_vis_filter, fname=f"erf_t{(i % viz_mod) + 1}")
+        model.viz_receptive_fields(patch_shape, max_filter=max_vis_filter, fname=f"erf_t{i+1}")
 
 ## collect a test sample raster plot
 model.save_to_disk(params_only=True) ## save final model parameters to disk
