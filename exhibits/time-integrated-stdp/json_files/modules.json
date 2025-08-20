@@ -1,0 +1,16 @@
+[
+	{"absolute_path": "ngclearn.components", 
+		"attributes": [
+			{"name": "VarTrace"},
+			{"name": "PoissonCell"},
+			{"name": "LIFCell"},
+			{"name": "TraceSTDPSynapse"},
+			{"name": "StaticSynapse"}]
+	}, 
+	{"absolute_path": "ngcsimlib.operations",
+		"attributes": [
+			{"name": "overwrite"},
+			{"name": "summation"}]
+	}
+
+]

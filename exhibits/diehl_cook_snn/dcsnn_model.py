@@ -80,11 +80,13 @@ class DC_SNN():
                 self.z1e = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_e,
                                    resist_m=tau_m_e/dt, thr=-52., v_rest=-65.,
                                    v_reset=-60., tau_theta=1e7, theta_plus=0.05,
-                                   refract_time=5., one_spike=True, key=subkeys[2])
+                                   refract_time=5., one_spike=True,
+                                   lower_clamp_voltage=False, key=subkeys[2])
                 self.z1i = LIFCell("z1i", n_units=hid_dim, tau_m=tau_m_i,
                                    resist_m=tau_m_i/dt, thr=-40., v_rest=-60.,
                                    v_reset=-45., tau_theta=0., refract_time=5.,
-                                   one_spike=False, key=subkeys[3])
+                                   lower_clamp_voltage=False, one_spike=False,
+                                   key=subkeys[3])
 
                 # ie -> inhibitory to excitatory; ei -> excitatory to inhibitory
                 #       (eta = 0 means no learning)
