@@ -50,7 +50,7 @@ for opt, arg in options:
         n_iter = int(arg.strip())
 print("Data Path: ", path_data)
 
-shuffle = False
+shuffle = True
 ################################################################################
 ## load the data
 jnp.set_printoptions(suppress=True, precision=5)
