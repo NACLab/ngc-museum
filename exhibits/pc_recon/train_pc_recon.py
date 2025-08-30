@@ -50,14 +50,22 @@ for opt, arg in options:
         n_iter = int(arg.strip())
 print("Data Path: ", path_data)
 
+shuffle = True
 ################################################################################
-# load the data
+## load the data
 jnp.set_printoptions(suppress=True, precision=5)
 dkey = random.PRNGKey(1234)
 dkey, *subkeys = random.split(dkey, 6)
 ################################################################################
 x_train = jnp.load(os.path.join(path_data, "trainX.npy"))
+y_train = jnp.load(os.path.join(path_data, "trainY.npy"))
+
 x_test = jnp.load(os.path.join(path_data, "testX.npy"))
+y_test = jnp.load(os.path.join(path_data, "testY.npy"))
+
+# sequential classes (not shuffled)
+x_train = x_train[jnp.argsort(jnp.argmax(y_train, axis=1))]
+x_test = x_test[jnp.argsort(jnp.argmax(y_test, axis=1))]
 
 image_size = x_train.shape[1]
 image_H = image_W = int(jnp.sqrt(image_size))
@@ -97,10 +105,6 @@ print("tot_patch_per_image is ", tot_patch_per_image)
 print("number of input patches is ", n_inPatch)
 if tot_patch_per_image / n_inPatch != int(tot_patch_per_image / n_inPatch):
     input("recommended mb_size and n_inPatch", sympy.factorint(tot_patch_per_image, multiple=True))
-
-
-# Returns a dictionary of prime factors and their multiplicities
-
 
 
 if patch_shape == image_shape:  # Full image case
@@ -146,11 +150,15 @@ if n_samples > 0:
 n_batches = x_train.shape[0]//images_per_batch
 
 for i in range(n_iter):
-    dkey, *subkeys = random.split(dkey, 4)
-    ptrs = random.permutation(subkeys[0], x_train.shape[0])
-    ptrs_ = random.permutation(subkeys[1], x_test.shape[0])
-    X = x_train[ptrs, :]
-    X_test = x_test[ptrs_, :]
+    X = x_train
+    X_test = x_test
+
+    if shuffle:
+        dkey, *subkeys = random.split(dkey, 4)
+        ptrs = random.permutation(subkeys[0], x_train.shape[0])
+        ptrs_ = random.permutation(subkeys[1], x_test.shape[0])
+        X = x_train[ptrs, :]
+        X_test = x_test[ptrs_, :]
 
     n_pat_seen = 0
     L = 0
@@ -166,7 +174,6 @@ for i in range(n_iter):
         L = Lb + L                                                          ## track current global loss
         print("\r > Seen {} patterns   | n_batch {}/{}   | Train-Recon-Loss = {}".format(
             n_pat_seen, (nb+1), n_batches, L/(n_pat_seen+1)), end="")
-
 
     if i % iter_mod == 0:
         print()
@@ -214,4 +221,3 @@ for i in range(n_iter):
 
 ## collect a test sample raster plot
 model.save_to_disk(params_only=True) ## save final model parameters to disk
-
