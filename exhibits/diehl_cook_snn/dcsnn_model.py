@@ -1,17 +1,17 @@
 from ngclearn.utils.io_utils import makedir
 from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
-from ngclearn.utils.model_utils import scanner
-from ngcsimlib.context import Context
-#from ngcsimlib.compilers.process import Process
-from ngclearn.utils import JaxProcess
-from ngcsimlib.operations import summation
-from ngclearn.components.other.varTrace import VarTrace
+from ngclearn import Context, MethodProcess, JointProcess
 from ngclearn.components.input_encoders.poissonCell import PoissonCell
 from ngclearn.components.neurons.spiking.LIFCell import LIFCell
-from ngclearn.components.synapses import TraceSTDPSynapse, StaticSynapse
+from ngclearn.components.synapses.staticSynapse import StaticSynapse
+from ngclearn.components.synapses.hebbian.traceSTDPSynapse import TraceSTDPSynapse
+from ngclearn.components.other.varTrace import VarTrace
 from ngclearn.utils.model_utils import normalize_matrix
-import ngclearn.utils.weight_distribution as dist
+from ngclearn.utils.distribution_generator import DistributionGenerator
+from ngcsimlib.operations import Summation
+
+from ngcsimlib.global_state import stateManager
 
 class DC_SNN():
     """
@@ -71,100 +71,95 @@ class DC_SNN():
             self.load_from_disk(loadDir)
         else:
             with Context("Circuit") as self.circuit:
-                self.z0 = PoissonCell("z0", n_units=in_dim, max_freq=63.75, key=subkeys[0])
-                self.W1 = TraceSTDPSynapse("W1", shape=(in_dim, hid_dim),
-                                           A_plus=Aplus, A_minus=Aminus, eta=1.,
-                                           pretrace_target=0.,
-                                           weight_init=dist.uniform(0.0, 0.3),
-                                           key=subkeys[1])
-                self.z1e = LIFCell("z1e", n_units=hid_dim, tau_m=tau_m_e,
-                                   resist_m=tau_m_e/dt, thr=-52., v_rest=-65.,
-                                   v_reset=-60., tau_theta=1e7, theta_plus=0.05,
-                                   refract_time=5., one_spike=True, key=subkeys[2])
-                self.z1i = LIFCell("z1i", n_units=hid_dim, tau_m=tau_m_i,
-                                   resist_m=tau_m_i/dt, thr=-40., v_rest=-60.,
-                                   v_reset=-45., tau_theta=0., refract_time=5.,
-                                   one_spike=False, key=subkeys[3])
+                self.z0 = PoissonCell("z0", n_units=in_dim, target_freq=63.75, key=subkeys[0])
+                self.W1 = TraceSTDPSynapse(
+                    "W1", shape=(in_dim, hid_dim), A_plus=Aplus, A_minus=Aminus, eta=1., pretrace_target=0.,
+                    weight_init=DistributionGenerator.uniform(0.0, 0.3), key=subkeys[1]
+                )
+                self.z1e = LIFCell(
+                    "z1e", n_units=hid_dim, tau_m=tau_m_e, resist_m=tau_m_e / dt, thr=-52., v_rest=-65.,
+                    v_reset=-60., tau_theta=1e7, theta_plus=0.05, refract_time=5., one_spike=True, key=subkeys[2]
+                )
+                self.z1i = LIFCell(
+                    "z1i", n_units=hid_dim, tau_m=tau_m_i, resist_m=tau_m_i / dt, thr=-40., v_rest=-60.,
+                    v_reset=-45., tau_theta=0., refract_time=5., one_spike=False, key=subkeys[3]
+                )
 
                 # ie -> inhibitory to excitatory; ei -> excitatory to inhibitory
                 #       (eta = 0 means no learning)
-                self.W1ie = StaticSynapse("W1ie", shape=(hid_dim, hid_dim),
-                                          weight_init=dist.hollow(-120.),
+                self.W1ie = StaticSynapse(
+                    "W1ie", shape=(hid_dim, hid_dim),
+                                          weight_init=DistributionGenerator.constant(-120., hollow=True),
                                           key=subkeys[4])
-                self.W1ei = StaticSynapse("W1ei", shape=(hid_dim, hid_dim),
-                                          weight_init=dist.eye(22.5),
-                                          key=subkeys[5])
-                self.tr0 = VarTrace("tr0", n_units=in_dim, tau_tr=tau_tr, decay_type="exp",
-                                    a_delta=0., key=subkeys[6])
-                self.tr1 = VarTrace("tr1", n_units=hid_dim, tau_tr=tau_tr, decay_type="exp",
-                                    a_delta=0., key=subkeys[7])
+                self.W1ei = StaticSynapse(
+                    "W1ei", shape=(hid_dim, hid_dim),
+                    weight_init=DistributionGenerator.constant(22.5, eye=True), key=subkeys[5]
+                )
+                self.tr0 = VarTrace("tr0", n_units=in_dim, tau_tr=tau_tr, decay_type="exp", a_delta=0., key=subkeys[6])
+                self.tr1 = VarTrace("tr1", n_units=hid_dim, tau_tr=tau_tr, decay_type="exp", a_delta=0., key=subkeys[7])
 
-                ## wire z0 to z1e via W1 and z1i to z1e via W1ie
-                self.W1.inputs << self.z0.outputs
-                self.W1ie.inputs << self.z1i.s
-                self.z1e.j << summation(self.W1.outputs, self.W1ie.outputs)
-                # wire z1e to z1i via W1ie
-                self.W1ei.inputs << self.z1e.s
-                self.z1i.j << self.W1ei.outputs
-                # wire cells z0 and z1e to their respective traces
-                self.tr0.inputs << self.z0.outputs
-                self.tr1.inputs << self.z1e.s
-                # wire relevant compartment statistics to synaptic cable W1
-                self.W1.preTrace << self.tr0.trace
-                self.W1.preSpike << self.z0.outputs
-                self.W1.postTrace << self.tr1.trace
-                self.W1.postSpike << self.z1e.s
+                self.z0.outputs >> self.W1.inputs
+                self.z1i.s >> self.W1ie.inputs
+                Summation(self.W1.outputs, self.W1ie.outputs) >> self.z1e.j
 
-                advance_process = (JaxProcess(name="advance_process")
-                                   >> self.W1.advance_state
-                                   >> self.W1ie.advance_state
-                                   >> self.W1ei.advance_state
-                                   >> self.z0.advance_state
-                                   >> self.z1e.advance_state
-                                   >> self.z1i.advance_state
-                                   >> self.tr0.advance_state
-                                   >> self.tr1.advance_state)
-                self.advance_proc = advance_process
-                reset_process = (JaxProcess(name="reset_process")
-                                 >> self.z0.reset
-                                 >> self.z1e.reset
-                                 >> self.z1i.reset
-                                 >> self.tr0.reset
-                                 >> self.tr1.reset
-                                 >> self.W1.reset
-                                 >> self.W1ie.reset
-                                 >> self.W1ei.reset)
-               
-                evolve_process = (JaxProcess(name="evolve_process")
-                                  >> self.W1.evolve)
-                self.evolve_proc = evolve_process 
-                processes = (reset_process, advance_process, evolve_process)
-                self._dynamic(processes)
+                self.z1e.s >> self.W1ei.inputs
+                self.W1ei.outputs >> self.z1i.j
 
-    def _dynamic(self, processes):## create dynamic commands for circuit
-        W1, z0, z1e = self.circuit.get_components("W1", "z0", "z1e")
-        self.W1 = W1
-        self.z0 = z0
-        self.z1e = z1e
-        reset_proc, advance_proc, evolve_proc = processes
+                self.z0.outputs >> self.tr0.inputs
+                self.z1e.s >> self.tr1.inputs
 
-        self.circuit.wrap_and_add_command(jit(reset_proc.pure), name="reset")
-        #self.circuit.wrap_and_add_command(jit(advance_proc.pure), name="advance")
+                self.tr0.trace >> self.W1.preTrace
+                self.z0.outputs >> self.W1.preSpike
+                self.tr1.trace >> self.W1.postTrace
+                self.z1e.s >> self.W1.postSpike
 
-        @Context.dynamicCommand
-        def norm():
-            W1.weights.set(normalize_matrix(W1.weights.value, self.wNorm, order=1, axis=0))
+                self.advance_proc = (MethodProcess(name="advance_process")
+                                     >> self.W1.advance_state
+                                     >> self.W1ie.advance_state
+                                     >> self.W1ei.advance_state
+                                     >> self.z0.advance_state
+                                     >> self.z1e.advance_state
+                                     >> self.z1i.advance_state
+                                     >> self.tr0.advance_state
+                                     >> self.tr1.advance_state)
 
-        @Context.dynamicCommand
-        def clamp(x):
-            z0.inputs.set(x)
+                self.reset_proc = (MethodProcess(name="reset_process")
+                                   >> self.z0.reset
+                                   >> self.z1e.reset
+                                   >> self.z1i.reset
+                                   >> self.tr0.reset
+                                   >> self.tr1.reset
+                                   >> self.W1.reset
+                                   >> self.W1ie.reset
+                                   >> self.W1ei.reset)
 
-        @scanner
-        def process(compartment_values, args):
-            _t, _dt = args
-            compartment_values = advance_proc.pure(compartment_values, t=_t, dt=_dt)
-            compartment_values = evolve_proc.pure(compartment_values, t=_t, dt=_dt)
-            return compartment_values, compartment_values[self.z1e.s.path]
+                self.evolve_proc = (MethodProcess(name="evolve_process")
+                                    >> self.W1.evolve)
+
+                self.forward_proc = (JointProcess(name="forward_process")
+                                     >> self.advance_proc
+                                     >> self.evolve_proc)
+
+                self.advance_proc.watch(self.z1e.s, self.z1e.v) #, self.z1e.j)
+
+    def norm(self):
+        self.W1.weights.set(normalize_matrix(self.W1.weights.get(), self.wNorm, order=1, axis=0))
+
+    def clamp(self, x):
+        self.z0.inputs.set(x)
+
+    def get_synapse_stats(self):
+        """
+        Print basic statistics of W1 to string
+
+        Returns:
+            string containing min, max, mean, and L2 norm of W1
+        """
+        _W1 = self.W1.weights.get()
+        msg = "W1:\n  min {} ;  max {} \n  mu {} ;  norm {}".format(
+            jnp.amin(_W1), jnp.amax(_W1), jnp.mean(_W1), jnp.linalg.norm(_W1)
+        )
+        return msg
 
     def save_to_disk(self, params_only=False):
         """
@@ -174,7 +169,7 @@ class DC_SNN():
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
         if params_only: ## this condition allows to only write actual parameter values w/in components to disk
-            model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
+            model_dir = "{}/{}/component/custom".format(self.exp_dir, self.model_name)
             self.W1.save(model_dir)
             self.z1e.save(model_dir)
         else: ## this saves the whole model form (JSON structure as well as parameter values)
@@ -188,25 +183,19 @@ class DC_SNN():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        with Context("Circuit") as self.circuit:
-            self.circuit.load_from_dir(model_directory)
-            processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
-            self._dynamic(processes)
+        #with Context("Circuit") as self.circuit:
+        self.circuit = Context.load(directory=model_directory, module_name=self.model_name)
+        #self.advance_proc = self.circuit.get_objects("advance_process", objectType="process")
+        processes = self.circuit.get_objects_by_type("process") ## obtain all saved processes within this context
+        self.advance_proc = processes.get("advance_process")
+        self.reset_proc = processes.get("reset_process")
+        self.evolve_proc = processes.get("evolve_process")
+        self.forward_proc = processes.get("forward_process")
 
-
-    def get_synapse_stats(self):
-        """
-        Print basic statistics of W1 to string
-
-        Returns:
-            string containing min, max, mean, and L2 norm of W1
-        """
-        _W1 = self.W1.weights.value
-        msg = "W1:\n  min {} ;  max {} \n  mu {} ;  norm {}".format(
-            jnp.amin(_W1), jnp.amax(_W1), jnp.mean(_W1), jnp.linalg.norm(_W1)
-        )
-        return msg
-
+        W1, z0, z1e = self.circuit.get_components("W1", "z0", "z1e")
+        self.W1 = W1
+        self.z0 = z0
+        self.z1e = z1e
 
     def viz_receptive_fields(self, fname, field_shape):
         """
@@ -218,7 +207,7 @@ class DC_SNN():
 
             field_shape: 2-tuple specifying expected shape of receptive fields to plot
         """
-        _W1 = self.W1.weights.value
+        _W1 = self.W1.weights.get()
         visualize([_W1], [field_shape], self.exp_dir + "/filters/{}".format(fname))
 
     def process(self, obs, adapt_synapses=True, collect_spike_train=False):
@@ -246,11 +235,21 @@ class DC_SNN():
         assert batch_dim == 1 ## batch-length must be one for DC-SNN
         #z0, z1e, z1i, W1 = self.circuit.get_components("z0", "z1e", "z1i", "W1")
 
-        self.circuit.reset()
-        self.circuit.clamp(obs)
-        out = self.circuit.process(
-            jnp.array([[self.dt*i,self.dt] for i in range(self.T)])
-        ) ## out contains stacked excitatory spike train
-        if self.wNorm > 0.:
-            self.circuit.norm()
-        return out
+        inputs = jnp.array(self.forward_proc.pack_rows(self.T, t=lambda x: x, dt=self.dt))
+        #print(inputs.shape)
+
+        self.reset_proc.run()
+        self.clamp(obs)
+        if adapt_synapses:
+            stateManager.state, outputs = self.forward_proc.scan(inputs)
+            self.norm()
+        else:
+            stateManager.state, outputs = self.advance_proc.scan(inputs)
+            # print(self.z0.inputs.get())
+            # print(len(outputs))
+            # print(outputs[1][0, :])
+            # print(jnp.abs(outputs[1][0, :] - outputs[1][11, :]))
+            # exit()
+
+        spike_out = outputs[0]
+        return spike_out

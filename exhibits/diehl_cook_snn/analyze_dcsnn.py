@@ -45,9 +45,12 @@ n_batches = _X.shape[0]
 patch_shape = (28, 28)
 
 dkey = random.PRNGKey(time.time_ns())
-model = Model(dkey=dkey, loadDir="exp/snn_stdp")
+#model = Model(dkey=dkey, loadDir="exp/snn_stdp")
+model = Model(dkey=dkey, loadDir="exp/")
 #model = load_model("exp/snn_stdp", dt=1., T=200, in_dim=_X.shape[1]) ## load in pre-trained SNN model
+print(model.get_synapse_stats())
 
+print(model.advance_proc.run.compiled.code)
 
 print("****")
 ## save final receptive fields
@@ -58,11 +61,13 @@ print("=> Plotting raster of sample spike train...")
 ## create a raster plot of for sample data pattern
 x_ref = _X[sample_idx:sample_idx+1,:] ## extract data pattern
 _S = model.process(obs=x_ref, adapt_synapses=False, collect_spike_train=True)
-cnt = jnp.sum(jnp.squeeze(_S), axis=0, keepdims=True) ## get frequencies/firing rates
 
+cnt = jnp.sum(jnp.squeeze(_S), axis=0, keepdims=True) ## get frequencies/firing rates
+print(cnt)
 neural_idx = jnp.squeeze(jnp.argmax(cnt, axis=1)) ## get highest firing rate among neurons
 print(" >> Neural.Idx {} -> Input Pattern {} ".format(neural_idx, sample_idx))
-field = jnp.expand_dims(model.circuit.components["W1"].weights.value[:,neural_idx], axis=1)
+#field = jnp.expand_dims(model.circuit.components["W1"].weights.value[:,neural_idx], axis=1)
+field = jnp.expand_dims(model.W1.weights.get()[:,neural_idx], axis=1)
 
 
 import matplotlib #.pyplot as plt

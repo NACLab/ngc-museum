@@ -53,7 +53,7 @@ dt = 1. ## integration time constant
 
 ################################################################################
 print("--- Building Model ---")
-dkey = random.PRNGKey(1234)
+dkey = random.PRNGKey(69) #1234)
 dkey, *subkeys = random.split(dkey, 3)
 ## Create model
 model = Model(subkeys[1], in_dim=in_dim, T=T, dt=dt)
