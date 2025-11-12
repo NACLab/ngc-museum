@@ -1,6 +1,6 @@
 # Event-Based STDP Spiking Neural Network (Tavanaei et al., 2018)
 
-<b>Version</b>: ngclearn==2.0.0, ngcsimlib==1.0.0
+<b>Version</b>: ngclearn==3.0.0, ngcsimlib==2.0.0
 
 This exhibit contains an implementation of the spiking neuronal model proposed
 and studied in:
