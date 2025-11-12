@@ -1,12 +1,16 @@
 from ngclearn.utils.io_utils import makedir
 from ngclearn.utils.viz.synapse_plot import visualize
 from jax import numpy as jnp, random, jit
-from ngclearn.utils.model_utils import scanner
-from ngcsimlib.context import Context
-from ngclearn.utils import JaxProcess
-from ngclearn.components import GaussianErrorCell as ErrorCell, HebbianSynapse, DenseSynapse, RateCell
+from ngclearn import Context, MethodProcess, JointProcess
+from ngclearn.components.neurons.graded.rateCell import RateCell
+from ngclearn.components.synapses.denseSynapse import DenseSynapse
+from ngclearn.components.synapses.hebbian.hebbianSynapse import HebbianSynapse
+from ngclearn.components.neurons.graded.gaussianErrorCell import GaussianErrorCell as ErrorCell
 from ngclearn.utils.model_utils import normalize_matrix
-import ngclearn.utils.weight_distribution as dist
+from ngclearn.utils.distribution_generator import DistributionGenerator
+from ngcsimlib.operations import Summation
+
+from ngcsimlib.global_state import stateManager
 
 class SparseCoding():
     """
@@ -99,20 +103,19 @@ class SparseCoding():
             self.load_from_disk(load_dir)
         else:
             with Context("Circuit") as self.circuit:
-                self.z1 = RateCell("z1", n_units=hid_dim, tau_m=tau_m,
-                                   act_fx=act_fx, prior=(prior_type, lmbda),
-                                   threshold=(threshold_type, lmbda), integration_type="euler",
-                                   key=subkeys[0])
+                self.z1 = RateCell(
+                    "z1", n_units=hid_dim, tau_m=tau_m, act_fx=act_fx, prior=(prior_type, lmbda),
+                    threshold=(threshold_type, lmbda), integration_type="euler", key=subkeys[0]
+                )
                 self.e0 = ErrorCell("e0", n_units=in_dim)
-                self.W1 = HebbianSynapse("W1", shape=(hid_dim, in_dim),
-                                         eta=eta_w,
-                                         weight_init=dist.fan_in_gaussian(),
-                                         bias_init=None, w_bound=0.,
-                                         optim_type="sgd", sign_value=-1.,
-                                         key=subkeys[1])
-                self.E1 = DenseSynapse("E1", shape=(in_dim, hid_dim),
-                                       weight_init=dist.uniform(-0.2, 0.2), resist_scale=1.,
-                                       key=subkeys[2])
+                self.W1 = HebbianSynapse(
+                    "W1", shape=(hid_dim, in_dim), eta=eta_w, weight_init=DistributionGenerator.fan_in_gaussian(), #dist.fan_in_gaussian(),
+                    bias_init=None, w_bound=0., optim_type="sgd", sign_value=-1., key=subkeys[1]
+                )
+                self.E1 = DenseSynapse(
+                    "E1", shape=(in_dim, hid_dim), weight_init=DistributionGenerator.uniform(-0.2, 0.2), #dist.uniform(-0.2, 0.2),
+                    resist_scale=1., key=subkeys[2]
+                )
                 ## since this model will operate with batches, we need to
                 ## configure its batch-size here before compiling with the loop-scan
                 self.e0.batch_size = batch_size
@@ -121,62 +124,72 @@ class SparseCoding():
                 self.E1.batch_size = batch_size
 
                 ## wire z1.zF to e0.mu via W1
-                self.W1.inputs << self.z1.zF
-                self.e0.mu << self.W1.outputs
+                self.z1.zF >> self.W1.inputs
+                self.W1.outputs >> self.e0.mu
                 #self.e0.target << self.z0.zF ## no target node exists, so we will clamp instead
                 ## wire e0.dmu to z1.j
-                self.E1.inputs << self.e0.dmu
-                self.z1.j << self.E1.outputs
+                self.e0.dmu >> self.E1.inputs
+                self.E1.outputs >> self.z1.j
                 ## Setup W1 for its 2-factor Hebbian update
-                self.W1.pre << self.z1.zF
-                self.W1.post << self.e0.dmu
+                self.z1.zF >> self.W1.pre
+                self.e0.dmu >> self.W1.post
 
-                advance_process = (JaxProcess(name="advance_process")
+                ## Inference process
+                advance_process = (MethodProcess(name="advance_process")
                                    >> self.W1.advance_state
                                    >> self.E1.advance_state
                                    >> self.z1.advance_state
                                    >> self.e0.advance_state)
-
-                reset_process = (JaxProcess(name="reset_process")
+                self.advance = advance_process
+                ## Reset-to-baseline process
+                reset_process = (MethodProcess(name="reset_process")
                                  >> self.W1.reset
                                  >> self.E1.reset
                                  >> self.z1.reset
                                  >> self.e0.reset)
-
-                evolve_process = (JaxProcess(name="evolve_process")
+                self.reset = reset_process
+                ## Learning process
+                evolve_process = (MethodProcess(name="evolve_process")
                                   >> self.W1.evolve)
+                self.evolve = evolve_process
 
-                processes = (reset_process, advance_process, evolve_process)
+                # processes = (reset_process, advance_process, evolve_process)
+                #
+                # ## call the compiler to set up jit-i-fied commands and any
+                # ## dynamically called command functions
+                # self._dynamic(processes)
 
-                ## call the compiler to set up jit-i-fied commands and any
-                ## dynamically called command functions
-                self._dynamic(processes)
+    def norm(self):
+        self.W1.weights.set(normalize_matrix(self.W1.weights.get(), 1., order=2, axis=1))
 
-    def _dynamic(self, processes): ## create dynamic commands for circuit
-        W1, E1, e0, z1 = self.circuit.get_components("W1", "E1", "e0", "z1")
-        self.W1 = W1
-        self.e0 = e0
-        self.z1 = z1
-        self.E1 = E1
+    def clamp(self, x):
+        self.e0.target.set(x)
 
-        reset_proc, advance_proc, evolve_proc = processes
-
-        self.circuit.wrap_and_add_command(jit(reset_proc.pure), name="reset")
-        self.circuit.wrap_and_add_command(jit(evolve_proc.pure), name="evolve")
-
-        @Context.dynamicCommand
-        def clamp(x):
-            e0.target.set(x)
-
-        @Context.dynamicCommand
-        def norm():
-            W1.weights.set(normalize_matrix(W1.weights.value, 1., order=2, axis=1))
-
-        @scanner
-        def process(compartment_values, args):
-            _t, _dt = args
-            compartment_values = advance_proc.pure(compartment_values, t=_t, dt=_dt)
-            return compartment_values, compartment_values[self.z1.zF.path]
+    # def _dynamic(self, processes): ## create dynamic commands for circuit
+    #     W1, E1, e0, z1 = self.circuit.get_components("W1", "E1", "e0", "z1")
+    #     self.W1 = W1
+    #     self.e0 = e0
+    #     self.z1 = z1
+    #     self.E1 = E1
+    #
+    #     reset_proc, advance_proc, evolve_proc = processes
+    #
+    #     self.circuit.wrap_and_add_command(jit(reset_proc.pure), name="reset")
+    #     self.circuit.wrap_and_add_command(jit(evolve_proc.pure), name="evolve")
+    #
+    #     @Context.dynamicCommand
+    #     def clamp(x):
+    #         e0.target.set(x)
+    #
+    #     @Context.dynamicCommand
+    #     def norm():
+    #         W1.weights.set(normalize_matrix(W1.weights.get(), 1., order=2, axis=1))
+    #
+    #     @scanner
+    #     def process(compartment_values, args):
+    #         _t, _dt = args
+    #         compartment_values = advance_proc.pure(compartment_values, t=_t, dt=_dt)
+    #         return compartment_values, compartment_values[self.z1.zF.path]
 
     def save_to_disk(self, params_only=False):
         """
@@ -199,10 +212,24 @@ class SparseCoding():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        with Context("Circuit") as self.circuit:
-            self.circuit.load_from_dir(model_directory)
-            processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
-            self._dynamic(processes)
+
+        self.circuit = Context.load(directory=model_directory, module_name=self.model_name)
+        # self.advance_proc = self.circuit.get_objects("advance_process", objectType="process")
+        processes = self.circuit.get_objects_by_type("process")  ## obtain all saved processes within this context
+        self.advance = processes.get("advance_process")
+        self.reset = processes.get("reset_process")
+        self.evolve = processes.get("evolve_process")
+
+        W1, E1, e0, z1 = self.circuit.get_components("W1", "E1", "e0", "z1")
+        self.W1 = W1
+        self.E1 = E1
+        self.e0 = e0
+        self.z1 = z1
+
+        # with Context("Circuit") as self.circuit:
+        #     self.circuit.load_from_dir(model_directory)
+        #     processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
+        #     self._dynamic(processes)
 
     def get_synapse_stats(self):
         """
@@ -211,7 +238,7 @@ class SparseCoding():
         Returns:
             string containing min, max, mean, and L2 norm of W1
         """
-        _W1 = self.W1.weights.value
+        _W1 = self.W1.weights.get()
         msg = "W1:\n  min {} ;  max {} \n  mu {} ;  norm {}".format(jnp.amin(_W1),
                                                                     jnp.amax(_W1),
                                                                     jnp.mean(_W1),
@@ -228,7 +255,7 @@ class SparseCoding():
 
             field_shape: 2-tuple specifying expected shape of receptive fields to plot
         """
-        _W1 = self.W1.weights.value.T
+        _W1 = self.W1.weights.get().T
         visualize([_W1], [field_shape], self.exp_dir + "/filters/{}".format(fname))
 
     def process(self, obs, adapt_synapses=True, collect_latent_codes=False):
@@ -258,22 +285,38 @@ class SparseCoding():
 
         ########################################################################
         ## pin/tie feedback synapses to transpose of forward ones
-        self.E1.weights.set(jnp.transpose(self.W1.weights.value))
-        ## reset/set all components to their resting values / initial conditions
-        self.circuit.reset()
+        self.E1.weights.set(jnp.transpose(self.W1.weights.get()))
+        self.reset.run() ## reset/set all components to their resting values / initial conditions
         ## Perform several E-steps
-        self.circuit.clamp(obs)  ## clamp data to z0
-        z1_codes = self.circuit.process(
-            jnp.array([[self.dt * i, self.dt] for i in range(self.T)])
-        )
+        self.clamp(obs) ## clamp data to z0
+        inputs = jnp.array(self.advance.pack_rows(self.T, t=lambda x: x, dt=self.dt))
+        stateManager.state, outputs = self.advance.scan(inputs)
         ## Perform (optional) M-step (scheduled synaptic updates)
-        if adapt_synapses is True:
-            self.circuit.evolve(t=self.T, dt=1.)
-            self.circuit.norm() ## post-update synaptic normalization step
+        if adapt_synapses:
+            self.evolve.run(t=(self.T + 1) * self.dt, dt=self.dt) ## run synaptic alteration
+            self.norm() ## post-update synaptic normalization step
         ########################################################################
 
+
+        # ########################################################################
+        # ## pin/tie feedback synapses to transpose of forward ones
+        # self.E1.weights.set(jnp.transpose(self.W1.weights.get()))
+        # ## reset/set all components to their resting values / initial conditions
+        # self.circuit.reset()
+        # ## Perform several E-steps
+        # self.circuit.clamp(obs)  ## clamp data to z0
+        # z1_codes = self.circuit.process(
+        #     jnp.array([[self.dt * i, self.dt] for i in range(self.T)])
+        # )
+        # ## Perform (optional) M-step (scheduled synaptic updates)
+        # if adapt_synapses is True:
+        #     self.circuit.evolve(t=self.T, dt=1.)
+        #     self.circuit.norm() ## post-update synaptic normalization step
+        # ########################################################################
+
+
         ## Post-processing / probing desired model outputs
-        obs_mu = self.e0.mu.value  ## get settled prediction
-        L0 = self.e0.L.value  ## calculate prediction loss
+        obs_mu = self.e0.mu.get()  ## get settled prediction
+        L0 = self.e0.L.get()  ## calculate prediction loss
 
         return obs_mu, L0
