@@ -66,6 +66,11 @@ maze = RatMaze(
     dkey=subkeys[0], width=n_d, reward_type="dist", is_deterministic=True, episode_len=n_steps, maze_type="t_maze"
 )
 maze.reset()
+import matplotlib.pyplot as plt
+state0 = maze.render(raw_env_pixels=True)
+print("SAVE")
+plt.imsave("ratmaze.png", state0, cmap='gray')
+plt.close()
 
 field_shape = (maze.dim_x, maze.dim_y)
 N_i = maze.get_dim()
@@ -175,16 +180,17 @@ for e in range(n_episodes):
 
     p_rand = jnp.maximum(p_rand * p_decay, p_min)
 
-    if viz_rfields and e % norm_viz_mod == 0:
-        print_syn_stats(agent)
-        _W1, _W2 = agent.circuit.get_components("W1", "W2")
-        _W1 = _W1.weights.value
-        _W2 = _W2.weights.value
-        visualize([_W1, _W2], [field_shape, (int(jnp.sqrt(N_h)), int(jnp.sqrt(N_h)))], "rec_fields.png")
+    if not is_random:
+        if viz_rfields and e % norm_viz_mod == 0:
+            print_syn_stats(agent)
+            _W1, _W2 = agent.circuit.get_components("W1", "W2")
+            _W1 = _W1.weights.value
+            _W2 = _W2.weights.value
+            visualize([_W1, _W2], [field_shape, (int(jnp.sqrt(N_h)), int(jnp.sqrt(N_h)))], "rec_fields.png")
 
-    if render or eval_model:
-        print(f"Saving vid for episode {e} to disk...")
-        visualize_gif(frames, path='.', name=f'episode{e}')
+        if render or eval_model:
+            print(f"Saving vid for episode {e} to disk...")
+            visualize_gif(frames, path='.', name=f'episode{e}')
 
 if viz_rfields:
     print_syn_stats(agent)

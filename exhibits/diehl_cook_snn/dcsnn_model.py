@@ -43,7 +43,6 @@ class DC_SNN():
         loadDir: directory to load model from, overrides initialization/model
             object creation if non-None (Default: None)
     """
-    # Define Functions
     def __init__(self, dkey, in_dim=1, hid_dim=100, T=200, dt=1., exp_dir="exp",
                  model_name="snn_stdp", loadDir=None, **kwargs):
         self.exp_dir = exp_dir
@@ -235,15 +234,17 @@ class DC_SNN():
         assert batch_dim == 1 ## batch-length must be one for DC-SNN
         #z0, z1e, z1i, W1 = self.circuit.get_components("z0", "z1e", "z1i", "W1")
 
-        inputs = jnp.array(self.forward_proc.pack_rows(self.T, t=lambda x: x, dt=self.dt))
+        #inputs = jnp.array(self.forward_proc.pack_rows(self.T, t=lambda x: x, dt=self.dt))
         #print(inputs.shape)
 
         self.reset_proc.run()
         self.clamp(obs)
         if adapt_synapses:
+            inputs = jnp.array(self.forward_proc.pack_rows(self.T, t=lambda x: x, dt=self.dt))
             stateManager.state, outputs = self.forward_proc.scan(inputs)
             self.norm()
         else:
+            inputs = jnp.array(self.advance_proc.pack_rows(self.T, t=lambda x: x, dt=self.dt))
             stateManager.state, outputs = self.advance_proc.scan(inputs)
             # print(self.z0.inputs.get())
             # print(len(outputs))
