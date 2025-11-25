@@ -160,7 +160,7 @@ class PCN():
                 self.Q3.outputs >> self.q3.j
                 #self.eq3.mu = self.q3.z
                 ## wire q3 to qe3
-                self.q3.z >> self.eq3.target
+                # self.q3.z >> self.eq3.target
 
                 self.advance_process = (MethodProcess(name="advance_process")
                                    >> self.E2.advance_state
@@ -217,6 +217,7 @@ class PCN():
 
     def clamp_infer_target(self, y):
         self.eq3.target.set(y)
+        self.q3.z.set(y)
 
 
     def save_to_disk(self, params_only=True):
@@ -278,7 +279,7 @@ class PCN():
 
         ## initialize dynamics of generative model latents to projected states
         self.z1.z.set(self.q1.z.get())
-        self.z2.z.set(self.q2.z.get())
+        # self.z2.z.set(self.q2.z.get())
         ## self.z3.z.set(self.q3.z.get())
         # ### Note: e1 = 0, e2 = 0 at initial conditions
         self.e3.dmu.set(self.eq3.dmu.get())
