@@ -68,7 +68,7 @@ model = PCN(
     subkeys[1], x_dim, y_dim, hid1_dim=512, hid2_dim=512, T=20, dt=1., tau_m=25., act_fx="sigmoid", eta=0.001,
     exp_dir="exp", model_name="pcn"
 )
-model.save_to_disk() # save final state of synapses to disk
+model.save_to_disk(params_only=True) # save final state of synapses to disk
 print("--- Starting Simulation ---")
 
 def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference performance
