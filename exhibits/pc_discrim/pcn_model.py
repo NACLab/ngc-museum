@@ -60,7 +60,7 @@ class PCN():
         self.T = T
         self.dt = dt
         ## hard-coded meta-parameters for this model
-        optim_type = "adam"
+        optim_type = "sgd" # BUG: Changing from Adam to SGD because Adam init return None for opt_params in HebbianSynapse
         wlb = -0.3
         wub = 0.3
 
@@ -229,6 +229,9 @@ class PCN():
         if params_only:
             model_dir = "{}/{}/component/custom".format(self.exp_dir, self.model_name)
             os.makedirs(model_dir, exist_ok=True)
+            # w = self.W1.weights.get()
+            # print(f"[PCN.save_to_disk] w: {w.shape}, min: {jnp.min(w)}, max: {jnp.max(w)}, mean: {jnp.mean(w)}, dtype: {w.dtype}")
+            # print(f"[PCN.save_to_disk] w: {self.W1}")
             self.W1.save(model_dir)
             self.W2.save(model_dir)
             self.W3.save(model_dir)
