@@ -110,11 +110,11 @@ class PCN():
                 ## wire z1 to e2.mu via W2
                 self.z1.zF >> self.W2.inputs
                 self.W2.outputs >> self.e2.mu
-                self.e2.target >> self.z2.z
+                self.z2.z >> self.e2.target
                 ## wire z2 to e3.mu via W3
                 self.z2.zF >> self.W3.inputs
                 self.W3.outputs >> self.e3.mu
-                self.e3.target >> self.z3.z
+                self.z3.z >> self.e3.target
                 ## wire e2 to z1 via W2.T and e1 to z1 via d/dz1
                 self.e2.dmu >> self.E2.inputs
                 self.E2.outputs >> self.z1.j
@@ -217,7 +217,7 @@ class PCN():
 
     def clamp_infer_target(self, y):
         self.eq3.target.set(y)
-        self.q3.z.set(y)
+        self.q3.z.set(y) # NOTE: Instead of wiring, we directly set the value
 
 
     def save_to_disk(self, params_only=True):
@@ -279,7 +279,7 @@ class PCN():
 
         ## initialize dynamics of generative model latents to projected states
         self.z1.z.set(self.q1.z.get())
-        # self.z2.z.set(self.q2.z.get())
+        self.z2.z.set(self.q2.z.get())
         ## self.z3.z.set(self.q3.z.get())
         # ### Note: e1 = 0, e2 = 0 at initial conditions
         self.e3.dmu.set(self.eq3.dmu.get())
