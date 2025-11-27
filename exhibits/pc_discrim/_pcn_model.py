@@ -1,11 +1,11 @@
-from ngcsimlib.global_state import stateManager
-from ngclearn import Context, MethodProcess, JointProcess
+
+from jax import numpy as jnp, random, jit
+import os
 
 from ngclearn.utils.io_utils import makedir
-from jax import numpy as jnp, random, jit
 from ngclearn.components import GaussianErrorCell as ErrorCell, RateCell, HebbianSynapse, StaticSynapse
-#import ngclearn.utils.weight_distribution as dist
-from ngclearn.utils.distribution_generator import DistributionGenerator as dist
+from ngclearn.utils.distribution_generator import DistributionGenerator
+from ngclearn import Context, MethodProcess, JointProcess
 
 ## Main PCN model object
 class PCN():
@@ -60,7 +60,7 @@ class PCN():
         self.T = T
         self.dt = dt
         ## hard-coded meta-parameters for this model
-        optim_type = "adam"
+        optim_type = "sgd" # BUG: Changing from Adam to SGD because Adam init return None for opt_params in HebbianSynapse
         wlb = -0.3
         wub = 0.3
 
@@ -84,41 +84,41 @@ class PCN():
                 self.e3 = ErrorCell("e3", n_units=out_dim)
                 ### set up generative/forward synapses
                 self.W1 = HebbianSynapse(
-                    "W1", shape=(in_dim, hid1_dim), eta=eta, weight_init=dist.uniform(low=wlb, high=wub),
-                    bias_init=dist.constant(value=0.), w_bound=0., optim_type=optim_type, sign_value=-1., key=subkeys[4]
+                    "W1", shape=(in_dim, hid1_dim), eta=eta, weight_init=DistributionGenerator.uniform(wlb, wub),
+                    bias_init=DistributionGenerator.constant(0.), w_bound=0., optim_type=optim_type, sign_value=-1., key=subkeys[4]
                 )
                 self.W2 = HebbianSynapse(
-                    "W2", shape=(hid1_dim, hid2_dim), eta=eta, weight_init=dist.uniform(low=wlb, high=wub),
-                    bias_init=dist.constant(value=0.), w_bound=0., optim_type=optim_type, sign_value=-1., key=subkeys[5]
+                    "W2", shape=(hid1_dim, hid2_dim), eta=eta, weight_init=DistributionGenerator.uniform(wlb, wub),
+                    bias_init=DistributionGenerator.constant(0.), w_bound=0., optim_type=optim_type, sign_value=-1., key=subkeys[5]
                 )
                 self.W3 = HebbianSynapse(
-                    "W3", shape=(hid2_dim, out_dim), eta=eta, weight_init=dist.uniform(low=wlb, high=wub),
-                    bias_init=dist.constant(value=0.), w_bound=0., optim_type=optim_type, sign_value=-1., key=subkeys[6]
+                    "W3", shape=(hid2_dim, out_dim), eta=eta, weight_init=DistributionGenerator.uniform(wlb, wub),
+                    bias_init=DistributionGenerator.constant(0.), w_bound=0., optim_type=optim_type, sign_value=-1., key=subkeys[6]
                 )
                 ## set up feedback/error synapses
                 self.E2 = StaticSynapse(
-                    "E2", shape=(hid2_dim, hid1_dim), weight_init=dist.uniform(low=wlb, high=wub), key=subkeys[4]
+                    "E2", shape=(hid2_dim, hid1_dim), weight_init=DistributionGenerator.uniform(wlb, wub), key=subkeys[4]
                 )
                 self.E3 = StaticSynapse(
-                    "E3", shape=(out_dim, hid2_dim), weight_init=dist.uniform(low=wlb, high=wub), key=subkeys[5]
+                    "E3", shape=(out_dim, hid2_dim), weight_init=DistributionGenerator.uniform(wlb, wub), key=subkeys[5]
                 )
 
                 ## wire z0 to e1.mu via W1
                 self.z0.zF >> self.W1.inputs
-                self.W1.outputs >> self.e1.mu 
-                self.z1.z >> self.e1.target 
+                self.W1.outputs >> self.e1.mu
+                self.z1.z >> self.e1.target
                 ## wire z1 to e2.mu via W2
                 self.z1.zF >> self.W2.inputs
-                self.W2.outputs >> self.e2.mu 
-                self.z2.z >> self.e2.target 
+                self.W2.outputs >> self.e2.mu
+                self.z2.z >> self.e2.target
                 ## wire z2 to e3.mu via W3
-                self.z2.zF >> self.W3.inputs 
-                self.W3.outputs >> self.e3.mu 
+                self.z2.zF >> self.W3.inputs
+                self.W3.outputs >> self.e3.mu
                 self.z3.z >> self.e3.target
                 ## wire e2 to z1 via W2.T and e1 to z1 via d/dz1
                 self.e2.dmu >> self.E2.inputs
                 self.E2.outputs >> self.z1.j
-                self.e1.dtarget >> self.z1.j_td 
+                self.e1.dtarget >> self.z1.j_td
                 ## wire e3 to z2 via W3.T and e2 to z2 via d/dz2
                 self.e3.dmu >> self.E3.inputs
                 self.E3.outputs >> self.z2.j
@@ -127,7 +127,7 @@ class PCN():
                 #self.z3.j_td << self.e3.dtarget
 
                 ## setup W1 for its 2-factor Hebbian update
-                self.z0.zF >> self.W1.pre 
+                self.z0.zF >> self.W1.pre
                 self.e1.dmu >> self.W1.post
                 ## setup W2 for its 2-factor Hebbian update
                 self.z1.zF >> self.W2.pre
@@ -143,13 +143,13 @@ class PCN():
                 self.q3 = RateCell("q3", n_units=out_dim, tau_m=0., act_fx="identity")
                 self.eq3 = ErrorCell("eq3", n_units=out_dim)
                 self.Q1 = StaticSynapse(
-                    "Q1", shape=(in_dim, hid1_dim), bias_init=dist.constant(value=0.), key=subkeys[0]
+                    "Q1", shape=(in_dim, hid1_dim), bias_init=DistributionGenerator.constant(0.), key=subkeys[0]
                 )
                 self.Q2 = StaticSynapse(
-                    "Q2", shape=(hid1_dim, hid2_dim), bias_init=dist.constant(value=0.), key=subkeys[0]
+                    "Q2", shape=(hid1_dim, hid2_dim), bias_init=DistributionGenerator.constant(0.), key=subkeys[0]
                 )
                 self.Q3 = StaticSynapse(
-                    "Q3", shape=(hid2_dim, out_dim), bias_init=dist.constant(value=0.), key=subkeys[0]
+                    "Q3", shape=(hid2_dim, out_dim), bias_init=DistributionGenerator.constant(0.), key=subkeys[0]
                 )
                 ## wire q0 -(Q1)-> q1, q1 -(Q2)-> q2, q2 -(Q3)-> q3
                 self.q0.zF >> self.Q1.inputs
@@ -160,9 +160,9 @@ class PCN():
                 self.Q3.outputs >> self.q3.j
                 #self.eq3.mu = self.q3.z
                 ## wire q3 to qe3
-                #self.q3.z >> self.eq3.target
+                # self.q3.z >> self.eq3.target
 
-                advance_process = (MethodProcess(name="advance_process")
+                self.advance_process = (MethodProcess(name="advance_process")
                                    >> self.E2.advance_state
                                    >> self.E3.advance_state
                                    >> self.z0.advance_state
@@ -176,7 +176,7 @@ class PCN():
                                    >> self.e2.advance_state
                                    >> self.e3.advance_state)
 
-                reset_process = (MethodProcess(name="reset_process")
+                self.reset_process = (MethodProcess(name="reset_process")
                                  >> self.q0.reset
                                  >> self.q1.reset
                                  >> self.q2.reset
@@ -190,12 +190,12 @@ class PCN():
                                  >> self.e2.reset
                                  >> self.e3.reset)
 
-                evolve_process = (MethodProcess(name="evolve_process")
+                self.evolve_process = (MethodProcess(name="evolve_process")
                                   >> self.W1.evolve
                                   >> self.W2.evolve
                                   >> self.W3.evolve)
 
-                project_process = (MethodProcess(name="project_process")
+                self.project_process = (MethodProcess(name="project_process")
                                    >> self.q0.advance_state
                                    >> self.Q1.advance_state
                                    >> self.q1.advance_state
@@ -205,47 +205,22 @@ class PCN():
                                    >> self.q3.advance_state
                                    >> self.eq3.advance_state)
 
-                self.reset = reset_process
-                self.advance = advance_process
-                self.evolve = evolve_process
-                self.project = project_process
-                
-                #processes = (reset_process, advance_process, evolve_process, project_process)
-
-                #self._dynamic(processes)
-
-    '''
-    def _dynamic(self, processes):## create dynamic commands for circuit
-        vars = self.circuit.get_components("q0", "q1", "q2", "q3", "eq3",
-                                           "Q1", "Q2", "Q3",
-                                           "z0", "z1", "z2", "z3",
-                                           "e1", "e2", "e3",
-                                           "W1", "W2", "W3", "E2", "E3")
-        (self.q0, self.q1, self.q2, self.q3, self.eq3, self.Q1, self.Q2, self.Q3,
-         self.z0, self.z1, self.z2, self.z3, self.e1, self.e2, self.e3, self.W1,
-         self.W2, self.W3, self.E2, self.E3) = vars
-        self.nodes = vars
-
-        reset_proc, advance_proc, evolve_proc, project_proc = processes
-
-        self.circuit.wrap_and_add_command(jit(reset_proc.pure), name="reset")
-        self.circuit.wrap_and_add_command(jit(advance_proc.pure), name="advance")
-        self.circuit.wrap_and_add_command(jit(project_proc.pure), name="project")
-        self.circuit.wrap_and_add_command(jit(evolve_proc.pure), name="evolve")
-    '''
-
 
     def clamp_input(self, x):
         self.z0.j.set(x)
         self.q0.j.set(x)
 
+
     def clamp_target(self, y):
         self.z3.j.set(y)
 
+
     def clamp_infer_target(self, y):
         self.eq3.target.set(y)
+        self.q3.z.set(y) # NOTE: Instead of wiring, we directly set the value
 
-    def save_to_disk(self, params_only=False):
+
+    def save_to_disk(self, params_only=True):
         """
         Saves current model parameter values to disk
 
@@ -253,13 +228,20 @@ class PCN():
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
         if params_only:
-            model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
+            model_dir = "{}/{}/component/custom".format(self.exp_dir, self.model_name)
+            os.makedirs(model_dir, exist_ok=True)
+            # w = self.W1.weights.get()
+            # print(f"[PCN.save_to_disk] w: {w.shape}, min: {jnp.min(w)}, max: {jnp.max(w)}, mean: {jnp.mean(w)}, dtype: {w.dtype}")
+            # print(f"[PCN.save_to_disk] w: {self.W1}")
             self.W1.save(model_dir)
             self.W2.save(model_dir)
             self.W3.save(model_dir)
-        else:
-            self.circuit.save_to_json(self.exp_dir, model_name=self.model_name, overwrite=True)
+        # TODO: currently model saving has numpy bug
+        # else:
+        #     self.circuit.save_to_json(self.exp_dir, model_name=self.model_name, overwrite=True)
             #self.circuit.save_to_json(self.exp_dir, self.model_name)
+        else:
+            raise NotImplementedError("Full model save not implemented yet.")
 
     def load_from_disk(self, model_directory):
         """
@@ -271,19 +253,13 @@ class PCN():
         print(" > Loading model from ",model_directory)
         with Context("Circuit") as self.circuit:
             self.circuit.load_from_dir(model_directory)
-            processes = (
-                self.circuit.reset_process, self.circuit.advance_process,
-                self.circuit.evolve_process, self.circuit.project_process
-            )
-            self._dynamic(processes)
 
     def process(self, obs, lab, adapt_synapses=True):
         ## can think of the PCN as doing "PEM" -- projection, expectation, then maximization
         eps = 0.001
         _lab = jnp.clip(lab, eps, 1. - eps)
-        #self.circuit.reset(do_reset=True)
-        #self.circuit.reset()
-        self.reset.run()
+
+        self.reset_process.run()
 
         ## pin/tie inference synapses to be exactly equal to the forward ones
         self.Q1.weights.set(self.W1.weights.get())
@@ -297,18 +273,14 @@ class PCN():
         self.E3.weights.set(jnp.transpose(self.W3.weights.get()))
 
         ## Perform P-step (projection step)
-        #self.circuit.clamp_input(obs)
-        #self.circuit.clamp_infer_target(_lab)
-        #self.circuit.project(t=0., dt=1.) ## do projection/inference
-
         self.clamp_input(obs)
         self.clamp_infer_target(_lab)
-        self.project.run(t=0., dt=1.)
+        self.project_process.run(t=0., dt=1.) ## do projection/inference
 
         ## initialize dynamics of generative model latents to projected states
         self.z1.z.set(self.q1.z.get())
         self.z2.z.set(self.q2.z.get())
-        ## self.z3.z.set(self.q3.z.value)
+        ## self.z3.z.set(self.q3.z.get())
         # ### Note: e1 = 0, e2 = 0 at initial conditions
         self.e3.dmu.set(self.eq3.dmu.get())
         self.e3.dtarget.set(self.eq3.dtarget.get())
@@ -320,12 +292,9 @@ class PCN():
         if adapt_synapses:
             ## Perform several E-steps
             for ts in range(0, self.T):
-                #self.circuit.clamp_input(obs) ## clamp data to z0 & q0 input compartments
-                #self.circuit.clamp_target(_lab) ## clamp data to e3.target
-                self.clamp_input(obs)
-                self.clamp_target(_lab)
-                #self.circuit.advance(t=ts, dt=1.)
-                self.advance.run(t=ts, dt=1.)
+                self.clamp_input(obs) ## clamp data to z0 & q0 input compartments
+                self.clamp_target(_lab) ## clamp data to e3.target
+                self.advance_process.run(t=ts, dt=1.)
 
             y_mu = self.e3.mu.get() ## get settled prediction
             ## calculate approximate EFE
@@ -336,8 +305,8 @@ class PCN():
 
             ## Perform (optional) M-step (scheduled synaptic updates)
             if adapt_synapses == True:
-                #self.circuit.evolve(t=self.T, dt=1.)
-                self.evolve.run(t=self.T, dt=1.)
+                #self.circuit.evolve(t=self.T, dt=self.dt)
+                self.evolve_process.run(t=self.T, dt=1.)
         ## skip E/M steps if just doing test-time inference
         return y_mu_inf, y_mu, EFE
 
@@ -358,4 +327,3 @@ class PCN():
                                                                       jnp.linalg.norm(_b2),
                                                                       jnp.linalg.norm(_b3))
         return _norms
-
