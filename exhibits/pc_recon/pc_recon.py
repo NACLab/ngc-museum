@@ -309,7 +309,7 @@ class PC_Recon():
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
         if params_only:
-            model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
+            model_dir = "{}/{}/component/custom".format(self.exp_dir, self.model_name)
             self.W1.save(model_dir)
         else:
             self.circuit.save_to_json(self.exp_dir, self.model_name, overwrite=True)  ## save current parameter arrays
@@ -472,7 +472,12 @@ class PC_Recon():
         ## Perform several E-steps
         self.clamp_input(obs)
         # self.z_codes = self.circuit.process(jnp.array([[self.dt * i, self.dt] for i in range(self.T)]))
-        self.z_codes = self.advance_process.run(t=self.T, dt=self.dt)
+        # self.z_codes = self.advance_process.run(t=self.T, dt=self.dt)
+        self.z_codes = []
+        for i in range(self.T):
+            z_code = self.advance_process.run(t=i * self.dt, dt=self.dt)
+            self.z_codes.append(z_code)
+        self.z_codes = jnp.stack(self.z_codes)
 
         ## Perform (optional) M-step (scheduled synaptic updates)
         if adapt_synapses:
