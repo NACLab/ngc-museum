@@ -13,6 +13,8 @@ from ngclearn.utils.model_utils import normalize_matrix
 from ngclearn.utils.viz.synapse_plot import visualize
 from ngclearn import MethodProcess, JointProcess, Context
 
+from ngcsimlib.global_state import stateManager
+
 class PC_Recon():
     """
     Structure for constructing a predictive coding (PC) model for reconstruction tasks.
@@ -309,7 +311,7 @@ class PC_Recon():
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
         if params_only:
-            model_dir = "{}/{}/component/custom".format(self.exp_dir, self.model_name)
+            model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
             self.W1.save(model_dir)
         else:
             self.circuit.save_to_json(self.exp_dir, self.model_name, overwrite=True)  ## save current parameter arrays
@@ -322,10 +324,25 @@ class PC_Recon():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        with Context("Circuit") as self.circuit:
-            self.circuit.load_from_dir(model_directory)
+        # with Context("Circuit") as self.circuit:
+        #     self.circuit.load_from_dir(model_directory)
             # processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
             # self._dynamic(processes)
+
+        self.circuit = Context.load(directory=model_directory, module_name=self.model_name)
+        processes = self.circuit.get_objects_by_type("process")  ## obtain all saved processes within this context
+        self.advance_process = processes.get("advance_process")
+        self.reset_process = processes.get("reset_process")
+        self.evolve_process = processes.get("evolve_process")
+
+        self.W3, self.W2, self.W1, self.E3,\
+            self.E2, self.E1, self.e2, self.e1,\
+            self.e0, self.z3, self.z2, self.z1 = self.circuit.get_components(
+                "W3", "W2", "W1",
+                "E3", "E2", "E1",
+                "e2", "e1", "e0",
+                "z3", "z2", "z1"
+        )
 
 
     def get_synapse_stats(self, W_id='W1'):
@@ -472,12 +489,8 @@ class PC_Recon():
         ## Perform several E-steps
         self.clamp_input(obs)
         # self.z_codes = self.circuit.process(jnp.array([[self.dt * i, self.dt] for i in range(self.T)]))
-        # self.z_codes = self.advance_process.run(t=self.T, dt=self.dt)
-        self.z_codes = []
-        for i in range(self.T):
-            z_code = self.advance_process.run(t=i * self.dt, dt=self.dt)
-            self.z_codes.append(z_code)
-        self.z_codes = jnp.stack(self.z_codes)
+        inputs = jnp.array(self.advance_process.pack_rows(self.T, t=lambda x: x, dt=self.dt))
+        stateManager.state, self.z_codes = self.advance_process.scan(inputs)
 
         ## Perform (optional) M-step (scheduled synaptic updates)
         if adapt_synapses:
