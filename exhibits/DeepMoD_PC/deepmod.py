@@ -16,6 +16,7 @@ from ngclearn.modules.regression.ridge import Iterative_Ridge as Ridge
 # from ngclearn.utils import JaxProcess
 from ngclearn import MethodProcess, JointProcess, Context
 
+from ngcsimlib.global_state import stateManager
 
 class DeepMoD():
     """
@@ -341,9 +342,11 @@ class DeepMoD():
         self.clamps(input, target)
 
         # self.model._process(jnp.array([[self.dt * i, self.dt] for i in range(self.T)]))
-        for i in range(self.T):
-            self.advance_process.run(t=self.dt * i, dt=self.dt)
-        self.evolve_process.run(t=self.T, dt=self.dt)
+        # for i in range(self.T):
+        #     self.advance_process.run(t=self.dt * i, dt=self.dt)
+        # self.evolve_process.run(t=self.T, dt=self.dt)
+        inputs = jnp.array(self.advance_process.pack_rows(self.T, t=lambda x: x, dt=self.dt))
+        stateManager.state, _ = self.advance_process.scan(inputs)
 
         return self.e0.mu.get(), self.e0.L.get()
 
