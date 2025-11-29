@@ -341,7 +341,8 @@ class DeepMoD():
         self.clamps(input, target)
 
         # self.model._process(jnp.array([[self.dt * i, self.dt] for i in range(self.T)]))
-        self.advance_process.run(t=self.T, dt=self.dt)
+        for i in range(self.T):
+            self.advance_process.run(t=self.dt * i, dt=self.dt)
         self.evolve_process.run(t=self.T, dt=self.dt)
 
         return self.e0.mu.get(), self.e0.L.get()
