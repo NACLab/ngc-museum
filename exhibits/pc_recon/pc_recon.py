@@ -3,18 +3,15 @@ import numpy as np
 
 from ngclearn.utils.io_utils import makedir
 from jax import numpy as jnp, random, jit
-from ngclearn.utils.model_utils import scanner
 
-from ngcsimlib.context import Context
-from ngclearn.utils import JaxProcess
-from ngcsimlib.compilers import wrap_command, compile_command
 from ngclearn.components import (RateCell, HebbianPatchedSynapse as BackwardSynapse,
                                  GaussianErrorCell, StaticPatchedSynapse as ForwardSynapse)
 from sklearn.feature_extraction.image import extract_patches_2d, reconstruct_from_patches_2d
 
-import ngclearn.utils.weight_distribution as dist
+from ngclearn.utils.distribution_generator import DistributionGenerator as dist
 from ngclearn.utils.model_utils import normalize_matrix
 from ngclearn.utils.viz.synapse_plot import visualize
+from ngclearn import MethodProcess, JointProcess, Context
 
 class PC_Recon():
     """
@@ -185,46 +182,46 @@ class PC_Recon():
                 # wiring (signal pathway is according to Rao & Ballard 1999 paper)
                 ############################################################
                 ######### feedback (Top-down) #########
-                self.W3.inputs << self.z3.zF
-                self.W2.inputs << self.z2.zF
-                self.W1.inputs << self.z1.zF
+                self.z3.zF >> self.W3.inputs
+                self.z2.zF >> self.W2.inputs
+                self.z1.zF >> self.W1.inputs
 
                 ## Top-down prediction
-                self.e2.mu << self.W3.outputs
-                self.e1.mu << self.W2.outputs
-                self.e0.mu << self.W1.outputs
+                self.W3.outputs >> self.e2.mu
+                self.W2.outputs >> self.e1.mu
+                self.W1.outputs >> self.e0.mu
                 ## actual neural activation
-                self.e2.target << self.z2.z
-                self.e1.target << self.z1.z
+                self.z2.z >> self.e2.target
+                self.z1.z >> self.e1.target
 
                 ## Top-down prediction errors
-                self.z1.j_td << self.e1.dtarget
-                self.z2.j_td << self.e2.dtarget
+                self.e1.dtarget >> self.z1.j_td
+                self.e2.dtarget >> self.z2.j_td
 
 
                 ######### forward (Bottom-up) #########
                 ## feedforward the errors via synapses
-                self.E3.inputs << self.e2.dmu
-                self.E2.inputs << self.e1.dmu
-                self.E1.inputs << self.e0.dmu
+                self.e2.dmu >> self.E3.inputs
+                self.e1.dmu >> self.E2.inputs
+                self.e0.dmu >> self.E1.inputs
                 ## Bottom-up modulated errors
-                self.z3.j << self.E3.outputs
-                self.z2.j << self.E2.outputs
-                self.z1.j << self.E1.outputs
+                self.E3.outputs >> self.z3.j
+                self.E2.outputs >> self.z2.j
+                self.E1.outputs >> self.z1.j
 
 
                 ######## Hebbian learning #########
                 ## Pre Synaptic Activation
-                self.W3.pre << self.z3.zF
-                self.W2.pre << self.z2.zF
-                self.W1.pre << self.z1.zF
+                self.z3.zF >> self.W3.pre
+                self.z2.zF >> self.W2.pre
+                self.z1.zF >> self.W1.pre
                 ## Post Synaptic residual error
-                self.W3.post << self.e2.dmu
-                self.W2.post << self.e1.dmu
-                self.W1.post << self.e0.dmu
+                self.e2.dmu >> self.W3.post
+                self.e1.dmu >> self.W2.post
+                self.e0.dmu >> self.W1.post
 
                 ############################################################
-                reset_process = (JaxProcess(name="reset_process")
+                self.reset_process = (MethodProcess(name="reset_process")
                                 >> self.z3.reset
                                 >> self.z2.reset
                                 >> self.z1.reset
@@ -237,7 +234,7 @@ class PC_Recon():
                                 >> self.E1.reset
                                 >> self.E2.reset
                                 >> self.E3.reset)
-                advance_process = (JaxProcess(name="advance_process")
+                self.advance_process = (MethodProcess(name="advance_process")
                                 >> self.E1.advance_state
                                 >> self.E2.advance_state
                                 >> self.E3.advance_state
@@ -250,48 +247,59 @@ class PC_Recon():
                                 >> self.e2.advance_state
                                 >> self.e1.advance_state
                                 >> self.e0.advance_state)
-                evolve_process = (JaxProcess(name="evolve_process")
+                self.evolve_process = (MethodProcess(name="evolve_process")
                                 >> self.W1.evolve
                                 >> self.W2.evolve
                                 >> self.W3.evolve)
 
-                processes = (reset_process, advance_process, evolve_process)
-                self._dynamic(processes)
+                # processes = (reset_process, advance_process, evolve_process)
+                # self._dynamic(processes)
 
     ############################################################
-    def _dynamic(self, processes):  ## create dynamic commands for circuit
-        W3, W2, W1, E3, E2, E1, e2, e1, e0, z3, z2, z1 = self.circuit.get_components(
-            "W3", "W2", "W1",
-            "E3", "E2", "E1",
-            "e2", "e1", "e0",
-            "z3", "z2", "z1"
-        )
-        self.W3, self.W2, self.W1 = (W3, W2, W1)
-        self.E3, self.E2, self.E1 = (E3, E2, E1)
-        self.z3, self.z2, self.z1 = (z3, z2, z1)
-        self.e2, self.e1, self.e0 = (e2, e1, e0)
+    # def _dynamic(self, processes):  ## create dynamic commands for circuit
+    #     W3, W2, W1, E3, E2, E1, e2, e1, e0, z3, z2, z1 = self.circuit.get_components(
+    #         "W3", "W2", "W1",
+    #         "E3", "E2", "E1",
+    #         "e2", "e1", "e0",
+    #         "z3", "z2", "z1"
+    #     )
+    #     self.W3, self.W2, self.W1 = (W3, W2, W1)
+    #     self.E3, self.E2, self.E1 = (E3, E2, E1)
+    #     self.z3, self.z2, self.z1 = (z3, z2, z1)
+    #     self.e2, self.e1, self.e0 = (e2, e1, e0)
 
-        @Context.dynamicCommand
-        def clamp_input(x):
-            e0.target.set(x)
+    #     @Context.dynamicCommand
+    #     def clamp_input(x):
+    #         e0.target.set(x)
 
-        @Context.dynamicCommand
-        def norm():
-            W1.weights.set(normalize_matrix(W1.weights.value, 1., order=2, axis=1))
-            W2.weights.set(normalize_matrix(W2.weights.value, 1., order=2, axis=1))
-            W3.weights.set(normalize_matrix(W3.weights.value, 1., order=2, axis=1))
+    #     @Context.dynamicCommand
+    #     def norm():
+    #         W1.weights.set(normalize_matrix(W1.weights.get(), 1., order=2, axis=1))
+    #         W2.weights.set(normalize_matrix(W2.weights.get(), 1., order=2, axis=1))
+    #         W3.weights.set(normalize_matrix(W3.weights.get(), 1., order=2, axis=1))
 
-        reset_process, advance_process, evolve_process = processes
-        self.circuit.wrap_and_add_command(jit(reset_process.pure), name="reset")
-        self.circuit.wrap_and_add_command(jit(evolve_process.pure), name="evolve")
-        self.circuit.wrap_and_add_command(jit(advance_process.pure), name="advance")
+    #     reset_process, advance_process, evolve_process = processes
+    #     self.circuit.wrap_and_add_command(jit(reset_process.pure), name="reset")
+    #     self.circuit.wrap_and_add_command(jit(evolve_process.pure), name="evolve")
+    #     self.circuit.wrap_and_add_command(jit(advance_process.pure), name="advance")
 
-        @scanner
-        def process(compartment_values, args): ## advance is defined within this scan-able process function
-            _t, _dt = args
-            compartment_values = advance_process.pure(
-                compartment_values, t=_t, dt=_dt)
-            return compartment_values, compartment_values[self.z3.zF.path]
+    #     @scanner
+    #     def process(compartment_values, args): ## advance is defined within this scan-able process function
+    #         _t, _dt = args
+    #         compartment_values = advance_process.pure(
+    #             compartment_values, t=_t, dt=_dt)
+    #         return compartment_values, compartment_values[self.z3.zF.path]
+
+
+    def clamp_input(self, x):
+        self.e0.target.set(x)
+
+
+    def norm(self):
+        self.W1.weights.set(normalize_matrix(self.W1.weights.get(), 1., order=2, axis=1))
+        self.W2.weights.set(normalize_matrix(self.W2.weights.get(), 1., order=2, axis=1))
+        self.W3.weights.set(normalize_matrix(self.W3.weights.get(), 1., order=2, axis=1))
+
 
     def save_to_disk(self, params_only=False):
         """
@@ -316,8 +324,8 @@ class PC_Recon():
         """
         with Context("Circuit") as self.circuit:
             self.circuit.load_from_dir(model_directory)
-            processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
-            self._dynamic(processes)
+            # processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
+            # self._dynamic(processes)
 
 
     def get_synapse_stats(self, W_id='W1'):
@@ -331,7 +339,7 @@ class PC_Recon():
             string containing min, max, mean, and L2 norm of Ws
         """
         if W_id == 'W1':
-            _W1 = self.W1.weights.value
+            _W1 = self.W1.weights.get()
             msg = "W1: ---Sparsity {} \n  min {} ;  max {} \n  mu {} ;  norm {}".format(
                                                     100 * (jnp.sum(jnp.where(_W1 == 0, 1, 0)) // _W1.size),
                                                     jnp.amin(_W1),
@@ -339,7 +347,7 @@ class PC_Recon():
                                                     jnp.mean(_W1),
                                                     jnp.linalg.norm(_W1))
         if W_id == 'W2':
-            _W2 = self.W2.weights.value
+            _W2 = self.W2.weights.get()
             msg = "W2: ---Sparsity {} \n  min {} ;  max {} \n  mu {} ;  norm {}".format(
                                                     100 * (jnp.sum(jnp.where(_W2 == 0, 1, 0)) // _W2.size),
                                                     jnp.amin(_W2),
@@ -347,7 +355,7 @@ class PC_Recon():
                                                     jnp.mean(_W2),
                                                     jnp.linalg.norm(_W2))
         if W_id == 'W3':
-            _W3 = self.W3.weights.value
+            _W3 = self.W3.weights.get()
             msg = "W3: ---Sparsity {} \n  min {} ;  max {} \n  mu {} ;  norm {}".format(
                                                     100 * (jnp.sum(jnp.where(_W3 == 0, 1, 0)) // _W3.size),
                                                     jnp.amin(_W3),
@@ -372,7 +380,7 @@ class PC_Recon():
             fname: plot file-name name (appended to end of experimental directory)
 
         """
-        _W1 = self.W1.weights.value
+        _W1 = self.W1.weights.get()
 
         if self.n_p1 == 1: ## if each level-1 neuron's receptive field spans the whole input
             visualize([_W1.T], [patch_shape], prefix=self.exp_dir + "/filters/{}".format(fname))
@@ -454,25 +462,26 @@ class PC_Recon():
         """
 
         ## pin/tie feedback synapses to transpose of forward ones
-        self.E1.weights.set(jnp.transpose(self.W1.weights.value))
-        self.E2.weights.set(jnp.transpose(self.W2.weights.value))
-        self.E3.weights.set(jnp.transpose(self.W3.weights.value))
+        self.E1.weights.set(jnp.transpose(self.W1.weights.get()))
+        self.E2.weights.set(jnp.transpose(self.W2.weights.get()))
+        self.E3.weights.set(jnp.transpose(self.W3.weights.get()))
 
         ## reset/set all components to their resting values / initial conditions
-        self.circuit.reset()
+        self.reset_process.run()
         ########################################################################
         ## Perform several E-steps
-        self.circuit.clamp_input(obs)
-        self.z_codes = self.circuit.process(jnp.array([[self.dt * i, self.dt] for i in range(self.T)]))
+        self.clamp_input(obs)
+        # self.z_codes = self.circuit.process(jnp.array([[self.dt * i, self.dt] for i in range(self.T)]))
+        self.z_codes = self.advance_process.run(t=self.T, dt=self.dt)
 
         ## Perform (optional) M-step (scheduled synaptic updates)
         if adapt_synapses:
-            self.circuit.evolve(t=self.T, dt=1.)
-            self.circuit.norm()
+            self.evolve_process.run(t=self.T, dt=1.)
+            self.norm()
         ########################################################################
         ## Post-processing / probing desired model outputs
-        obs_mu = self.e0.mu.value  ## get reconstructed signal
-        L0 = self.e0.L.value  ## calculate reconstruction loss
+        obs_mu = self.e0.mu.get()  ## get reconstructed signal
+        L0 = self.e0.L.get()  ## calculate reconstruction loss
 
         if collect_latent_codes:
             return obs_mu, L0, self.z_codes
