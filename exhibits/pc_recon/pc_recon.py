@@ -311,7 +311,7 @@ class PC_Recon():
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
         if params_only:
-            model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
+            model_dir = "{}/{}/component/custom".format(self.exp_dir, self.model_name)
             self.W1.save(model_dir)
         else:
             self.circuit.save_to_json(self.exp_dir, self.model_name, overwrite=True)  ## save current parameter arrays
