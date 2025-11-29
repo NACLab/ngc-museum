@@ -271,11 +271,11 @@ class PCN():
         print(" > Loading model from ",model_directory)
         with Context("Circuit") as self.circuit:
             self.circuit.load_from_dir(model_directory)
-            processes = (
-                self.circuit.reset_process, self.circuit.advance_process,
-                self.circuit.evolve_process, self.circuit.project_process
-            )
-            self._dynamic(processes)
+            # processes = (
+            #     self.circuit.reset_process, self.circuit.advance_process,
+            #     self.circuit.evolve_process, self.circuit.project_process
+            # )
+            # self._dynamic(processes)
 
     def process(self, obs, lab, adapt_synapses=True):
         ## can think of the PCN as doing "PEM" -- projection, expectation, then maximization
