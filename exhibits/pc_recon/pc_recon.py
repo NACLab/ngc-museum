@@ -3,17 +3,16 @@ import numpy as np
 
 from ngclearn.utils.io_utils import makedir
 from jax import numpy as jnp, random, jit
-
 from ngclearn.components import (RateCell, HebbianPatchedSynapse as BackwardSynapse,
                                  GaussianErrorCell, StaticPatchedSynapse as ForwardSynapse)
 from sklearn.feature_extraction.image import extract_patches_2d, reconstruct_from_patches_2d
-
-from ngclearn.utils.distribution_generator import DistributionGenerator as dist
 from ngclearn.utils.model_utils import normalize_matrix
 from ngclearn.utils.viz.synapse_plot import visualize
-from ngclearn import MethodProcess, JointProcess, Context
 
 from ngcsimlib.global_state import stateManager
+from ngclearn import MethodProcess, JointProcess, Context
+from ngclearn.utils.distribution_generator import DistributionGenerator as dist
+
 
 class PC_Recon():
     """
@@ -101,9 +100,9 @@ class PC_Recon():
         eta = 0.005                                             ##   M-step learning rate/step-size
         w_bound = 1.                                            ## norm constraint value
         opt_type = "sgd"                                        ##   synaptic (weights) optimization type
-        w3_init = dist.gaussian(0., jnp.sqrt(2/h3_dim))         ## He initialization for layer-3 synapses
-        w2_init = dist.gaussian(0., jnp.sqrt(2/h2_dim))         ## He initialization for layer-2 synapses
-        w1_init = dist.gaussian(0., jnp.sqrt(2/h1_dim))         ## He initialization for layer-1  synapses
+        w3_init = dist.gaussian(mean=0., std=jnp.sqrt(2/h3_dim))         ## He initialization for layer-3 synapses
+        w2_init = dist.gaussian(mean=0., std=jnp.sqrt(2/h2_dim))         ## He initialization for layer-2 synapses
+        w1_init = dist.gaussian(mean=0., std=jnp.sqrt(2/h1_dim))         ## He initialization for layer-1  synapses
 
         #############    Neurons/Cells parameters
         act_fx = "relu"                    ## neural activation function
@@ -152,6 +151,7 @@ class PC_Recon():
                                          w_bound=w_bound,
                                          key=subkeys[0]
                                          )
+                print(f"[W init] W1: {self.W1}")
 
                 self.e2 = GaussianErrorCell("e2", n_units=h2_dim)
                 self.e1 = GaussianErrorCell("e1", n_units=h1_dim)
@@ -292,16 +292,23 @@ class PC_Recon():
     #             compartment_values, t=_t, dt=_dt)
     #         return compartment_values, compartment_values[self.z3.zF.path]
 
-
     def clamp_input(self, x):
-        self.e0.target.set(x)
-
+      self.e0.target.set(x)
 
     def norm(self):
-        self.W1.weights.set(normalize_matrix(self.W1.weights.get(), 1., order=2, axis=1))
-        self.W2.weights.set(normalize_matrix(self.W2.weights.get(), 1., order=2, axis=1))
-        self.W3.weights.set(normalize_matrix(self.W3.weights.get(), 1., order=2, axis=1))
+      self.W1.weights.set(normalize_matrix(self.W1.weights.get(), 1., order=2, axis=1))
+      self.W2.weights.set(normalize_matrix(self.W2.weights.get(), 1., order=2, axis=1))
+      self.W3.weights.set(normalize_matrix(self.W3.weights.get(), 1., order=2, axis=1))
 
+    def _advance_process(self, obs):
+      # several E-steps, can use for loop or scan
+      # for i in range(self.T):
+      #   self.clamp_input(obs)
+      #   z_codes = self.advance_process.run(t=self.dt * i, dt=self.dt)
+      self.clamp_input(obs)
+      inputs = jnp.array(self.advance_process.pack_rows(self.T, t=lambda x: x, dt=self.dt))
+      stateManager.state, z_codes = self.advance_process.scan(inputs)
+      return z_codes
 
     def save_to_disk(self, params_only=False):
         """
@@ -310,11 +317,18 @@ class PC_Recon():
         Args:
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
+        # if params_only:
+        #     model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
+        #     self.W1.save(model_dir)
+        # else:
+        #     self.circuit.save_to_json(self.exp_dir, self.model_name, overwrite=True)  ## save current parameter arrays
         if params_only:
             model_dir = "{}/{}/component/custom".format(self.exp_dir, self.model_name)
             self.W1.save(model_dir)
+            self.W2.save(model_dir)
+            self.W3.save(model_dir)
         else:
-            self.circuit.save_to_json(self.exp_dir, self.model_name, overwrite=True)  ## save current parameter arrays
+            self.circuit.save_to_json(self.exp_dir, model_name=self.model_name, overwrite=True)
 
 
     def load_from_disk(self, model_directory):
@@ -326,23 +340,11 @@ class PC_Recon():
         """
         # with Context("Circuit") as self.circuit:
         #     self.circuit.load_from_dir(model_directory)
-            # processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
-            # self._dynamic(processes)
-
-        self.circuit = Context.load(directory=model_directory, module_name=self.model_name)
-        processes = self.circuit.get_objects_by_type("process")  ## obtain all saved processes within this context
-        self.advance_process = processes.get("advance_process")
-        self.reset_process = processes.get("reset_process")
-        self.evolve_process = processes.get("evolve_process")
-
-        self.W3, self.W2, self.W1, self.E3,\
-            self.E2, self.E1, self.e2, self.e1,\
-            self.e0, self.z3, self.z2, self.z1 = self.circuit.get_components(
-                "W3", "W2", "W1",
-                "E3", "E2", "E1",
-                "e2", "e1", "e0",
-                "z3", "z2", "z1"
-        )
+        #     processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
+        #     self._dynamic(processes)
+        print(" > Loading model from ",model_directory)
+        with Context("Circuit") as self.circuit:
+            self.circuit.load_from_dir(model_directory)
 
 
     def get_synapse_stats(self, W_id='W1'):
@@ -429,10 +431,6 @@ class PC_Recon():
                           prefix=self.exp_dir + "/filters/{}".format(fname))
 
 
-
-
-
-
     def viz_recons(self, X_test, Xmu_test, image_shape=(28, 28), fname='recon'):
         """
         Generates and saves a plot of the reconstructed images for the
@@ -455,8 +453,6 @@ class PC_Recon():
         Xmu_test = Xmu_test.reshape(-1, image_shape[0] * image_shape[1])
 
         visualize([X_test.T, Xmu_test.T], [image_shape, image_shape], prefix=self.exp_dir + "/img_recons/{}".format(fname))
-
-
 
 
     def process(self, obs, adapt_synapses=False, collect_latent_codes=False):
@@ -487,19 +483,19 @@ class PC_Recon():
         self.reset_process.run()
         ########################################################################
         ## Perform several E-steps
-        self.clamp_input(obs)
+        # self.clamp_input(obs) # This got moved in self._advance_process()
         # self.z_codes = self.circuit.process(jnp.array([[self.dt * i, self.dt] for i in range(self.T)]))
-        inputs = jnp.array(self.advance_process.pack_rows(self.T, t=lambda x: x, dt=self.dt))
-        stateManager.state, self.z_codes = self.advance_process.scan(inputs)
+        self.z_codes = self._advance_process(obs)
 
         ## Perform (optional) M-step (scheduled synaptic updates)
         if adapt_synapses:
-            self.evolve_process.run(t=self.T, dt=1.)
+            self.evolve_process.run(t=self.T, dt=self.dt)
             self.norm()
         ########################################################################
         ## Post-processing / probing desired model outputs
         obs_mu = self.e0.mu.get()  ## get reconstructed signal
         L0 = self.e0.L.get()  ## calculate reconstruction loss
+        # print(self.W1)
 
         if collect_latent_codes:
             return obs_mu, L0, self.z_codes
