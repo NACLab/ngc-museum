@@ -138,6 +138,7 @@ model = PC_Recon(dkey, h3_dim=h3_dim, h2_dim=h2_dim, h1_dim=h1_dim, in_dim=in_di
                  circuit_name="train")
 
 model.save_to_disk()
+model.load_from_disk("exp")
 print(model.get_synapse_stats())
 model.viz_receptive_fields(patch_shape, max_filter=max_vis_filter, fname='erf_t0')
 

@@ -164,21 +164,7 @@ class PC_Recon():
                 ############################################################
                 ## since this model will operate with batches, we need to
                 ## its batch-size here before compiling with the loop-scan
-                self.z3.batch_size = batch_size
-                self.z2.batch_size = batch_size
-                self.z1.batch_size = batch_size
-
-                self.e2.batch_size = batch_size
-                self.e1.batch_size = batch_size
-                self.e0.batch_size = batch_size
-
-                self.W3.batch_size = batch_size
-                self.W2.batch_size = batch_size
-                self.W1.batch_size = batch_size
-
-                self.E3.batch_size = batch_size
-                self.E2.batch_size = batch_size
-                self.E1.batch_size = batch_size
+                self.batch_setup()
 
                 ############################################################
                 # wiring (signal pathway is according to Rao & Ballard 1999 paper)
@@ -292,6 +278,24 @@ class PC_Recon():
     #             compartment_values, t=_t, dt=_dt)
     #         return compartment_values, compartment_values[self.z3.zF.path]
 
+    def batch_setup(self):
+        batch_size = self.batch_size
+        self.z3.batch_size = batch_size
+        self.z2.batch_size = batch_size
+        self.z1.batch_size = batch_size
+
+        self.e2.batch_size = batch_size
+        self.e1.batch_size = batch_size
+        self.e0.batch_size = batch_size
+
+        self.W3.batch_size = batch_size
+        self.W2.batch_size = batch_size
+        self.W1.batch_size = batch_size
+
+        self.E3.batch_size = batch_size
+        self.E2.batch_size = batch_size
+        self.E1.batch_size = batch_size
+
     def clamp_input(self, x):
       self.e0.target.set(x)
 
@@ -350,16 +354,14 @@ class PC_Recon():
         self.advance_process = processes.get("advance_process")
         self.reset_process = processes.get("reset_process")
         self.evolve_process = processes.get("evolve_process")
-        nodes = self.circuit.get_components(
-            "W3", "W2", "W1",
-            "E3", "E2", "E1",
-            "e2", "e1", "e0",
-            "z3", "z2", "z1"
-        )
-        self.W3, self.W2, self.W1,\
-            self.E3, self.E2, self.E1,\
-            self.z3, self.z2, self.z1,\
-            self.e2, self.e1, self.e0 = nodes
+        nodes = self.circuit.get_components("W3", "W2", "W1")
+        # self.W3, self.W2, self.W1,\
+        #     self.E3, self.E2, self.E1,\
+        #     self.z3, self.z2, self.z1,\
+        #     self.e2, self.e1, self.e0 = nodes
+        self.W3, self.W2, self.W1 = nodes
+
+        self.batch_setup()
 
 
     def get_synapse_stats(self, W_id='W1'):
