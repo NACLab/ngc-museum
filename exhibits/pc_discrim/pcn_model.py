@@ -268,14 +268,30 @@ class PCN():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        print(" > Loading model from ",model_directory)
-        with Context("Circuit") as self.circuit:
-            self.circuit.load_from_dir(model_directory)
+        # print(" > Loading model from ",model_directory)
+        # with Context("Circuit") as self.circuit:
+        #     self.circuit.load_from_dir(model_directory)
             # processes = (
             #     self.circuit.reset_process, self.circuit.advance_process,
             #     self.circuit.evolve_process, self.circuit.project_process
             # )
             # self._dynamic(processes)
+        self.circuit = Context.load(directory=model_directory, module_name=self.model_name)
+        processes = self.circuit.get_objects_by_type("process") ## obtain all saved processes within this context
+        self.advance = processes.get("advance_process")
+        self.reset = processes.get("reset_process")
+        self.evolve = processes.get("evolve_process")
+        self.project = processes.get("project_process")
+
+        nodes = self.circuit.get_components("q0", "q1", "q2", "q3", "eq3",
+                                           "Q1", "Q2", "Q3",
+                                           "z0", "z1", "z2", "z3",
+                                           "e1", "e2", "e3",
+                                           "W1", "W2", "W3", "E2", "E3")
+        (self.q0, self.q1, self.q2, self.q3, self.eq3, self.Q1, self.Q2, self.Q3,
+         self.z0, self.z1, self.z2, self.z3, self.e1, self.e2, self.e3, self.W1,
+         self.W2, self.W3, self.E2, self.E3) = nodes
+
 
     def process(self, obs, lab, adapt_synapses=True):
         ## can think of the PCN as doing "PEM" -- projection, expectation, then maximization
