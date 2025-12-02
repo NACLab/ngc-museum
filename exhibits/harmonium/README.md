@@ -42,9 +42,13 @@ Alternatively, you may run the convenience bash script:
 $ ./sim.sh
 ```
 
-which will execute and run the model simulation for MNIST.
+which will execute and run the model simulation for MNIST. Furthermore, the above script will execute a process for sampling the RBM, which can also be done separately via:
 
-Note that you can point the training script to other datasets besides the default MNIST, just ensure that the targets for `dataX` and `devX` are numpy arrays of shape `(Number data points x D)` for data patterns (i.e., `dataX` and `devX`).
+```console
+$ python sample_harmonium.py
+```
+
+Note that you can point the training script to other datasets besides the default MNIST; just ensure that the targets for `dataX` and `devX` are numpy arrays of shape `(Number data points x D)` for data patterns (i.e., `dataX` and `devX`).
 
 ## Description
 
