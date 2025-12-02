@@ -47,15 +47,18 @@ scientific inquiry.
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibitors/nac_lab/csdp_snn">Model</a> <!--<a href="">Paper</a>-->
 5. A spiking neural network for reinforcement learning, trained via MSTDP-ET:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/rl_snn">Model</a> <!--<a href="">Paper</a>-->
+<!--
+6. Patch-level spiking neural circuit trained with time-integrated STDP (TI-STDP)
+-->
 
 <b>Models with Graded Dynamics</b>:<br>
 1. Discriminative predictive coding:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_discrim">Model</a>,
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_discrim.html">Walkthrough / Tutorial</a>
-2. Sparse coding (e.g., a Cauchy prior model and the iterative sparse-thresholding algorithm; ISTA), trained with 2-factor Hebbian learning:
+2. Sparse coding (e.g., a Cauchy prior model and iterative sparse-thresholding / ISTA), trained with 2-factor Hebbian learning:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/olshausen_sc">Model</a>, 
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sparse_coding.html">Walkthrough / Tutorial</a>
-3. Reconstructive predictive coding:
+3. Reconstructive hierarchical predictive coding:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_recon">Model</a>
    <!--<a href="">Walkthrough</a>-->
 4. Harmonium (restricted Boltzmann machine; RBM) with stochastic binary neurons, trained via contrastive divergence:
@@ -66,6 +69,10 @@ scientific inquiry.
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sindy.html">Walkthrough / Tutorial</a> 
 6. NeuralODE / Deep learning-driven model discovery (DeepMod): 
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/DeepMoD_PC">Model</a>
+<!--
+7. A forward-only neural predictor trained via signal propagation
+8. A neural classifier trained via forward-forward learning
+-->
 
 This package is distributed under the 3-Clause BSD license.<br>
 It is currently maintained by the
