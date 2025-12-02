@@ -58,10 +58,13 @@ scientific inquiry.
 3. Reconstructive predictive coding:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_recon">Model</a>
    <!--<a href="">Walkthrough</a>-->
-4. Sparse identification of nonlinear dynamics (SINDy): 
+4. Harmonium (restricted Boltzmann machine; RBM):
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/harmonium">Model</a>, 
+   <a href="">Walkthrough / Tutorial</a>
+5. Sparse identification of nonlinear dynamics (SINDy): 
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/sindy">Model</a>, 
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sindy.html">Walkthrough / Tutorial</a> 
-5. NeuralODE / Deep learning-driven model discovery (DeepMod): 
+6. NeuralODE / Deep learning-driven model discovery (DeepMod): 
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/DeepMoD_PC">Model</a>
 
 This package is distributed under the 3-Clause BSD license.<br>
