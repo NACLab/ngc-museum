@@ -18,7 +18,7 @@ Hinton, Geoffrey E. "A practical guide to training restricted Boltzmann machines
 
 <p align="center">
   <img height="200" src="fig/harmonium.jpg"><br>
-  <i>Visual depiction of the harmonium architecture, with hidden layer $\mathbf{h}$ and visible layer $\mathbf{v}$.</i>
+  <i>Visual depiction of the harmonium architecture, which contains one hidden layer $\mathbf{h}$ (unobserved/latent variables) and visible layer $\mathbf{v}$ (observed variables).</i>
 </p>
 
 <!--
@@ -70,9 +70,9 @@ Note that, for the block Gibbs sampler, we utilized the following setting to pro
 
 ```
 thinning_point = 20 (how many Gibbs sampling steps must be taken before storing a model sample)
-n_samps = 20 * 20 (how many total model samples are to be collected)
-burn_in = 500 * thinning_point (number of burn-in steps to take in the MCMC chain)
+n_samps = 9 * 9 (how many total model samples are to be collected)
+burn_in = 10 * thinning_point (number of burn-in steps to take in the MCMC chain)
 ```
 
-where we note that "thinning" was used to obtain samples at regular intervals within the Gibbs sampling chain and burn-in was employed to reach a reasonable point within the chain (equilibrium) to obtain correct samples from the RBM's underlying distribution.
+where we note that "thinning" was used to obtain samples at regular intervals within the Gibbs sampling chain and burn-in was employed to reach a reasonable point within the chain (equilibrium) to obtain correct samples from the RBM's underlying distribution. Each Markov chain within the Gibbs sampler is initialized from random binary codes. 
 
