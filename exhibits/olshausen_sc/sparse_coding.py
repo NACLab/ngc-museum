@@ -8,7 +8,6 @@ from ngclearn.components.synapses.hebbian.hebbianSynapse import HebbianSynapse
 from ngclearn.components.neurons.graded.gaussianErrorCell import GaussianErrorCell as ErrorCell
 from ngclearn.utils.model_utils import normalize_matrix
 from ngclearn.utils.distribution_generator import DistributionGenerator
-from ngcsimlib.operations import Summation
 
 from ngcsimlib.global_state import stateManager
 
@@ -153,43 +152,11 @@ class SparseCoding():
                                   >> self.W1.evolve)
                 self.evolve = evolve_process
 
-                # processes = (reset_process, advance_process, evolve_process)
-                #
-                # ## call the compiler to set up jit-i-fied commands and any
-                # ## dynamically called command functions
-                # self._dynamic(processes)
-
     def norm(self):
         self.W1.weights.set(normalize_matrix(self.W1.weights.get(), 1., order=2, axis=1))
 
     def clamp(self, x):
         self.e0.target.set(x)
-
-    # def _dynamic(self, processes): ## create dynamic commands for circuit
-    #     W1, E1, e0, z1 = self.circuit.get_components("W1", "E1", "e0", "z1")
-    #     self.W1 = W1
-    #     self.e0 = e0
-    #     self.z1 = z1
-    #     self.E1 = E1
-    #
-    #     reset_proc, advance_proc, evolve_proc = processes
-    #
-    #     self.circuit.wrap_and_add_command(jit(reset_proc.pure), name="reset")
-    #     self.circuit.wrap_and_add_command(jit(evolve_proc.pure), name="evolve")
-    #
-    #     @Context.dynamicCommand
-    #     def clamp(x):
-    #         e0.target.set(x)
-    #
-    #     @Context.dynamicCommand
-    #     def norm():
-    #         W1.weights.set(normalize_matrix(W1.weights.get(), 1., order=2, axis=1))
-    #
-    #     @scanner
-    #     def process(compartment_values, args):
-    #         _t, _dt = args
-    #         compartment_values = advance_proc.pure(compartment_values, t=_t, dt=_dt)
-    #         return compartment_values, compartment_values[self.z1.zF.path]
 
     def save_to_disk(self, params_only=False):
         """
@@ -225,11 +192,6 @@ class SparseCoding():
         self.E1 = E1
         self.e0 = e0
         self.z1 = z1
-
-        # with Context("Circuit") as self.circuit:
-        #     self.circuit.load_from_dir(model_directory)
-        #     processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
-        #     self._dynamic(processes)
 
     def get_synapse_stats(self):
         """
@@ -296,24 +258,6 @@ class SparseCoding():
             self.evolve.run(t=(self.T + 1) * self.dt, dt=self.dt) ## run synaptic alteration
             self.norm() ## post-update synaptic normalization step
         ########################################################################
-
-
-        # ########################################################################
-        # ## pin/tie feedback synapses to transpose of forward ones
-        # self.E1.weights.set(jnp.transpose(self.W1.weights.get()))
-        # ## reset/set all components to their resting values / initial conditions
-        # self.circuit.reset()
-        # ## Perform several E-steps
-        # self.circuit.clamp(obs)  ## clamp data to z0
-        # z1_codes = self.circuit.process(
-        #     jnp.array([[self.dt * i, self.dt] for i in range(self.T)])
-        # )
-        # ## Perform (optional) M-step (scheduled synaptic updates)
-        # if adapt_synapses is True:
-        #     self.circuit.evolve(t=self.T, dt=1.)
-        #     self.circuit.norm() ## post-update synaptic normalization step
-        # ########################################################################
-
 
         ## Post-processing / probing desired model outputs
         obs_mu = self.e0.mu.get()  ## get settled prediction
