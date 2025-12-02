@@ -52,7 +52,7 @@ scientific inquiry.
 1. Discriminative predictive coding:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_discrim">Model</a>,
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_discrim.html">Walkthrough / Tutorial</a>
-2. Sparse coding (e.g., a Cauchy prior model &amp; ISTA), trained with 2-factor Hebbian learning:
+2. Sparse coding (e.g., a Cauchy prior model and the iterative sparse-thresholding algorithm; ISTA), trained with 2-factor Hebbian learning:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/olshausen_sc">Model</a>, 
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sparse_coding.html">Walkthrough / Tutorial</a>
 3. Reconstructive predictive coding:
