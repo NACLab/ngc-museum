@@ -1,3 +1,4 @@
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -69,14 +70,23 @@ class PC_Recon():
     # Define Functions
     def __init__(self, dkey, h3_dim, h2_dim, h1_dim, in_dim,
                  n_p3=1, n_p2=1, n_p1=1, n_inPatch=1,
-                 T=30, dt=1., batch_size=1, exp_dir="exp", load_dir=None, **kwargs):
+                 T=30, dt=1., batch_size=1, exp_dir="exp", load_dir=None, reset_exp_dir=True, **kwargs):
 
         dkey, *subkeys = random.split(dkey, 10)
         self.exp_dir = exp_dir
-        makedir(exp_dir)
-        makedir(exp_dir + "/filters")
-        makedir(exp_dir + "/img_recons")
-        makedir(exp_dir + "/raster")
+        if reset_exp_dir: # remove everything and create experiment directory from scratch
+            makedir(exp_dir)
+            makedir(exp_dir + "/filters")
+            makedir(exp_dir + "/img_recons")
+            makedir(exp_dir + "/raster")
+            print(" > Created experiment directory at ", exp_dir)
+        else:
+            print(" > Using existing experiment directory at ", exp_dir, " or creating if non-existent.")
+            os.makedirs(exp_dir, exist_ok=True)
+            os.makedirs(exp_dir + "/filters", exist_ok=True)
+            os.makedirs(exp_dir + "/img_recons", exist_ok=True)
+            os.makedirs(exp_dir + "/raster", exist_ok=True)
+
         self.model_name = "pc_recon"
 
         ############ meta-parameters for model structure and dynamics
@@ -110,6 +120,8 @@ class PC_Recon():
         prior_type = "laplacian"           ## neural activation/latent prior type
         lmbda = 0.14                       ## strength of neural activation prior
 
+        ############# Misc
+        # self._first = False                 ## flag to indicate first process call
 
 
         #################################################################
@@ -151,7 +163,7 @@ class PC_Recon():
                                          w_bound=w_bound,
                                          key=subkeys[0]
                                          )
-                print(f"[W init] W1: {self.W1}")
+                # print(f"[W init] W1: {self.W1}")
 
                 self.e2 = GaussianErrorCell("e2", n_units=h2_dim)
                 self.e1 = GaussianErrorCell("e1", n_units=h1_dim)
@@ -310,7 +322,9 @@ class PC_Recon():
       #   self.clamp_input(obs)
       #   z_codes = self.advance_process.run(t=self.dt * i, dt=self.dt)
       self.clamp_input(obs)
+    #   print(f"[_advance_process] obs shape: {obs.shape}, e0 dtarget shape: {self.e0.dtarget.get().shape}, e0 dmu shape: {self.e0.dmu.get().shape}, e0 target shape: {self.e0.target.get().shape}")
       inputs = jnp.array(self.advance_process.pack_rows(self.T, t=lambda x: x, dt=self.dt))
+    #   print(f"[_advance_process] inputs shape: {inputs.shape}")
       stateManager.state, z_codes = self.advance_process.scan(inputs)
       return z_codes
 
@@ -350,18 +364,38 @@ class PC_Recon():
         # with Context("Circuit") as self.circuit:
         #     self.circuit.load_from_dir(model_directory)
         self.circuit = Context.load(directory=model_directory, module_name=self.model_name)
-        processes = self.circuit.get_objects_by_type("process") ## obtain all saved processes within this context
-        self.advance_process = processes.get("advance_process")
-        self.reset_process = processes.get("reset_process")
-        self.evolve_process = processes.get("evolve_process")
-        nodes = self.circuit.get_components("W3", "W2", "W1")
+        # processes = self.circuit.get_objects_by_type("process") ## obtain all saved processes within this context
+        # self.advance_process = processes.get("advance_process")
+        # self.reset_process = processes.get("reset_process")
+        # self.evolve_process = processes.get("evolve_process")
+        W3, W2, W1 = self.circuit.get_components("W3", "W2", "W1")
         # self.W3, self.W2, self.W1,\
         #     self.E3, self.E2, self.E1,\
         #     self.z3, self.z2, self.z1,\
         #     self.e2, self.e1, self.e0 = nodes
-        self.W3, self.W2, self.W1 = nodes
+        # self.W3, self.W2, self.W1 = nodes
+        self._set_weights(W3, self.W3)
+        self._set_weights(W2, self.W2)
+        self._set_weights(W1, self.W1)
 
         self.batch_setup()
+
+    def _set_weights(self, source: BackwardSynapse, target: BackwardSynapse):
+        """
+        Sets the weights of the target synapse to be equal to those of the source synapse
+
+        Args:
+            source: source synapse to copy weights from
+
+            target: target synapse to copy weights to
+        """
+        target.weights.set(source.weights.get())
+        target.biases.set(source.biases.get())
+        # target.pre.set(source.pre.get()) # we do not set this because this get wired to other compartment
+        # target.post.set(source.post.get()) # we do not set this because this get wired to other compartment
+        target.dWeights.set(source.dWeights.get())
+        target.dBiases.set(source.dBiases.get())
+        target.opt_params.set(source.opt_params.get())
 
 
     def get_synapse_stats(self, W_id='W1'):
@@ -490,6 +524,14 @@ class PC_Recon():
             A tuple containing an array of reconstructed signal and a scalar value for reconstructed loss value
             (will be empty; length = 0 if collect_spike_train is False)
         """
+
+        # NOTE: for debugging purposes, we print out the shapes of various model components here
+        # if not self._first:
+            # self.clamp_input(obs)
+            # self.reset_process.run()
+            # self._first = True
+            # print(" > [PC_Recon] First process call - model components reset to set batch size.")
+            # print(f"\t obs shape: {obs.shape}, e0bs: {self.e0.batch_size} e0 dtarget shape: {self.e0.dtarget.get().shape}, e0 dmu shape: {self.e0.dmu.get().shape}, e0 target shape: {self.e0.target.get().shape}")
 
         ## pin/tie feedback synapses to transpose of forward ones
         self.E1.weights.set(jnp.transpose(self.W1.weights.get()))
