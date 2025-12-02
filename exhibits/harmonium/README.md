@@ -16,12 +16,10 @@ built in accordance with many of the pragmatic recommendations found within:
 Hinton, Geoffrey E. "A practical guide to training restricted Boltzmann machines." Neural Networks: Tricks of the Trade: Second Edition. Berlin, Heidelberg: Springer Berlin Heidelberg, 2012. 599-619.
 ```
 
-<!--
 <p align="center">
-  <img height="150" src="fig/rbm.jpg"><br>
-  <i>Visual depiction of the harmonium architecture.</i>
+  <img height="200" src="fig/harmonium.jpg"><br>
+  <i>Visual depiction of the harmonium architecture, with hidden layer $\mathbf{h}$ and visible layer $\mathbf{v}$.</i>
 </p>
--->
 
 <!--
 This model is also discussed in the ngc-learn
