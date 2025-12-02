@@ -58,7 +58,7 @@ scientific inquiry.
 3. Reconstructive predictive coding:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_recon">Model</a>
    <!--<a href="">Walkthrough</a>-->
-4. Harmonium (restricted Boltzmann machine; RBM):
+4. Harmonium (restricted Boltzmann machine; RBM) with stochastic binary neurons, trained via contrastive divergence:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/harmonium">Model</a>, 
    <a href="">Walkthrough / Tutorial</a>
 5. Sparse identification of nonlinear dynamics (SINDy): 
