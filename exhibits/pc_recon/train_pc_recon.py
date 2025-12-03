@@ -138,9 +138,8 @@ model = PC_Recon(dkey, h3_dim=h3_dim, h2_dim=h2_dim, h1_dim=h1_dim, in_dim=in_di
                  circuit_name="train",
                  reset_exp_dir = False)
 
-# sys.exit()
-# model.save_to_disk()
-model.load_from_disk("exp")
+# model.save_to_disk() # NOTE: Viet: save initial model parameters to disk, uncomment this line if we are loading a saved model
+model.load_from_disk("exp") # NOTE: Viet: uncomment this line and comment the above lines to load a saved model
 print(model.get_synapse_stats())
 model.viz_receptive_fields(patch_shape, max_filter=max_vis_filter, fname='erf_t0')
 

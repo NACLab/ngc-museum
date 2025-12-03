@@ -364,22 +364,19 @@ class PC_Recon():
         # with Context("Circuit") as self.circuit:
         #     self.circuit.load_from_dir(model_directory)
         self.circuit = Context.load(directory=model_directory, module_name=self.model_name)
-        # processes = self.circuit.get_objects_by_type("process") ## obtain all saved processes within this context
-        # self.advance_process = processes.get("advance_process")
-        # self.reset_process = processes.get("reset_process")
-        # self.evolve_process = processes.get("evolve_process")
-        W3, W2, W1 = self.circuit.get_components("W3", "W2", "W1")
-        # self.W3, self.W2, self.W1,\
-        #     self.E3, self.E2, self.E1,\
-        #     self.z3, self.z2, self.z1,\
-        #     self.e2, self.e1, self.e0 = nodes
-        # self.W3, self.W2, self.W1 = W3, W2, W1
-        self._set_weights(W3, self.W3)
-        self._set_weights(W2, self.W2)
-        self._set_weights(W1, self.W1)
+        with self.circuit:
+            # NOTE: Viet: Uncomment these lines to reproduce the error
+            # processes = self.circuit.get_objects_by_type("process") ## obtain all saved processes within this context
+            # self.advance_process = processes.get("advance_process")
+            # self.reset_process = processes.get("reset_process")
+            # self.evolve_process = processes.get("evolve_process")
+            W3, W2, W1 = self.circuit.get_components("W3", "W2", "W1")
+            self.W3, self.W2, self.W1 = W3, W2, W1
+            # self._set_weights(W3, self.W3)
+            # self._set_weights(W2, self.W2)
+            # self._set_weights(W1, self.W1)
+            self.batch_setup()
 
-        self.batch_setup()
-        # self.circuit.recompile()
 
     def _set_weights(self, source: BackwardSynapse, target: BackwardSynapse):
         """
