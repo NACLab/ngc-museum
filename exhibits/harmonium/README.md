@@ -21,10 +21,7 @@ Hinton, Geoffrey E. "A practical guide to training restricted Boltzmann machines
   <i>Visual depiction of the harmonium architecture, which contains one hidden layer $\mathbf{h}$ (unobserved/latent variables) and visible layer $\mathbf{v}$ (observed variables).</i>
 </p>
 
-<!--
-This model is also discussed in the ngc-learn
-<a href="https://ngc-learn.readthedocs.io/en/latest/museum/harmonium.html">documentation</a>.
--->
+This model is also discussed in the ngc-learn <a href="https://ngc-learn.readthedocs.io/en/latest/museum/harmonium.html">documentation</a>.
 
 ## Running the Model's Simulation
 

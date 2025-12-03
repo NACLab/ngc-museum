@@ -23,23 +23,23 @@ $ python sim_harmonium.py --trainX="/path/to/train_patterns.npy" \
 ################################################################################
 ## read in general program arguments
 options, remainder = gopt.getopt(
-    sys.argv[1:], '', ["dataX=", "devX=", "verbosity="]
+    sys.argv[1:], '', ["trainX=", "devX=", "verbosity="]
 )
 
-dataX_fname = "../../data/mnist/trainX.npy" ## training design matrix (dataset)
+trainX_fname = "../../data/mnist/trainX.npy" ## training design matrix (dataset)
 devX_fname = "../../data/mnist/validX.npy" ## development design matrix (dataset)
 verbosity = 0 ## verbosity level (0 - fairly minimal, 1 - prints multiple lines on I/O)
 for opt, arg in options:
-    if opt in ("--dataX"):
-        dataX = arg.strip()
+    if opt in ("--trainX"):
+        trainX_fname = arg.strip()
     elif opt in ("--devX"):
         devX_fname = arg.strip()
     elif opt in ("--verbosity"):
         verbosity = int(arg.strip())
-print("Data: ",dataX_fname)
+print("Data: ",trainX_fname)
 
 ## load in seeding dataset
-X = jnp.load(dataX_fname)
+X = jnp.load(trainX_fname)
 X = X * (X >= 0.45) ## binarize data
 devX = jnp.load(devX_fname)
 devX = devX * (devX >= 0.45) ## binarize data
