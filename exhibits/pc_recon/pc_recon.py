@@ -373,12 +373,13 @@ class PC_Recon():
         #     self.E3, self.E2, self.E1,\
         #     self.z3, self.z2, self.z1,\
         #     self.e2, self.e1, self.e0 = nodes
-        # self.W3, self.W2, self.W1 = nodes
+        # self.W3, self.W2, self.W1 = W3, W2, W1
         self._set_weights(W3, self.W3)
         self._set_weights(W2, self.W2)
         self._set_weights(W1, self.W1)
 
         self.batch_setup()
+        # self.circuit.recompile()
 
     def _set_weights(self, source: BackwardSynapse, target: BackwardSynapse):
         """
