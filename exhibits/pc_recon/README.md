@@ -1,4 +1,4 @@
-# Reconstructive Predictive Coding (Rao &amp; Ballard, 1999)
+# Reconstructive Hierarchical Predictive Coding (Rao &amp; Ballard, 1999)
 
 <b>Version</b>: ngclearn==3.0.0, ngcsimlib==2.0.0 <!--2.0.0 1.0.0 -->
 
