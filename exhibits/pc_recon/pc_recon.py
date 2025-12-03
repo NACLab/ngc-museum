@@ -365,7 +365,6 @@ class PC_Recon():
         #     self.circuit.load_from_dir(model_directory)
         self.circuit = Context.load(directory=model_directory, module_name=self.model_name)
         with self.circuit:
-            # NOTE: Viet: Uncomment these lines to reproduce the error
             processes = self.circuit.get_objects_by_type("process") ## obtain all saved processes within this context
             self.advance_process = processes.get("advance_process")
             self.reset_process = processes.get("reset_process")
