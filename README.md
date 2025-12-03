@@ -40,7 +40,7 @@ For those contributing models/algorithms in either the `exhibitors/` or `exhibit
    <a href="">Model</a>, 
    <a href="">Walkthrough / Tutorial</a>
 -->
-3. Reconstructive hierarchical predictive coding:
+3. Reconstructive hierarchical predictive coding (Rao &amp; Ballard, 1999):
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_recon">Model</a>
    <!--<a href="">Walkthrough</a>-->
 4. Harmonium (restricted Boltzmann machine; RBM) with stochastic binary neurons, trained via contrastive divergence:
