@@ -366,18 +366,27 @@ class PC_Recon():
         self.circuit = Context.load(directory=model_directory, module_name=self.model_name)
         with self.circuit:
             # NOTE: Viet: Uncomment these lines to reproduce the error
-            # processes = self.circuit.get_objects_by_type("process") ## obtain all saved processes within this context
-            # self.advance_process = processes.get("advance_process")
-            # self.reset_process = processes.get("reset_process")
-            # self.evolve_process = processes.get("evolve_process")
-            W3, W2, W1 = self.circuit.get_components("W3", "W2", "W1")
-            self.W3, self.W2, self.W1 = W3, W2, W1
+            processes = self.circuit.get_objects_by_type("process") ## obtain all saved processes within this context
+            self.advance_process = processes.get("advance_process")
+            self.reset_process = processes.get("reset_process")
+            self.evolve_process = processes.get("evolve_process")
+            W3, W2, W1, E3, E2, E1, e2, e1, e0, z3, z2, z1 = self.circuit.get_components(
+                "W3", "W2", "W1",
+                "E3", "E2", "E1",
+                "e2", "e1", "e0",
+                "z3", "z2", "z1"
+            )
+            self.W3, self.W2, self.W1 = (W3, W2, W1)
+            self.E3, self.E2, self.E1 = (E3, E2, E1)
+            self.z3, self.z2, self.z1 = (z3, z2, z1)
+            self.e2, self.e1, self.e0 = (e2, e1, e0)
             # self._set_weights(W3, self.W3)
             # self._set_weights(W2, self.W2)
             # self._set_weights(W1, self.W1)
             self.batch_setup()
 
 
+    # This is not used anymore
     def _set_weights(self, source: BackwardSynapse, target: BackwardSynapse):
         """
         Sets the weights of the target synapse to be equal to those of the source synapse
