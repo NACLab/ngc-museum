@@ -68,7 +68,8 @@ model = PCN(
     subkeys[1], x_dim, y_dim, hid1_dim=512, hid2_dim=512, T=20, dt=1., tau_m=25., act_fx="sigmoid", eta=0.001,
     exp_dir="exp", model_name="pcn"
 )
-#model.save_to_disk(params_only=True) # save final state of synapses to disk
+model.save_to_disk() # save final state of synapses to disk
+# model.load_from_disk("exp")
 print("--- Starting Simulation ---")
 
 def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference performance
@@ -145,7 +146,7 @@ for i in range(n_iter):
     nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
     _, tr_acc = eval_model(model, _X, _Y, mb_size=1000)
     if (i+1) % save_point == 0 or i == (n_iter-1):
-        #model.save_to_disk(params_only=True) # save final state of synapses to disk
+        model.save_to_disk(params_only=True) # save final state of synapses to disk
         jnp.save("exp/trAcc.npy", jnp.asarray(trAcc_set))
         jnp.save("exp/acc.npy", jnp.asarray(acc_set))
         jnp.save("exp/efe.npy", jnp.asarray(efe_set))

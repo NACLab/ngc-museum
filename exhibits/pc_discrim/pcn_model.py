@@ -1,6 +1,7 @@
 from ngcsimlib.global_state import stateManager
 from ngclearn import Context, MethodProcess, JointProcess
 
+import os
 from ngclearn.utils.io_utils import makedir
 from jax import numpy as jnp, random, jit
 from ngclearn.components import GaussianErrorCell as ErrorCell, RateCell, HebbianSynapse, StaticSynapse

@@ -4,7 +4,7 @@
 ################################################################################
 DATA_DIR="../../data/mnist"
 
-rm -r exp/* ## clear out experimental directory
+# rm -r exp/* ## clear out experimental directory
 python train_pcn.py  --dataX="$DATA_DIR/trainX.npy" \
                      --dataY="$DATA_DIR/trainY.npy" \
                      --devX="$DATA_DIR/validX.npy" \
