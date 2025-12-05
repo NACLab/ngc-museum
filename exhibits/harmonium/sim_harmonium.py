@@ -49,7 +49,7 @@ dim = X.shape[1] ## data dimensionality = P x P pixels
 px = py = int(jnp.sqrt(X.shape[1])) ## assumes square input grid img dimensions
 
 ## set up general RBM simulation / training (meta-)parameters
-eta = 0.001 #0.005 #0.05 #0.001 ## learning rate (gradient-ascent)
+eta = 0.001 ## learning rate (gradient-ascent)
 l1_lambda = 0. ## L1 synaptic decay
 l2_lambda = 0.01 ## L2 synaptic decay
 n_iter = 100 ## epochs / number of passes through dataset
@@ -98,14 +98,15 @@ def eval_model(X, model, batch_size, store_recon=False, verbosity=0):
 
 ## Simulate RBM fitting/training process
 energy, error, xR = eval_model(devX, model, dev_batch_size, store_recon=True)
-print(f"-1| Test: E(X) = {energy:.4f}  err(X) = {error:.4f}")
+print(f"-1| Test:  err(X) = {error:.4f}")
 model.viz_receptive_fields(fname="recFields_initial", field_shape=(px, py))
 
 visualize([xR[0:100, :].T], [(px, py)], model.exp_dir + "/filters/{}".format("recon"))
 
+energy_im1 = energy ## energy(i-1)
 n_batches = int(X.shape[0]/train_batch_size)
 for i in range(n_iter): ## for every epoch
-    error_i = energy_i = 0.
+    error_i = 0.
     dkey, *subkeys = random.split(dkey, 3)
     ptrs = random.permutation(subkeys[0], X.shape[0])
     _X = X[ptrs, :] ## shuffle data (to ensure samples i.i.d.)
@@ -121,10 +122,10 @@ for i in range(n_iter): ## for every epoch
         eptr = int(jnp.minimum(eptr, _X.shape[0]))
 
         _, err_n, _, E_n = model.process(x=x_n)
-        energy_i = E_n + energy_i
         error_i = err_n + error_i
         if verbosity > 0:
-            print(f"\r {i}| Train:  E(X) = {energy_i/Ns:.4f}  err(X) = {error_i/Ns:.4f}  ({int(Ns)} samples)", end="")
+            print(f"\r {i}| Train: err(X) = {error_i/Ns:.4f}  ({int(Ns)} samples)", end="")
+    error_i = error_i/Ns
     if verbosity > 0:
         print()
     
@@ -132,9 +133,11 @@ for i in range(n_iter): ## for every epoch
     if i == (n_iter-1):
         get_recon = True
     energy, error, xR = eval_model(devX, model, dev_batch_size, store_recon=get_recon)
-    energy_i = energy_i / Ns
-    error_i = error_i / Ns
-    print(f"{i}| Test: E(X) = {energy:.4f}  err(X) = {error:.4f}; Train: E(X) = {energy_i:.4f}  err(X) = {error_i:.4f}")
+    delta_energy = jnp.abs(energy - energy_im1) ## calc abs(delta energy)
+    energy_im1 = energy
+    print(
+        f"{i}| Test:  |d.E(X)| = {delta_energy:.4f}  err(X) = {error:.4f}; Train: err(X) = {error_i:.4f}"
+    )
 
 model.save_to_disk(params_only=True) ## save final model to disk
 
