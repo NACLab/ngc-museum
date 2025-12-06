@@ -57,13 +57,13 @@ dim = X.shape[1] ## data dimensionality = P x P pixels
 px = py = int(jnp.sqrt(X.shape[1])) ## assumes square input grid img dimensions
 
 ## set up general RBM simulation / training (meta-)parameters
-eta = 0.0001 #0.001 ## learning rate (gradient-ascent)
+eta = 0.0001 ## learning rate (gradient-ascent)
 n_negphase_steps = 1 ## number (k) of neg-phase steps for CD-k
 use_pcd = True ## should persistent CD be used? 
-l1_lambda = 0. ## L1 synaptic decay
+l1_lambda = 0. # ## L1 synaptic decay
 l2_lambda = 0.01 ## L2 synaptic decay
 n_iter = 100 ## epochs / number of passes through dataset
-train_batch_size = 500 #100 ## training batch-size
+train_batch_size = 200 ## training batch-size
 dev_batch_size = 5000 ## dev batch-size
 
 ## set up JAX seeding and initialize RBM model
@@ -153,7 +153,7 @@ for i in range(n_iter): ## for every epoch
     delta_energy = jnp.abs(energy - energy_im1) ## calc abs(delta energy)
     energy_im1 = energy
     print(
-        f"{i}| Test:  |d.E(X)| = {delta_energy:.4f}  err(X) = {error:.4f}; Train: err(X) = {error_i:.4f}"
+        f"{i}| Dev:  |d.E(X)| = {delta_energy:.4f}  err(X) = {error:.4f}"
     )
 
 model.save_to_disk(params_only=True) ## save final model to disk

@@ -81,7 +81,7 @@ class Harmonium():
         sigma = 0.01 # 0.02
         self.l1_lambda = l1_lambda
         self.l2_lambda = l2_lambda
-        self.p_mix = 0.75 #0.55
+        self.p_mix = 0.8 #0.75 #0.55
 
         self.gibbs_chain_states = None ## for PCD (only)
 

@@ -65,7 +65,7 @@ use_pcd = True (forces this harmonium to use a form of persistent CD learning)
 l1_lambda = 0. (strength of Laplacian prior enforced over synaptic weights)
 l2_lambda = 0.01 (strength of Gaussian prior enforced over synaptic weights) 
 n_iter = 100 (number of epochs/iterations)
-train_batch_size = 500 (number of samples to use w/in a CD-batch update)
+train_batch_size = 200 (number of samples to use w/in a CD-batch update)
 ```
 
 Note that, for the block Gibbs sampler, we utilized the following setting to produce reasonable confabulations from the RBM:
