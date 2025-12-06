@@ -1,6 +1,6 @@
 # DeepMod/Neural ODE: Deep Learning-Driven Model Discovery
 
-<b>Version</b>: ngclearn==3.0.0, ngcsimlib==2.0.0
+<b>Version</b>: ngclearn==3.0.0, ngcsimlib==3.0.0
 
 This exhibit contains an implementation of the neural ordinary differential 
 equation (ODE) model proposed and studied in:

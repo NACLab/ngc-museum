@@ -1,6 +1,6 @@
 # Samadi et. al. Spiking Neural Network
 
-<b>Version</b>: ngclearn==3.0.0, ngcsimlib==2.0.0
+<b>Version</b>: ngclearn==3.0.0, ngcsimlib==3.0.0
 
 This exhibit contains an implementation of the spiking neural network trained
 with broadcast feedback alignment (ngc-learn refers to this model as the

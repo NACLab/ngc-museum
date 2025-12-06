@@ -1,6 +1,6 @@
 # Spiking Neural Controller for Operant Conditioning
 
-<b>Version</b>: ngclearn==3.0.0, ngcsimlib==2.0.0
+<b>Version</b>: ngclearn==3.0.0, ngcsimlib==3.0.0
 
 This exhibit contains an implementation of a spiking neural network trained via modulated spike-timing-dependent plasticity (with eligibility traces) for simple reinforcement learning tasks (such as rat-maze navigation). This model embodies a few elements taken from: 
 
