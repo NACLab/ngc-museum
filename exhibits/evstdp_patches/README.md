@@ -1,14 +1,12 @@
-# Event-Based STDP Spiking Neural Network (Tavanaei et al., 2018)
+# Event-Based STDP Spiking Neural Network (Tavanaei et al.; 2018)
 
 <b>Version</b>: ngclearn==3.0.0, ngcsimlib==2.0.0
 
-This exhibit contains an implementation of the spiking neuronal model proposed
-and studied in:
+This exhibit contains an implementation of the spiking neuronal model proposed and studied in:
 
 ```
-Tavanaei, Amirhossein, Timothée Masquelier, and Anthony Maida.
-"Representation learning using event-based STDP." Neural Networks 105
-(2018): 294-303.
+Tavanaei, Amirhossein, Timothée Masquelier, and Anthony Maida. "Representation learning using event-based STDP." 
+Neural Networks 105 (2018): 294-303.
 ```
 
 ## Running the Model's Simulation
@@ -19,9 +17,8 @@ To train this implementation of Tavanaei's model, simply run:
 $ python train_patch_snn.py --dataX="../data/mnist/trainX.npy" --n_samples=10000
 ```
 
-Note that you can point the training script to other datasets besides the
-default MNIST, just ensure that the target for `dataX` is a numpy array of
-shape `(Number data points x Pattern Dimensionality)`.
+Note that you can point the training script to other datasets besides the default MNIST, just ensure that the target 
+for `dataX` is a numpy array of shape `(Number data points x Pattern Dimensionality)`.
 
 Alternatively, you may run the convenience bash script:
 

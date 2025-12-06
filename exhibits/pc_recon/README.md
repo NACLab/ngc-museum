@@ -1,4 +1,4 @@
-# Reconstructive Hierarchical Predictive Coding (Rao &amp; Ballard, 1999)
+# Reconstructive Hierarchical Predictive Coding (Rao &amp; Ballard; 1999)
 
 <b>Version</b>: ngclearn==3.0.0, ngcsimlib==2.0.0 <!--2.0.0 1.0.0 -->
 
@@ -7,7 +7,8 @@ for the task of reconstruction. This model is effectively a variant that embodie
 characteristics across several classical efforts, such as:
 
 ```
-Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a functional interpretation of some extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
+Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a functional interpretation of some 
+extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
 ```
 
 <!--
