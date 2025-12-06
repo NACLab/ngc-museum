@@ -403,7 +403,7 @@ class Harmonium():
             print()
         return x_samp
 
-    def process(self, x, adapt_synapses=True):
+    def process(self, x, k=1, adapt_synapses=True):
         """
         Processes an observation (sensory stimulus pattern).
 
@@ -412,6 +412,11 @@ class Harmonium():
             adapt_synapses: if True, synaptic efficacies will be adapted in
                 accordance with contrastive Hebbian plasticity
 
+            k: number of negative phase steps to take (for CD-k); (Default: 1, for CD-1)
+
+            adapt_synapses: if True, synapses will be adjusted after negative phase 
+                statistics are obtained; (Default: True)
+
         Returns:
             an array containing reconstruction vectors, scalar squared error,
                 column vector of per-datapoint energies, scalar energy
@@ -419,9 +424,19 @@ class Harmonium():
         self.reset.run()
         self.clamp_input(x)
         self.advance_pos.run(t=0., dt=1.) ## pos phase step
-        self.advance_neg.run(t=0., dt=1.) ## neg phase step
+        ## run k >= 1 negative phase steps
+        for ki in range(k):
+            self.advance_neg.run(t=0., dt=1.) ## neg phase step
+            if ki != k-1:
+                if self.is_meanfield:
+                    z1neg = self.z1neg.p.get()
+                    self.z1.p.set(z1neg)
+                else:
+                    z1neg = self.z1neg.s.get()
+                    self.z1.s.set(z1neg)
+        ## make synaptic adjustments
         if adapt_synapses:
-            self._update_via_CHL() ## make synaptic adjustments
+            self._update_via_CHL() ## triggers CHL update
 
         z1 = self.z1.s.get()
         E_x, E = self._compute_energy(x, z1)

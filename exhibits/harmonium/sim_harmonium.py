@@ -50,6 +50,7 @@ px = py = int(jnp.sqrt(X.shape[1])) ## assumes square input grid img dimensions
 
 ## set up general RBM simulation / training (meta-)parameters
 eta = 0.001 ## learning rate (gradient-ascent)
+n_negphase_steps = 1 ## number (k) of neg-phase steps for CD-k
 l1_lambda = 0. ## L1 synaptic decay
 l2_lambda = 0.01 ## L2 synaptic decay
 n_iter = 100 ## epochs / number of passes through dataset
@@ -121,7 +122,7 @@ for i in range(n_iter): ## for every epoch
         eptr += train_batch_size
         eptr = int(jnp.minimum(eptr, _X.shape[0]))
 
-        _, err_n, _, E_n = model.process(x=x_n)
+        _, err_n, _, E_n = model.process(x=x_n, k=n_negphase_steps, adapt_synapses=True)
         error_i = err_n + error_i
         if verbosity > 0:
             print(f"\r {i}| Train: err(X) = {error_i/Ns:.4f}  ({int(Ns)} samples)", end="")
