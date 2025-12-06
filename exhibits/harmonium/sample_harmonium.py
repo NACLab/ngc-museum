@@ -23,11 +23,13 @@ $ python sample_harmonium.py --dataX="/path/to/train_patterns.npy" \
 ################################################################################
 ## read in general program arguments
 options, remainder = gopt.getopt(
-    sys.argv[1:], '',["dataX=", "output_dir=", "num_chains=", "init_mc_chains_from_data=", "seed="]
+    sys.argv[1:], '',["dataX=", "output_dir=", "num_chains=", "init_mc_chains_from_data=", "seed=", 
+                      "sample_persist_chains="]
 )
 
 seed = 117 ## seed value to control the seeding of JAX noise-creation process
 init_mc_chains_from_data = False ## should Markov chains be initialized from randomly sampled data?
+sample_persist_chains = True ## use persistent chains?
 dataX = "../../data/mnist/trainX.npy" ## what dataset should be used? (should be same/similar to what RBM was fit to)
 output_dir = "exp/samples/" ## output directory of this sampling script
 num_chains = 3 ## number of Markov chains (default is 3 for demo)
@@ -42,6 +44,8 @@ for opt, arg in options:
         num_chains = int(arg.strip())
     elif opt in ("--init_mc_chains_from_data"):
         init_mc_chains_from_data = (arg.strip().lower() == "true")
+    elif opt in ("--sample_persist_chains"):
+        sample_persist_chains = (arg.strip().lower() == "true")
 print("Data: ",dataX)
 makedir(output_dir) ## create samples sub-dir if it doesn't already exist
 
@@ -90,10 +94,17 @@ n_samp_steps = n_samps * thinning_point ## calculate number of total Markov chai
 sample_buffer_maxlen = n_samps #-1
 
 print("---Simulating Block Gibbs Sampling Chains ---")
-x_mcmc_samps = model.sample( ## run MCMC sampling chains to draw samples from RBM
-    subkeys[1], n_steps=n_samp_steps, x_seed=x_seed, thinning_point=thinning_point, burn_in=burn_in,
-    sample_buffer_maxlen=sample_buffer_maxlen, n_samples=num_chains, verbose=True
-)
+if sample_persist_chains:
+    print(" > Using persistent chains")
+    x_mcmc_samps = model.sample_from_gibbs_chains(
+        subkeys[1], n_steps=n_samp_steps, thinning_point=thinning_point, n_samples=num_chains, 
+        sample_buffer_maxlen=sample_buffer_maxlen, verbose=True
+    )
+else:
+    x_mcmc_samps = model.sample( ## run MCMC sampling chains to draw samples from RBM
+        subkeys[1], n_steps=n_samp_steps, x_seed=x_seed, thinning_point=thinning_point, burn_in=burn_in,
+        sample_buffer_maxlen=sample_buffer_maxlen, n_samples=num_chains, verbose=True
+    )
 
 ################################################################################
 ## post-process chains (into videos and sample image grids)

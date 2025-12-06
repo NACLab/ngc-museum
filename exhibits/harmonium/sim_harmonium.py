@@ -9,7 +9,10 @@ Harmonium (Restricted Boltzmann Machine) Exhibit File:
 
 Trains/fits a harmonium (RBM) to a dataset of sensory patterns, e.g., the MNIST
 database of gray-scale images. (Assumes that a training and a dev/validation 
-dataset will be provided, formatted as saved NumPy arrays.)
+dataset will be provided, formatted as saved NumPy arrays.) 
+Note that this simulation file treats the input data patterns as vectors of 
+Bernoulli probabilities, meaning that each time data is fed into the RBM, 
+binary vectors are sampled first to create discrete codes.
 
 Usage:
 $ python sim_harmonium.py --trainX="/path/to/train_patterns.npy" \
@@ -19,6 +22,11 @@ $ python sim_harmonium.py --trainX="/path/to/train_patterns.npy" \
 @author: The Neural Adaptive Computing Laboratory
 ################################################################################
 """
+
+def sample_binary_data(dkey, X): ## samples data to get binary codes
+    dkey, *subkeys = random.split(dkey, 3)
+    bX = random.bernoulli(subkeys[0], p=X, shape=X.shape)
+    return dkey, bX
 
 ################################################################################
 ## read in general program arguments
@@ -40,28 +48,30 @@ print("Data: ",trainX_fname)
 
 ## load in seeding dataset
 X = jnp.load(trainX_fname)
-X = X * (X >= 0.45) ## binarize data
+#X = X * (X >= 0.45) ## binarize data
 devX = jnp.load(devX_fname)
-devX = devX * (devX >= 0.45) ## binarize data
+#devX = devX * (devX >= 0.45) ## binarize data
 
 N = X.shape[0] ## number of data points
 dim = X.shape[1] ## data dimensionality = P x P pixels
 px = py = int(jnp.sqrt(X.shape[1])) ## assumes square input grid img dimensions
 
 ## set up general RBM simulation / training (meta-)parameters
-eta = 0.001 ## learning rate (gradient-ascent)
+eta = 0.0001 #0.001 ## learning rate (gradient-ascent)
 n_negphase_steps = 1 ## number (k) of neg-phase steps for CD-k
+use_pcd = True ## should persistent CD be used? 
 l1_lambda = 0. ## L1 synaptic decay
 l2_lambda = 0.01 ## L2 synaptic decay
 n_iter = 100 ## epochs / number of passes through dataset
-train_batch_size = 1000 ## training batch-size
+train_batch_size = 500 #100 ## training batch-size
 dev_batch_size = 5000 ## dev batch-size
 
 ## set up JAX seeding and initialize RBM model
 dkey = random.PRNGKey(69)
 dkey, *subkeys = random.split(dkey, 3)
 model = Harmonium(
-    subkeys[0], obs_dim=dim, hid_dim=256, eta=eta, l1_lambda=l1_lambda, l2_lambda=l2_lambda, is_meanfield=False
+    subkeys[0], obs_dim=dim, hid_dim=256, eta=eta, l1_lambda=l1_lambda, l2_lambda=l2_lambda, 
+    is_meanfield=False, use_pcd=use_pcd 
 )
 model.init_vis_biases(X) ## visible biases are data-dependently initialized (as per Geoff's tech-report)
 model.save_to_disk()
@@ -84,7 +94,7 @@ def eval_model(X, model, batch_size, store_recon=False, verbosity=0):
         eptr += batch_size
         eptr = int(jnp.minimum(eptr, X.shape[0]))
 
-        x_r_n, err_n, Ex_n, E_n = model.process(x_n, adapt_synapses=False)
+        x_r_n, err_n, Ex_n, E_n = model.process(x_n, k=1, adapt_synapses=False)
         E = E_n + E
         err = err_n + err
         if store_recon:
@@ -98,7 +108,8 @@ def eval_model(X, model, batch_size, store_recon=False, verbosity=0):
     return E/Ns, err/Ns, recon
 
 ## Simulate RBM fitting/training process
-energy, error, xR = eval_model(devX, model, dev_batch_size, store_recon=True)
+dkey, _devX = sample_binary_data(dkey, devX)
+energy, error, xR = eval_model(_devX, model, dev_batch_size, store_recon=True)
 print(f"-1| Test:  err(X) = {error:.4f}")
 model.viz_receptive_fields(fname="recFields_initial", field_shape=(px, py))
 
@@ -111,7 +122,8 @@ for i in range(n_iter): ## for every epoch
     dkey, *subkeys = random.split(dkey, 3)
     ptrs = random.permutation(subkeys[0], X.shape[0])
     _X = X[ptrs, :] ## shuffle data (to ensure samples i.i.d.)
-    
+    dkey, _X = sample_binary_data(dkey, _X)
+
     Ns = 0.
     sptr = 0
     eptr = train_batch_size
@@ -122,10 +134,12 @@ for i in range(n_iter): ## for every epoch
         eptr += train_batch_size
         eptr = int(jnp.minimum(eptr, _X.shape[0]))
 
-        _, err_n, _, E_n = model.process(x=x_n, k=n_negphase_steps, adapt_synapses=True)
+        dkey, *subkeys = random.split(dkey, 3)
+        _, err_n, _, E_n = model.process(x=x_n, k=n_negphase_steps, adapt_synapses=True, dkey=subkeys[0])
         error_i = err_n + error_i
         if verbosity > 0:
             print(f"\r {i}| Train: err(X) = {error_i/Ns:.4f}  ({int(Ns)} samples)", end="")
+    #model.gibbs_chain_states = None
     error_i = error_i/Ns
     if verbosity > 0:
         print()
@@ -133,7 +147,9 @@ for i in range(n_iter): ## for every epoch
     get_recon = False
     if i == (n_iter-1):
         get_recon = True
-    energy, error, xR = eval_model(devX, model, dev_batch_size, store_recon=get_recon)
+
+    dkey, _devX = sample_binary_data(dkey, devX)
+    energy, error, xR = eval_model(_devX, model, dev_batch_size, store_recon=get_recon)
     delta_energy = jnp.abs(energy - energy_im1) ## calc abs(delta energy)
     energy_im1 = energy
     print(
@@ -150,3 +166,4 @@ visualize([xR[0:100, :].T], [(px, py)], model.exp_dir + "/filters/{}".format("re
 
 print("--- Final RBM Synaptic Stats ---")
 print(model.get_synapse_stats())
+

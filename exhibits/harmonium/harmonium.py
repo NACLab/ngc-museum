@@ -41,8 +41,11 @@ class Harmonium():
         | Hinton, Geoffrey E. "A practical guide to training restricted Boltzmann machines." Neural networks: Tricks of
         | the trade. Springer, Berlin, Heidelberg, 2012. 599-619.
 
-        Note that this model exhibit specifically implements contrastive divergence (CD-1) for adapting the synapses
-        of this model during training.
+        Note that this model exhibit specifically implements contrastive divergence (CD-k) and persistent contrastive 
+        divergence (PCD) for adapting the synapses of this model during training. Specifically, this implementation 
+        contains a slightly-modified form of PCD, where the concept of "chain swapping" (taken from parallel 
+        tempering) under a fixed probability (`p_mix`), which was found to slightly improve the quality of samples 
+        produced by this exhibit's Gibbs sampler.
 
         Args:
             dkey: JAX seeding key
@@ -52,14 +55,16 @@ class Harmonium():
             l1_lambda: L1 regularization strength applied to synaptic updates (Default: 0)
             l2_lambda: L2 regularization strength applied to synaptic updates (Default: 0)
             is_meanfield: is this RBM/harmonium to be treated as a mean-field model? (Default: False)
+            use_pcd: if True, synaptic updates will be applied in accordance with persistent 
+                contrastive divergence (PCD)
             exp_dir: experimental directory to save model results
             load_dir: directory to load model from, overrides initialization/model object creation if
                 non-None (Default: None)
         """
 
     def __init__(
-            self, dkey, obs_dim=1, hid_dim=100, eta=0.01, l1_lambda=0., l2_lambda=0., is_meanfield=False, exp_dir="exp",
-            load_dir=None, **kwargs
+            self, dkey, obs_dim=1, hid_dim=100, eta=0.01, l1_lambda=0., l2_lambda=0., is_meanfield=False, 
+            use_pcd=False, exp_dir="exp", load_dir=None, **kwargs
     ):
         dkey, *subkeys = random.split(dkey, 10)
         self.exp_dir = exp_dir
@@ -70,11 +75,15 @@ class Harmonium():
 
         self.is_meanfield = is_meanfield
         self.eta = eta
+        self.use_pcd = use_pcd ## should persistent CD be used?
         self.obs_dim = obs_dim
         self.hid_dim = hid_dim
         sigma = 0.01 # 0.02
         self.l1_lambda = l1_lambda
         self.l2_lambda = l2_lambda
+        self.p_mix = 0.75 #0.55
+
+        self.gibbs_chain_states = None ## for PCD (only)
 
         if load_dir is not None:
             ## build from disk
@@ -206,6 +215,8 @@ class Harmonium():
             self.V1.save(model_dir)
         else: ## this saves the whole model form (JSON structure as well as parameter values)
             self.circuit.save_to_json(self.exp_dir, model_name=self.model_name, overwrite=True)
+        if self.gibbs_chain_states is not None:
+            jnp.save(f"{self.exp_dir}/{self.model_name}/gibbs.npy", self.gibbs_chain_states)
 
     def load_from_disk(self, model_directory):
         """
@@ -214,6 +225,12 @@ class Harmonium():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
+        import os.path
+        fd = f"{self.exp_dir}/{self.model_name}/gibbs.npy"
+        if os.path.isfile(fd):
+            print(">>> Loading Gibbs chains: ",fd)
+            self.gibbs_chain_states = jnp.load(fd)
+
         self.circuit = Context.load(directory=model_directory, module_name=self.model_name)
         #self.advance_proc = self.circuit.get_objects("advance_process", objectType="process")
         processes = self.circuit.get_objects_by_type("process") ## obtain all saved processes within this context
@@ -332,6 +349,73 @@ class Harmonium():
         self.V1.biases.set(_hb)
         self.E1.biases.set(_vb)
 
+    def sample_from_gibbs_chains(
+            self, dkey, n_steps, thinning_point=0, sample_buffer_maxlen=-1, n_samples=0, verbose=False
+    ):
+        """
+        Draws samples under this harmonium by starting at the current of the Gibbs chains 
+        that this model has maintained (if persistent CD has been used to train the model). 
+        
+        Args:
+            dkey: Jax key to seed sampler
+
+            n_steps: how many steps to run sampler
+
+            thinning_point: if > 0, will thin the Markov chain this produces by extracting
+                the sample every so many `thinning_point` steps
+
+            sample_buffer_maxlen: maximum number of samples to store within the buffer returned by this method
+
+            n_samples: number of samples per step or number of chains to collect samples from 
+                (Note: must be <= to number of Gibbs chains maintained by this model); (Default: 0)
+
+            verbose: if True, this method will iteratively print to I/O its sampling progress
+        """
+        if self.gibbs_chain_states is None: ## if there are no chains, start them up randomly
+            _nsamp = int(max(n_samples, 1))
+            p_eps = random.uniform(skey[0], shape=(_nsamp, self.hid_dim))
+            eps = random.bernoulli(skey[1], p=p_eps, shape=p_eps.shape)
+            self.gibbs_chain_states = eps ## place noise at start of chains (since they're empty)
+        _chain_states = self.gibbs_chain_states
+        n_chains = _chain_states.shape[0] ## total # chains
+        _leftover = None
+        if n_samples > 0:
+            _chain_states = self.gibbs_chain_states[0:n_samples, :] ## chains-to-use
+            _leftover = self.gibbs_chain_states[n_samples:n_chains, :] ## unused chains
+
+        ## initialize sampling process from current state of these chains
+        z1neg = _chain_states
+        self.z1.s.set(z1neg)
+
+        ## now continue down the chain by propagating through negative-phase graph
+        x_samp = [] ## sample buffer
+        for s in range(n_steps):
+            self.advance_neg.run(t=0., dt=1.) ## z1 -> z0neg -> z1neg
+            x_s = self.z0neg.p.get()
+            if thinning_point > 0:
+                if s % thinning_point == 0:
+                    x_samp.append(x_s)
+            else:
+                x_samp.append(x_s)
+            # self.reset.run()
+            z1neg = self.z1neg.s.get() ## get new step/sample
+            self.z1.s.set(z1neg)
+
+            if sample_buffer_maxlen > 0:
+                if len(x_samp) > sample_buffer_maxlen:
+                    x_samp.pop(0)
+            if verbose:
+                print(f"\rGenerated {(s+1)} samples; len(buffer) = {len(x_samp)}", end="")
+        if verbose:
+            print()
+
+        ## update chains after this sequence of samples
+        if _leftover is not None:
+            _chain_states = jnp.concat([_chain_states, _leftover], axis=0)
+        self.gibbs_chain_states = _chain_states
+
+        return x_samp
+
     def sample(
             self, dkey, n_steps=10, x_seed=None, thinning_point=0, burn_in=0, sample_buffer_maxlen=-1,
             n_samples=-1, verbose=False
@@ -403,7 +487,7 @@ class Harmonium():
             print()
         return x_samp
 
-    def process(self, x, k=1, adapt_synapses=True):
+    def process(self, x, k=1, adapt_synapses=True, dkey=None):
         """
         Processes an observation (sensory stimulus pattern).
 
@@ -424,16 +508,45 @@ class Harmonium():
         self.reset.run()
         self.clamp_input(x)
         self.advance_pos.run(t=0., dt=1.) ## pos phase step
-        ## run k >= 1 negative phase steps
-        for ki in range(k):
-            self.advance_neg.run(t=0., dt=1.) ## neg phase step
-            if ki != k-1:
+        if self.use_pcd and adapt_synapses: ## run persistent CD
+            z1neg = self.gibbs_chain_states ## get current state of gibbs chain(s)
+            if z1neg is None:
+                z1neg = self.z1.s.get()
                 if self.is_meanfield:
-                    z1neg = self.z1neg.p.get()
-                    self.z1.p.set(z1neg)
-                else:
-                    z1neg = self.z1neg.s.get()
-                    self.z1.s.set(z1neg)
+                    z1neg = self.z1.p.get()
+                #dkey, *skey = random.split(dkey, 3)
+                #p_eps = random.uniform(skey[0], shape=(x.shape[0], self.hid_dim)) 
+                #z1neg = random.bernoulli(skey[1], p=p_eps, shape=p_eps.shape)
+            
+            if self.is_meanfield:
+                self.z1.p.set(z1neg)
+            else:
+                self.z1.s.set(z1neg)
+
+            self.advance_neg.run(t=0, dt=1.) ## run Gibbs step
+            ## update gibbs chain(s) to current neg-phase point(s)
+            if self.is_meanfield:
+                z1neg = self.z1neg.p.get()
+            else:
+                z1neg = self.z1neg.s.get()
+            self.gibbs_chain_states = z1neg
+
+            dkey, *skey = random.split(dkey, 4)
+            p_eps = random.uniform(skey[0], shape=(1, 1))
+            if p_eps <= self.p_mix: ## randomly mix gibbs chains
+                sptrs = random.permutation(skey[1], z1neg.shape[0])
+                self.gibbs_chain_states = z1neg[sptrs, :] ## shuffle
+
+        else: ## run CD-k (k >= 1) negative phase steps
+            for ki in range(k):
+                self.advance_neg.run(t=0., dt=1.) ## neg phase step
+                if ki != k-1:
+                    if self.is_meanfield:
+                        z1neg = self.z1neg.p.get()
+                        self.z1.p.set(z1neg)
+                    else:
+                        z1neg = self.z1neg.s.get()
+                        self.z1.s.set(z1neg)
         ## make synaptic adjustments
         if adapt_synapses:
             self._update_via_CHL() ## triggers CHL update
