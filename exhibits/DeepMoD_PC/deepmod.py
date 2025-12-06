@@ -2,18 +2,21 @@ from jax import random, jit
 import numpy as np
 from ngclearn.utils.io_utils import makedir
 
-from ngclearn.utils import weight_distribution as dist
-from ngclearn import Context, numpy as jnp
+# from ngclearn.utils import weight_distribution as dist
+from ngclearn.utils.distribution_generator import DistributionGenerator as dist
+import jax.numpy as jnp
 from ngclearn.components import (RateCell,
                                  HebbianSynapse,
                                  GaussianErrorCell,
                                  StaticSynapse)
-from ngclearn.utils.model_utils import scanner
+# from ngclearn.utils.model_utils import scanner
 from ngclearn.modules.regression.lasso import Iterative_Lasso as Lasso
 from ngclearn.modules.regression.elastic_net import Iterative_ElasticNet as ElasticNet
 from ngclearn.modules.regression.ridge import Iterative_Ridge as Ridge
-from ngclearn.utils import JaxProcess
+# from ngclearn.utils import JaxProcess
+from ngclearn import MethodProcess, JointProcess, Context
 
+from ngcsimlib.global_state import stateManager
 
 class DeepMoD():
     """
@@ -114,7 +117,7 @@ class DeepMoD():
                                   lmbda, optim_type, threshold, epochs)
 
             self.solver = Lasso(*self.method_params)
-            self.W_init = self.solver.W.weights.value
+            self.W_init = self.solver.W.weights.get()
 
 
         if solver_name == "elastic_net" or solver_name == "l1l2":
@@ -144,22 +147,22 @@ class DeepMoD():
         self.omega_0 = 30  # check 2-300-10
 
         W3_dist = dist.uniform(
-                                amin=-1 / h2_dim,
-                                amax=1 / h2_dim
+                                low=-1 / h2_dim,
+                                high=1 / h2_dim
                                )
         W2_dist = dist.uniform(
-                                amin=-np.sqrt(6 / h1_dim) / self.omega_0,
-                                amax=np.sqrt(6 / h1_dim) / self.omega_0
+                                low=-np.sqrt(6 / h1_dim) / self.omega_0,
+                                high=np.sqrt(6 / h1_dim) / self.omega_0
                                )
         W1_dist = dist.uniform(
-                                amin=-np.sqrt(6 / out_dim) / self.omega_0,
-                                amax=np.sqrt(6 / out_dim) / self.omega_0
+                                low=-np.sqrt(6 / out_dim) / self.omega_0,
+                                high=np.sqrt(6 / out_dim) / self.omega_0
                                )
 
         with Context(self.model_name) as self.model:
             ############ L3
             self.z3 = RateCell("z3", n_units=in_dim, tau_m=tau_m , act_fx="identity")
-            self.W3 = HebbianSynapse("W3", shape=(in_dim, h2_dim), eta=eta, w_bound=0., signVal=-1, sign_value=-1,
+            self.W3 = HebbianSynapse("W3", shape=(in_dim, h2_dim), eta=eta, w_bound=0., sign_value=-1,
                                      optim_type=opt_type, weight_init=W3_dist, key=subkeys[0]
                                      )
             ############ L2
@@ -167,14 +170,14 @@ class DeepMoD():
             self.z2 = RateCell("z2", n_units=h2_dim, tau_m=tau_m , act_fx=act_fx, omega_0=self.omega_0,
                                                                                         batch_size=batch_size)
 
-            self.W2 = HebbianSynapse("W2", shape=(h2_dim, h1_dim), eta=eta, w_bound=0., signVal=-1, sign_value=-1,
+            self.W2 = HebbianSynapse("W2", shape=(h2_dim, h1_dim), eta=eta, w_bound=0., sign_value=-1,
                                      optim_type=opt_type, weight_init=W2_dist, key=subkeys[1])
             self.E2 = StaticSynapse("E2", shape=(h1_dim, h2_dim)
                                     )
             ############ L1
             self.e1 = GaussianErrorCell("e1", n_units=h1_dim)
             self.z1 = RateCell("z1", n_units=h1_dim, tau_m=tau_m , act_fx="identity")
-            self.W1 = HebbianSynapse("W1", shape=(h1_dim, out_dim), eta=eta, w_bound=0., signVal=-1, sign_value=-1,
+            self.W1 = HebbianSynapse("W1", shape=(h1_dim, out_dim), eta=eta, w_bound=0., sign_value=-1,
                                      optim_type=opt_type, weight_init=W1_dist, key=subkeys[2])
             self.E1 = StaticSynapse("E1", shape=(out_dim, h1_dim)
                                     )
@@ -197,37 +200,37 @@ class DeepMoD():
             self.E2.batch_size = batch_size
             self.E1.batch_size = batch_size
             # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            self.W3.inputs << self.z3.zF
-            self.e2.mu << self.W3.outputs
+            self.z3.zF >> self.W3.inputs
+            self.W3.outputs >> self.e2.mu
 
-            self.e2.target << self.z2.z
-            self.W2.inputs << self.z2.zF
-            self.e1.mu << self.W2.outputs
+            self.z2.z >> self.e2.target
+            self.z2.zF >> self.W2.inputs
+            self.W2.outputs >> self.e1.mu
 
-            self.e1.target << self.z1.z
-            self.W1.inputs << self.z1.zF
-            self.e0.mu << self.W1.outputs
+            self.z1.z >> self.e1.target
+            self.z1.zF >> self.W1.inputs
+            self.W1.outputs >> self.e0.mu
 
-            self.z2.j_td << self.e2.dtarget
-            self.E2.inputs << self.e1.dmu
-            self.z2.j << self.E2.outputs
+            self.e2.dtarget >> self.z2.j_td
+            self.e1.dmu >> self.E2.inputs
+            self.E2.outputs >> self.z2.j
 
-            self.z1.j_td << self.e1.dtarget
-            self.E1.inputs << self.e0.dmu
-            self.z1.j << self.E1.outputs
+            self.e1.dtarget >> self.z1.j_td
+            self.e0.dmu >> self.E1.inputs
+            self.E1.outputs >> self.z1.j
 
-            self.W1.pre << self.z1.zF
-            self.W1.post << self.e0.dmu
+            self.z1.zF >> self.W1.pre
+            self.e0.dmu >> self.W1.post
 
-            self.W2.pre << self.z2.zF
-            self.W2.post << self.e1.dmu
+            self.z2.zF >> self.W2.pre
+            self.e1.dmu >> self.W2.post
 
-            self.W3.pre << self.z3.zF
-            self.W3.post << self.e2.dmu
+            self.z3.zF >> self.W3.pre
+            self.e2.dmu >> self.W3.post
 
             # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             # Replace compile_by_key with Process definitions
-            advance_process = (JaxProcess(name="advance_process")
+            self.advance_process = (MethodProcess(name="advance_process")
                               >> self.E2.advance_state  # execute feedback first
                               >> self.E1.advance_state
                               >> self.z3.advance_state
@@ -240,12 +243,12 @@ class DeepMoD():
                               >> self.e1.advance_state
                               >> self.e0.advance_state)
 
-            evolve_process = (JaxProcess(name="evolve_process")
+            self.evolve_process = (MethodProcess(name="evolve_process")
                              >> self.W1.evolve
                              >> self.W2.evolve
                              >> self.W3.evolve)
 
-            reset_process = (JaxProcess(name="reset_process")
+            self.reset_process = (MethodProcess(name="reset_process")
                             >> self.z3.reset
                             >> self.z2.reset
                             >> self.z1.reset
@@ -259,72 +262,97 @@ class DeepMoD():
                             >> self.E2.reset)
 
             # Store processes for use in dynamic method
-            processes = (reset_process, advance_process, evolve_process)
+            # processes = (reset_process, advance_process, evolve_process)
 
             # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            self._dynamic(processes)
+            # self._dynamic(processes)
 
-    def _dynamic(self, processes):  ## create dynamic commands for the model
-        z3, z2, z1, W3, W2, W1, E1, E2, e0, e1, e2 = self.model.get_components(
-            "z3", "z2", "z1", "W3", "W2", "W1", "E1", "E2", "e0", "e1", "e2"
-        )
-        self.W1, self.W2, self.W3 = (W1, W2, W3)
-        self.e0, self.e1, self.e2 = (e0, e1, e2)
-        self.z1, self.z2, self.z3 = (z1, z2, z3)
-        self.E1, self.E2 = (E1, E2)
+    # def _dynamic(self, processes):  ## create dynamic commands for the model
+    #     z3, z2, z1, W3, W2, W1, E1, E2, e0, e1, e2 = self.model.get_components(
+    #         "z3", "z2", "z1", "W3", "W2", "W1", "E1", "E2", "e0", "e1", "e2"
+    #     )
+    #     self.W1, self.W2, self.W3 = (W1, W2, W3)
+    #     self.e0, self.e1, self.e2 = (e0, e1, e2)
+    #     self.z1, self.z2, self.z3 = (z1, z2, z3)
+    #     self.E1, self.E2 = (E1, E2)
 
-        reset_proc, advance_proc, evolve_proc = processes
+    #     reset_proc, advance_proc, evolve_proc = processes
 
-        @Context.dynamicCommand
-        def clamps(input, target):
-            self.z3.z.set(input)
-            self.e0.target.set(target)
+    #     @Context.dynamicCommand
+    #     def clamps(input, target):
+    #         self.z3.z.set(input)
+    #         self.e0.target.set(target)
 
-        @Context.dynamicCommand
-        def batch_set(batch_size):
-            self.z3.batch_size= batch_size
-            self.z2.batch_size= batch_size
-            self.z1.batch_size = batch_size
+    #     @Context.dynamicCommand
+    #     def batch_set(batch_size):
+    #         self.z3.batch_size= batch_size
+    #         self.z2.batch_size= batch_size
+    #         self.z1.batch_size = batch_size
 
-            self.e2.batch_size = batch_size
-            self.e1.batch_size = batch_size
-            self.e0.batch_size = batch_size
+    #         self.e2.batch_size = batch_size
+    #         self.e1.batch_size = batch_size
+    #         self.e0.batch_size = batch_size
 
-            self.W3.batch_size = batch_size
-            self.W2.batch_size = batch_size
-            self.W1.batch_size = batch_size
+    #         self.W3.batch_size = batch_size
+    #         self.W2.batch_size = batch_size
+    #         self.W1.batch_size = batch_size
 
-            self.E2.batch_size = batch_size
-            self.E1.batch_size = batch_size
+    #         self.E2.batch_size = batch_size
+    #         self.E1.batch_size = batch_size
 
-        # Replace the old command wrappers with the new process-based ones
-        self.model.wrap_and_add_command(jit(evolve_proc.pure), name="evolve")
-        self.model.wrap_and_add_command(jit(advance_proc.pure), name="advance_state")
-        self.model.wrap_and_add_command(jit(reset_proc.pure), name="reset")
+    #     # Replace the old command wrappers with the new process-based ones
+    #     self.model.wrap_and_add_command(jit(evolve_proc.pure), name="evolve")
+    #     self.model.wrap_and_add_command(jit(advance_proc.pure), name="advance_state")
+    #     self.model.wrap_and_add_command(jit(reset_proc.pure), name="reset")
 
-        @scanner
-        def _process(compartment_values, args):
-            _t, _dt = args
-            compartment_values = advance_proc.pure(compartment_values, t=_t, dt=_dt)
-            return compartment_values, compartment_values[self.W1.outputs.path]
+    #     @scanner
+    #     def _process(compartment_values, args):
+    #         _t, _dt = args
+    #         compartment_values = advance_proc.pure(compartment_values, t=_t, dt=_dt)
+    #         return compartment_values, compartment_values[self.W1.outputs.path]
+
+    def clamps(self, input, target):
+        self.z3.z.set(input)
+        self.e0.target.set(target)
+
+
+    def batch_set(self, batch_size):
+        self.z3.batch_size= batch_size
+        self.z2.batch_size= batch_size
+        self.z1.batch_size = batch_size
+
+        self.e2.batch_size = batch_size
+        self.e1.batch_size = batch_size
+        self.e0.batch_size = batch_size
+
+        self.W3.batch_size = batch_size
+        self.W2.batch_size = batch_size
+        self.W1.batch_size = batch_size
+
+        self.E2.batch_size = batch_size
+        self.E1.batch_size = batch_size
 
 
     def prediction_process(self, input, target):
-        self.model.batch_set(len(input))
-        self.E1.weights.set(self.W1.weights.value.T)
-        self.E2.weights.set(self.W2.weights.value.T)
+        self.batch_set(len(input))
+        self.E1.weights.set(self.W1.weights.get().T)
+        self.E2.weights.set(self.W2.weights.get().T)
 
-        self.model.reset()
-        self.model.clamps(input, target)
+        self.reset_process.run()
+        self.clamps(input, target)
 
-        self.model._process(jnp.array([[self.dt * i, self.dt] for i in range(self.T)]))
-        self.model.evolve(t=self.T, dt=self.dt)
+        # self.model._process(jnp.array([[self.dt * i, self.dt] for i in range(self.T)]))
+        # for i in range(self.T):
+        #     self.advance_process.run(t=self.dt * i, dt=self.dt)
+        # self.evolve_process.run(t=self.T, dt=self.dt)
+        inputs = jnp.array(self.advance_process.pack_rows(self.T, t=lambda x: x, dt=self.dt))
+        stateManager.state, _ = self.advance_process.scan(inputs)
 
-        return self.e0.mu.value, self.e0.L.value
+        return self.e0.mu.get(), self.e0.L.get()
 
 
     def thresholding(self):
-        coef_old = self.solver.W.weights.value
+        coef_old = self.solver.W.weights.get()
         coef_new = jnp.where(jnp.abs(coef_old) >= self.threshold, coef_old, 0.)
 
         self.solver.W.weights.set(coef_new)
@@ -333,7 +361,7 @@ class DeepMoD():
 
 
     def process(self, ts_scaled, X):
-        self.model.batch_set(len(ts_scaled))
+        self.batch_set(len(ts_scaled))
         Xmu, loss = self.prediction_process(input=self.ts, target=X)
 
         library, _ = self.lib_creator.fit([Xmu[:, i] for i in range(Xmu.shape[1])])

@@ -1,11 +1,16 @@
-# Reconstructive Predictive Coding
+# Reconstructive Hierarchical Predictive Coding (Rao &amp; Ballard, 1999)
 
-<b>Version</b>: ngclearn==2.0.0, ngcsimlib==1.0.0
+<b>Version</b>: ngclearn==3.0.0, ngcsimlib==2.0.0 <!--2.0.0 1.0.0 -->
 
 This exhibit contains an implementation of the predictive coding (PC) model specialized 
 for the task of reconstruction. This model is effectively a variant that embodies key 
 characteristics across several classical efforts, such as:
 
+```
+Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a functional interpretation of some extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
+```
+
+<!--
 ```
 Friston, Karl. "Hierarchical models in the brain." PLoS computational biology 4.11 
 (2008): e1000211.
@@ -15,6 +20,7 @@ generative models." Nature communications 13.1 (2022): 2064.
 
 Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a functional interpretation of some extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
 ```
+-->
 
 and, furthermore, incorporating the sparse kurtotic prior (over neural activities) from:
 
@@ -61,27 +67,13 @@ another labeled `testX.npy` (test/dev-set).
 
 ## Description
 
-This model is effectively made up of four layers -- a sensory input layer and 
-three internal/hidden layers of graded rate-cells (each equipped with linear rectifier 
-elementwise activation functions), and one output layer
-for reading out predictions of target values. Each layer connects to the 
-next via a simple two-factor Hebbian synapse (pre-synaptic term is the post-activation values of
-layer below and post-synaptic term is the error neuron post-activation
-values of the current layer). The entire model is a simple z to x
-hierarchical generative model. Feedback/error message passing pathways
-are not learned in this variant and each synaptic cable's set of weight values is set to be
-equal to the transpose of the corresponding forward synaptic cable's set of
-weight values.
+This model is effectively made up of four layers -- a sensory input layer and three internal/hidden layers of graded rate-cells (each equipped with linear rectifier elementwise activation functions), and one output layer for reading out predictions of target values. Each layer connects to the next via a simple two-factor Hebbian synapse (pre-synaptic term is the post-activation values of layer below and post-synaptic term is the error neuron post-activation values of the current layer). The entire model is a simple z to x hierarchical generative model. Feedback/error message passing pathways are not learned in this variant and each synaptic cable's set of weight values is set to be equal to the transpose of the corresponding forward synaptic cable's set of weight values.
 
-<i>Task</i>: This model engages in unsupervised reconstruction, learning
-to predict the pixel values of different input digit patterns sampled from the MNIST
-database.
+<i>Task</i>: This model engages in unsupervised reconstruction, learning to predict the pixel values of different input digit patterns sampled from the MNIST database. Note this implementation operates with patches extracted from the target image patterns.
 
 ## Hyperparameters
 
-This model requires the following hyperparameters, tuned to produce good-quality 
-receptive fields (in the bottom layer closest to the sensory input) and 
-reconstructed digit input patterns:
+This model requires the following hyperparameters, tuned to produce good-quality receptive fields (in the bottom layer closest to the sensory input) and reconstructed digit input patterns:
 
 ```
 T = 20 (number of time steps to simulate, or number of E-steps to take)

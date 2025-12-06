@@ -1,15 +1,19 @@
+# %%
+
 from ngclearn.utils.io_utils import makedir
 from jax import numpy as jnp, random, jit
 import time
 
-from ngclearn.utils.model_utils import scanner
-from ngcsimlib.compilers import wrap_command
-from ngcsimlib.context import Context
-from ngclearn.utils import JaxProcess
+# from ngclearn.utils.model_utils import scanner
+# from ngcsimlib.compilers import wrap_command
+# from ngcsimlib.context import Context
+# from ngclearn.utils import JaxProcess
+from ngclearn import Context, MethodProcess, JointProcess
 from ngclearn.utils.model_utils import softmax
 from ngclearn.components import (GaussianErrorCell, SLIFCell, BernoulliCell,
                                  HebbianSynapse, StaticSynapse)
-import ngclearn.utils.weight_distribution as dist
+# import ngclearn.utils.weight_distribution as dist
+from ngclearn.utils.distribution_generator import DistributionGenerator
 
 
 ## SNN model co-routines
@@ -72,8 +76,9 @@ class BFA_SNN():
 
         v_thr = 0.4
         refract_T = 1.
-        weightInit = dist.gaussian(0., 0.055) ## init synapses from centered Gaussian
-        biasInit = dist.constant(0.) ## init biases from zero values
+        weightInit = DistributionGenerator.gaussian(0., 0.055) ## init synapses from centered Gaussian
+        print(f"[BFA_SNN.__init__] Weight init: {weightInit}")
+        biasInit = DistributionGenerator.constant(0.) ## init biases from zero values
 
         ### set up jax seeding
         #dkey = random.PRNGKey(1234)
@@ -113,25 +118,25 @@ class BFA_SNN():
 
 
                 ## wire up z0 to z1 via W1
-                self.W1.inputs << self.z0.outputs
-                self.z1.j << self.W1.outputs
+                self.z0.outputs >> self.W1.inputs
+                self.W1.outputs >> self.z1.j
 
-                self.W2.inputs << self.z1.s
-                self.z2.j << self.W2.outputs
-                self.e2.mu << self.z2.s
+                self.z1.s >> self.W2.inputs
+                self.W2.outputs >> self.z2.j
+                self.z2.s >> self.e2.mu
 
-                self.E2.inputs << self.e2.dmu
-                self.d1.target << self.E2.outputs
+                self.e2.dmu >> self.E2.inputs
+                self.E2.outputs >> self.d1.target
 
                 ## wire relevant compartment statistics to synaptic cable z0_z1
-                self.d1.modulator << self.z1.surrogate
-                self.W1.pre << self.z0.outputs
-                self.W1.post << self.d1.dmu
-                self.W2.pre << self.z1.s
-                self.W2.post << self.e2.dmu
+                self.z1.surrogate >> self.d1.modulator
+                self.z0.outputs >> self.W1.pre
+                self.d1.dmu >> self.W1.post
+                self.z1.s >> self.W2.pre
+                self.e2.dmu >> self.W2.post
 
                 # Create Process objects for reset, advance, and evolve
-                reset_process = (JaxProcess(name="reset_process")
+                self.reset_process = (MethodProcess(name="reset_process")
                                 >> self.z0.reset
                                 >> self.W1.reset
                                 >> self.z1.reset
@@ -141,7 +146,7 @@ class BFA_SNN():
                                 >> self.E2.reset
                                 >> self.d1.reset)
 
-                advance_process = (JaxProcess(name="advance_process")
+                self.advance_process = (MethodProcess(name="advance_process")
                                   >> self.z0.advance_state
                                   >> self.W1.advance_state
                                   >> self.z1.advance_state
@@ -151,42 +156,24 @@ class BFA_SNN():
                                   >> self.E2.advance_state
                                   >> self.d1.advance_state)
 
-                evolve_process = (JaxProcess(name="evolve_process")
+                self.evolve_process = (MethodProcess(name="evolve_process")
                                  >> self.W1.evolve
                                  >> self.W2.evolve)
 
-                processes = (reset_process, advance_process, evolve_process)
-                self._dynamic(processes)
+                # self._dynamic(processes)
 
-    def _dynamic(self, processes):
-        z0, W1, z1, W2, z2, e2, E2, d1 = self.circuit.get_components("z0", "W1", "z1", "W2", "z2", "e2", "E2", "d1")
-        self.z0 = z0
-        self.W1 = W1
-        self.z1 = z1
-        self.W2 = W2
-        self.z2 = z2
-        self.e2 = e2
-        self.E2 = E2
-        self.d1 = d1
-        self.nodes = [z0, W1, z1, W2, z2, e2, E2, d1]
+    def clamp(self, x, y):
+        self.z0.inputs.set(x)
+        self.e2.target.set(y)
 
-        reset_process, advance_process, evolve_process = processes
-        self.circuit.wrap_and_add_command(jit(reset_process.pure), name="reset")
-        self.circuit.wrap_and_add_command(jit(evolve_process.pure), name="evolve")
-        self.circuit.wrap_and_add_command(jit(advance_process.pure), name="advance")
-
-        @Context.dynamicCommand
-        def clamp(x, y):
-            z0.inputs.set(x)
-            e2.target.set(y)
-
-        @scanner
-        def process(compartment_values, args):
-            _t, _dt = args
-            compartment_values = advance_process.pure(compartment_values, t=_t, dt=_dt)
-            compartment_values = evolve_process.pure(compartment_values, t=_t, dt=_dt)
-            return compartment_values, (compartment_values[self.z1.s.path],
-                                        compartment_values[self.z2.s.path])
+    # def _dynamic(self, processes):
+    #     @scanner
+    #     def process(compartment_values, args):
+    #         _t, _dt = args
+    #         compartment_values = advance_process.pure(compartment_values, t=_t, dt=_dt)
+    #         compartment_values = evolve_process.pure(compartment_values, t=_t, dt=_dt)
+    #         return compartment_values, (compartment_values[self.z1.s.path],
+    #                                     compartment_values[self.z2.s.path])
 
 
     def save_to_disk(self, params_only=False):
@@ -197,7 +184,7 @@ class BFA_SNN():
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
         if params_only:
-            model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
+            model_dir = "{}/{}/component/custom".format(self.exp_dir, self.model_name)
             self.W1.save(model_dir)
             self.z1.save(model_dir)
             self.W2.save(model_dir)
@@ -214,8 +201,8 @@ class BFA_SNN():
         """
         with Context("Circuit") as self.circuit:
             self.circuit.load_from_dir(model_directory)
-            processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
-            self._dynamic(processes)
+            # processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
+            # self._dynamic(processes)
 
     def get_synapse_stats(self):
         """
@@ -278,33 +265,33 @@ class BFA_SNN():
             _S = jnp.zeros((obs.shape[0], self.z1.n_units))
         yMu = jnp.zeros((obs.shape[0], self.z2.n_units))
         yCnt = yMu + 0
-        self.circuit.reset()
+        self.reset_process.run()
         T_learn = 0.
         for ts in range(1, self.T):
-            self.circuit.clamp(_obs, lab)
-            self.circuit.advance(t=ts*self.dt, dt=self.dt)
+            self.clamp(_obs, lab)
+            self.advance_process.run(t=ts*self.dt, dt=self.dt)
             curr_t = ts * self.dt ## track current time
 
             if adapt_synapses == True:
                 if curr_t > self.burnin_T:
-                    self.circuit.evolve(t=ts*self.dt, dt=self.dt)
-            yCnt = _add(self.z2.s.value, yCnt)
+                    self.evolve_process.run(t=ts*self.dt, dt=self.dt)
+            yCnt = _add(self.z2.s.get(), yCnt)
 
             ## estimate output distribution
             if curr_t > self.burnin_T:
                 T_learn += 1.
                 if label_dist_estimator == "current":
-                    yMu = _add(self.z2.j.value, yMu)
+                    yMu = _add(self.z2.j.get(), yMu)
                 elif label_dist_estimator == "voltage":
-                    yMu = _add(self.z2.v.value, yMu)
+                    yMu = _add(self.z2.v.get(), yMu)
                 else:
-                    yMu = _add(self.z2.s.value, yMu)
+                    yMu = _add(self.z2.s.get(), yMu)
             ## collect internal/hidden spikes at t
             if get_latent_rates == True:
-                _S = _add(_S, self.z1.s.value)
+                _S = _add(_S, self.z1.s.get())
             else:
-                _S.append(self.z1.s.value)
-        
+                _S.append(self.z1.s.get())
+
         _yMu = softmax(yMu/T_learn) ## estimate approximate label distribution
         if get_latent_rates == True:
             _S = (_S * rGamma)/self.T

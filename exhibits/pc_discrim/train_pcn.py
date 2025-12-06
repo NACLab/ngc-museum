@@ -69,6 +69,7 @@ model = PCN(
     exp_dir="exp", model_name="pcn"
 )
 model.save_to_disk() # save final state of synapses to disk
+# model.load_from_disk("exp")
 print("--- Starting Simulation ---")
 
 def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference performance

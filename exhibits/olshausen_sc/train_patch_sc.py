@@ -91,9 +91,11 @@ for i in range(n_iter):
     n_pat_seen = 0
     #print("========= Iter {} ========".format(i))
     L = 0.
+    Ns = 0.
     for j in range(n_batches):
         idx = j
         Xb = X[idx: idx + mb_size, :]
+        Ns += Xb.shape[0]
         ## generate a set of patches from current pattern
         Xb = generate_patch_set(Xb, patch_shape, num_patches, center=True, seed=p_seed)
         p_seed += 1
@@ -102,18 +104,22 @@ for i in range(n_iter):
         n_pat_seen += Xb.shape[0]
 
         L = Lb + L ## track current global loss
-        print("\r {} > Seen {} patches ({} patterns); L = {}".format(
-            i, n_pat_seen, (j+1), (L/(j+1) * 1.)), end=""
-        )
+        #print("\r {} > Seen {} patches ({} patterns); L = {}".format(
+        #    i, n_pat_seen, (j+1), (L/(j+1) * 1.)), end=""
+        #)
         if j % batch_mod == 0 and j > 0:
             print()
             model.viz_receptive_fields(fname="recFields", field_shape=patch_shape)
             model.save_to_disk(params_only=True) # save final state of synapses to disk
             print(model.get_synapse_stats())
-    print()
+    #print()
+    print("\r {} > Seen {} patches ({} patterns); L = {}".format(
+        i, n_pat_seen, int(Ns), (L/Ns)), end=""
+    )
 
     if (i+1) % viz_mod == 0:
         model.viz_receptive_fields(fname="recFields", field_shape=patch_shape)
+print()
 
 ## collect a test sample raster plot
 model.save_to_disk(params_only=True)

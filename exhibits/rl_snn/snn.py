@@ -1,14 +1,20 @@
-from ngclearn.utils.model_utils import scanner
-from ngcsimlib.compilers import compile_command, wrap_command
-from ngcsimlib.context import Context
-from ngcsimlib.operations import summation
 from jax import numpy as jnp, random, jit
-from ngclearn.components import StaticSynapse, MSTDPETSynapse, VarTrace, PoissonCell
-from custom import NoisyLIFCell as LIFCell
-import ngclearn.utils.weight_distribution as dist
+from ngclearn import Context, MethodProcess, JointProcess
+from ngclearn.components.input_encoders.poissonCell import PoissonCell
+from custom import NoisyLIFCell as LIFCell ## Use a modified LIF component for this exhibit
+from ngclearn.components.synapses.staticSynapse import StaticSynapse
+from ngclearn.components.synapses.modulated.MSTDPETSynapse import MSTDPETSynapse 
+from ngclearn.components.other.varTrace import VarTrace
+from ngclearn.utils.model_utils import normalize_matrix
+from ngclearn.utils.distribution_generator import DistributionGenerator
+from ngcsimlib.operations import Summation
+
+from ngcsimlib.global_state import stateManager
+
 from ngclearn.utils.model_utils import normalize_matrix, softmax, one_hot
 
-def init_sparse_syn(dkey, shape, n_minus, n_plus, is_unique=False): ## synapse initialization scheme
+def init_sparse_syn(dkey, shape, n_minus, n_plus, is_unique=False):
+    ## synapse initialization scheme
     nrows, ncols = shape
     dkey, *subkeys = random.split(dkey, nrows + 1)
     empty_syn = jnp.zeros((1, ncols))
@@ -70,7 +76,7 @@ class SNN():
         Aminus2 = 0.01 ## LTD for control layer
         x_tar2 = 0.0
         nu2 = 0.01 * 10
-        tau_m_e = 100.  #100.5
+        tau_m_e = 100.
         tau_theta = 0. #1000.
         theta_plus = 0. #0.05
         tau_p = 20. ## spike trace time constant
@@ -89,13 +95,13 @@ class SNN():
             z0 = PoissonCell("z0", n_units=in_dim, target_freq=127.5, key=subkeys[0])
             ## input-to-hidden synapses
             W1 = StaticSynapse(
-                "W1", shape=(in_dim, n_hid), weight_init=dist.uniform(-1., 1.), resist_scale=4.,
-                key=subkeys[0]
+                "W1", shape=(in_dim, n_hid), weight_init=DistributionGenerator.uniform(-1., 1.),
+                resist_scale=4., key=subkeys[0]
             )
-            W1.weights.set(
-                init_sparse_syn(subkeys[0], W1.weights.value.shape, n_minus, n_plus))  # jnp.sign(W1.weights.value))
+            W1.weights.set(init_sparse_syn(subkeys[0], W1.weights.get().shape, n_minus, n_plus))  # jnp.sign(W1.weights.value))
             V1 = StaticSynapse( ## lateral inhibitory synapses for feature layer
-                "V1", shape=(n_hid, n_hid), weight_init=dist.hollow(scale=1.), resist_scale=-inhR, key=subkeys[1]
+                "V1", shape=(n_hid, n_hid), weight_init=DistributionGenerator.constant(1., hollow=True),
+                resist_scale=-inhR, key=subkeys[1]
             )
             #V1.weights.set(V1.weights.value * random.uniform(subkeys[1], shape=(n_hid, n_hid), minval=0.4, maxval=1.))
             z1 = LIFCell( ## projection/hidden layer
@@ -105,12 +111,14 @@ class SNN():
             )
             ## hidden-to-place synapses
             V2 = StaticSynapse( ## lateral inhibitory synapses for control layer
-                "V2", shape=(out_dim, out_dim), weight_init=dist.hollow(scale=1.), resist_scale=-inhR2, key=subkeys[3]
+                "V2", shape=(out_dim, out_dim), weight_init=DistributionGenerator.constant(1., hollow=True),
+                resist_scale=-inhR2, key=subkeys[3]
             )
             #V2.weights.set(V2.weights.value * random.uniform(subkeys[3], shape=(out_dim, out_dim), minval=0.4, maxval=1.))
             W2 = MSTDPETSynapse(
                 "W2", shape=(n_hid, out_dim), A_plus=Aplus2, A_minus=Aminus2, tau_elg=tau_e2, eta=nu2, tau_w=tau_w2,
-                pretrace_target=x_tar2, weight_init=dist.uniform(0.01, w_max_init), resist_scale=1., w_bound=1., key=subkeys[4]
+                pretrace_target=x_tar2, weight_init=DistributionGenerator.uniform(0.01, w_max_init), resist_scale=1.,
+                w_bound=1., key=subkeys[4]
             )
             z2 = LIFCell(
                 "z2", n_units=out_dim, tau_m=tau_m_e, resist_m=1., v_decay=1., thr=-52., v_rest=-65., v_reset=-65.,
@@ -118,93 +126,91 @@ class SNN():
                 v_min=None, key=subkeys[5]
             )
             ## set up traces
-            W2_p1_tr = VarTrace(
+            W2_p1_tr = VarTrace( ## pre-synaptic trace for W2
                 "W2_p1_tr", n_units=n_hid, tau_tr=tau_p, decay_type="exp", P_scale=p_minus, a_delta=0., key=subkeys[0]
             )
-            W2_p2_tr = VarTrace(
+            W2_p2_tr = VarTrace( ## post-synaptic trace for W2
                 "W2_p2_tr", n_units=out_dim, tau_tr=tau_p, decay_type="exp", P_scale=p_minus, a_delta=0., key=subkeys[0]
             )
 
             ## wire z0 to z1
-            W1.inputs << z0.outputs
-            V1.inputs << z1.s
-            z1.j << summation(W1.outputs, V1.outputs)
+            z0.outputs >> W1.inputs
+            z1.s >> V1.inputs
+            Summation(W1.outputs, V1.outputs) >> z1.j
             ## wire z1 to z2
-            W2.inputs << z1.s
-            V2.inputs << z2.s
-            z2.j << summation(W2.outputs, V2.outputs)
+            z1.s >> W2.inputs
+            z2.s >> V2.inputs
+            Summation(W2.outputs, V2.outputs) >> z2.j
             # wire cells to their respective traces
-            W2_p1_tr.inputs << z1.s ## for W2's plasticity
-            W2_p2_tr.inputs << z2.s ## for W2's plasticity
+            z1.s >> W2_p1_tr.inputs ## for W2's plasticity
+            z2.s >> W2_p2_tr.inputs ## for W2's plasticity
 
             # wire relevant compartment statistics to synaptic cables W1 and W2 (to drive learning rules)
-            W2.preTrace << W2_p1_tr.trace
-            W2.preSpike << z1.s
-            W2.postTrace << W2_p2_tr.trace
-            W2.postSpike << z2.s
+            W2_p1_tr.trace >> W2.preTrace
+            z1.s >> W2.preSpike
+            W2_p2_tr.trace >> W2.postTrace
+            z2.s >> W2.postSpike
 
-            reset_cmd, reset_args = self.circuit.compile_by_key(
-                V1, V2, W1, W2, z0, z1, z2, W2_p1_tr, W2_p2_tr,
-                compile_key="reset"
-            )
+            ## inference process step
+            self.advance_proc = (MethodProcess(name="advance_process")
+                                 >> V1.advance_state
+                                 >> V2.advance_state 
+                                 >> W1.advance_state 
+                                 >> W2.advance_state 
+                                 >> z0.advance_state 
+                                 >> z1.advance_state 
+                                 >> z2.advance_state 
+                                 >> W2_p1_tr.advance_state 
+                                 >> W2_p2_tr.advance_state)
+            ## reset-to-baseline-values process step
+            self.reset_proc = (MethodProcess(name="reset_process")
+                               >> V1.reset
+                               >> V2.reset
+                               >> W1.reset
+                               >> W2.reset
+                               >> z0.reset
+                               >> z1.reset
+                               >> z2.reset
+                               >> W2_p1_tr.reset
+                               >> W2_p2_tr.reset)
+            ## intermediate evolutionary process step
+            self.evolve_proc = (MethodProcess(name="evolve_process")
+                                >> W2.evolve)
+            ## (reward-)modulated evolutionary process step
+            self.modulated_evolve_proc = (MethodProcess(name="modulated_evolve")
+                                          >> W2.evolve)
+            ## compound adaptation process (inference+learning)
+            self.adapt_proc = (JointProcess(name="forward_process")
+                               >> self.advance_proc
+                               >> self.evolve_proc)
+            self.advance_proc.watch(z1.v, z1.s, z2.v, z2.s) ## watch these compartments
 
-            advance_cmd, advance_args = self.circuit.compile_by_key(
-                V1, V2, W1, W2, z0, z1, z2, W2_p1_tr, W2_p2_tr,
-                compile_key="advance_state"
-            )
+            self.z0 = z0
+            self.z1 = z1
+            self.z2 = z2
+            self.W1 = W1
+            self.V1 = V1
+            self.W2 = W2
+            self.V2 = V2 
 
-            _evolve_cmd, _evolve_args = self.circuit.compile_by_key(W2, compile_key="evolve")
-            evolve_cmd, evolve_args = self.circuit.compile_by_key(W2, compile_key="evolve", name="modulated_evolve")
-            self._dynamic()
+            if self.normalize:
+                self.norm()
 
+    def norm(self): ## synapse normalization step
+        self.W2.weights.set(normalize_matrix(self.W2.weights.get(), self.wnorm2, order=1, axis=0))
 
-    def _dynamic(self):
-        W1, W2, z0, z1, z2 = self.circuit.get_components(
-            "W1", "W2", "z0", "z1", "z2"
-        )
-
-        self.circuit.add_command(wrap_command(jit(self.circuit.advance_state)), name="advance")
-        #self.circuit.add_command(wrap_command(jit(self.circuit.evolve)), name="evolve")
-        self.circuit.add_command(wrap_command(jit(self.circuit.modulated_evolve)), name="modulated_evolve")
-        self.circuit.add_command(wrap_command(jit(self.circuit.reset)), name="reset")
-
-        @Context.dynamicCommand
-        def norm():
-            W2.weights.set(normalize_matrix(W2.weights.value, self.wnorm2, order=1, axis=0))
-
-        @Context.dynamicCommand
-        def clamp(x):
-            z0.inputs.set(x)
-            #W1.inputs.set(x)
-
-        @scanner
-        def infer(compartment_values, args):
-            _t, _dt = args
-            compartment_values = self.circuit.advance_state(compartment_values, t=_t, dt=_dt)
-            return (compartment_values,
-                    (compartment_values[z2.v.path], compartment_values[z2.s.path]))
-
-        @scanner
-        def process(compartment_values, args):
-            _t, _dt = args
-            compartment_values = self.circuit.advance_state(compartment_values, t=_t, dt=_dt)
-            compartment_values = self.circuit.evolve(compartment_values, t=_t, dt=_dt)
-            return (compartment_values,
-                    (compartment_values[z1.v.path], compartment_values[z1.s.path],
-                     compartment_values[z2.v.path], compartment_values[z2.s.path]))
-
-        if self.normalize:
-            self.circuit.norm()
+    def clamp(self, x): ## input-stimulus clamping step
+        self.z0.inputs.set(x)
 
     def set_to_resting_state(self):
         """
         Sets all internal states of this model to their resting values.
         """
-        self.circuit.reset()
+        self.reset_proc.run()
         z1, z2 = self.circuit.get_components("z1", "z2")
         if self.reset_volt_thresholds:
-            z1.thr_theta.set(z1.thr_theta.value * 0)
-            z2.thr_theta.set(z2.thr_theta.value * 0)
+            z1.thr_theta.set(z1.thr_theta.get() * 0)
+            z2.thr_theta.set(z2.thr_theta.get() * 0)
 
     def infer(self, x):
         """
@@ -217,18 +223,18 @@ class SNN():
         Returns:
             action spike train
         """
-        self.circuit.clamp(x)
-        v, s = self.circuit.infer(
-            jnp.array([[self.dt * i, self.dt] for i in range(self.T)])
-        )
-        action_spikes = jnp.squeeze(s, axis=1)
+        self.clamp(x)
+        
+        inputs = jnp.array(self.advance_proc.pack_rows(self.T, t=lambda xx: xx, dt=self.dt))
+        stateManager.state, outputs = self.advance_proc.scan(inputs) ## outputs -> (v1, s1, v2, s2)
+        action_spikes = jnp.squeeze(outputs[3], axis=1)
         return action_spikes
 
     def process(self, x, modulator=0.):
         """
         Processes an observation (sensory stimulus pattern) for a fixed
         stimulus window time T and produces an action spike trains. This routine carries out
-        learning as well as inference.
+        learning alongside inference at each simulated time-step.
 
         Note that this model assumes batch sizes of one (online learning).
 
@@ -242,35 +248,32 @@ class SNN():
         """
         V1, V2, W1, W2, z0, z1, z2 = self.circuit.get_components("V1", "V2", "W1", "W2", "z0", "z1", "z2")
 
-        self.circuit.clamp(x)
+        self.clamp(x)
         W2.modulator.set(modulator)
-        v1, s1, v2, s2 = self.circuit.process(
-            jnp.array([[self.dt * i, self.dt] for i in range(self.T)])
-        )
+        inputs = jnp.array(self.adapt_proc.pack_rows(self.T, t=lambda xx: xx, dt=self.dt))
+        stateManager.state, outputs = self.adapt_proc.scan(inputs)
+        v1, s1, v2, s2 = outputs
         action_spikes = jnp.squeeze(s2, axis=1)
-        #act_prob = softmax(jnp.sum(action_spikes, axis=0, keepdims=True) * alpha_T)
         return action_spikes
 
     def adapt(self, reward, act=None):
         """
-        Triggers a step of modulated learning (i.e., MS-STDP/MS-STDP-ET).
+        Triggers a step of modulated learning (i.e., MS-STDP/MS-STDP-ET). In other words, this 
+        routine applies a traced STDP update via a driving reward signal.
 
         Args:
             reward: current modulatory signal (i.e., reward/dopamine value) to drive MS-STDP-ET update.
 
             act: action mask to apply to control layer
 
-        Returns:
-            action spike train
         """
         W1, W2, z0, z1, z2 = self.circuit.get_components("W1", "W2", "z0", "z1", "z2")
+        
         W2.modulator.set(reward)
         if act is not None:
             W2.outmask.set(act)
-            #W2.outmask.set(z2.s.value)
-        self.circuit.modulated_evolve(t=(self.T + 1) * self.dt, dt=self.dt)
-
+        self.modulated_evolve_proc.run(t=(self.T + 1) * self.dt, dt=self.dt)
         #W2.eligibility.set(W2.eligibility.value * 0)
 
         if self.normalize:
-            self.circuit.norm()
+            self.norm()
