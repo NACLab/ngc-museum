@@ -66,6 +66,7 @@ n_iter = 100 ## epochs / number of passes through dataset
 train_batch_size = 200 ## training batch-size
 dev_batch_size = 5000 ## dev batch-size
 
+################################################################################
 ## set up JAX seeding and initialize RBM model
 dkey = random.PRNGKey(69)
 dkey, *subkeys = random.split(dkey, 3)
@@ -107,6 +108,7 @@ def eval_model(X, model, batch_size, store_recon=False, verbosity=0):
         recon = jnp.concat(recon, axis=0)
     return E/Ns, err/Ns, recon
 
+################################################################################
 ## Simulate RBM fitting/training process
 dkey, _devX = sample_binary_data(dkey, devX)
 energy, error, xR = eval_model(_devX, model, dev_batch_size, store_recon=True)
@@ -155,7 +157,7 @@ for i in range(n_iter): ## for every epoch
     print(
         f"{i}| Dev:  |d.E(X)| = {delta_energy:.4f}  err(X) = {error:.4f}"
     )
-
+################################################################################
 model.save_to_disk(params_only=True) ## save final model to disk
 
 ## visualize harmonium's receptive/projective fields

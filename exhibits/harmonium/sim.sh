@@ -1,6 +1,6 @@
 #!/bin/sh
 ################################################################################
-# Simulate the DC-SNN on the MNIST database
+# Simulate the RBM/harmonium on the MNIST database
 ################################################################################
 DATA_DIR="../../data/mnist"
 

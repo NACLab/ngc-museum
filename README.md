@@ -40,22 +40,25 @@ For those contributing models/algorithms in either the `exhibitors/` or `exhibit
    <a href="">Model</a>, 
    <a href="">Walkthrough / Tutorial</a>
 -->
-3. Reconstructive hierarchical predictive coding (Rao &amp; Ballard, 1999):
+3. Excitatory-inhibitory recurrent neural network (EI-RNN) (Song et al., 2016): 
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/ei_rnn">Model</a>
+   <!--<a href="">Walkthrough</a>-->
+4. Reconstructive hierarchical predictive coding (Rao &amp; Ballard, 1999):
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_recon">Model</a>
    <!--<a href="">Walkthrough</a>-->
-4. Harmonium (restricted Boltzmann machine; RBM) with stochastic binary neurons, trained via contrastive divergence:
+5. Harmonium (restricted Boltzmann machine; RBM) with stochastic binary neurons, trained via contrastive divergence:
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/harmonium">Model</a>, 
    <a href="">Walkthrough / Tutorial</a>
-5. Sparse identification of nonlinear dynamics (SINDy): 
+6. Sparse identification of nonlinear dynamics (SINDy): 
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/sindy">Model</a>, 
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sindy.html">Walkthrough / Tutorial</a> 
-6. NeuralODE / Deep learning-driven model discovery (DeepMod): 
+7. NeuralODE / Deep learning-driven model discovery (DeepMod): 
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/DeepMoD_PC">Model</a>
 <!--
-7. A forward-only neural predictor trained via signal propagation:
+8. A forward-only neural predictor trained via signal propagation:
    <a href="">Model</a>, 
    <a href="">Walkthrough / Tutorial</a>
-8. A neural classifier trained via forward-forward learning:
+9. A neural classifier trained via forward-forward learning:
    <a href="">Model</a>, 
    <a href="">Walkthrough / Tutorial</a>
 -->
