@@ -46,11 +46,12 @@ This model is also discussed in the ngc-learn
 
 This model is effectively made up of three layers -- a sensory input layer, a recurrently-wired 
 hidden layer/population of excitatory and inhibitory rated-coded neurons (the ratio of inhibitory to excitatory 
-neurons is accordance to Dale's law), and another layer of output/readout neural units. The input-to-hidden, recurrent 
-(hidden-to-hidden), and hidden-to-output synaptic connections are all adjusted via local gradients (implemented in the 
-form of Hebbian-like rules) accumulated via eligibility traces. Note that all synaptic efficacies are enforced to be 
-non-negative and the signs are fixed (meaning that excitatory connections remain excitatory, and inhibitory connections 
-remain inhibitory, throughout the simulation of the model).
+neurons is 4:1), and another layer of output/readout neural units. The 
+input-to-hidden, recurrent (hidden-to-hidden), and hidden-to-output synaptic connections are all adjusted via local 
+gradients (implemented in the form of Hebbian-like rules) accumulated via eligibility traces. Note that all synaptic 
+efficacies are enforced to be non-negative and the signs are fixed a priori (meaning that excitatory connections remain 
+excitatory, and inhibitory connections remain inhibitory, throughout the simulation of the model; this adheres to 
+Dale's law/principle).
 
 <i>Task</i>: This model engages in time-series forecasting, via next time-step prediction (essentially, this means 
 that this model iteratively optimizes a sequence loss), given a single, synthetically-generated time-varying stream of 

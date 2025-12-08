@@ -29,10 +29,9 @@ class EI_RNN(): ## continuous-time excitatory-inhibitory (EI) recurrent neural n
     | neural networks for cognitive tasks: a simple and flexible framework. PLoS computational 
     | biology, 12(2), e1004792.
 
-    This RNN model is constrained to only allow non-negative synaptic weight connections 
-    and to ensure that its hidden state is a population consisting of 80% exctiatory 
-    neurons and 20% inhibitory neurons (respecting Dale's law of 4:1 ratio of 
-    excitation to inhibition). 
+    This RNN model is constrained to only allow non-negative synaptic weight connections (respecting Dale's principle
+    via pre-determined positive/negative signs) and to ensure that its hidden state is a population consisting of 80%
+    excitatory neurons and 20% inhibitory neurons (respecting the biological 4:1 ratio of excitation to inhibition).
 
     Args:
         dkey: JAX seeding key
@@ -56,7 +55,7 @@ class EI_RNN(): ## continuous-time excitatory-inhibitory (EI) recurrent neural n
 
         self.dkey = dkey
         ## EI-RNN (meta-)parameters
-        exc_pct = 0.8 ## ensures we respect Dale's law (4/1 ratio for exc/inh)
+        exc_pct = 0.8 ## ensures we respect 4/1 ratio for exc/inh
         self.obs_dim = obs_dim
         self.hid_dim = hid_dim
         self.out_dim = out_dim
@@ -72,6 +71,8 @@ class EI_RNN(): ## continuous-time excitatory-inhibitory (EI) recurrent neural n
         eta = 0.0002
         optim_type = "adam" # "sgd"
         tau_elg = 40. #15. #30. #20. # ms
+        ## Dale's law will be respected via non-negativity enforcement (after synaptic updates) and
+        ## pre-determined signs (according to the 4/1 ratio set-up)
 
         ## noisy input parameters (if sigma_in > 0)
         ### u(t) = relu(u0 + obs(t) + (1./alpha) * jnp.sqrt(2. * alpha * jnp.square(sigma_in)) * eps)
