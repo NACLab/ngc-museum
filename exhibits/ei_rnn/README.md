@@ -30,12 +30,10 @@ $ ./sim.sh
 
 which will execute and run the model simulation over the synthetic time-series.
 
-<!--
 <p align="center">
   <img height="350" src="fig/ei_rnn_arch.jpg"><br>
   <i>Visual depiction of the EI-RNN architecture.</i>
 </p>
--->
 
 <!--
 This model is also discussed in the ngc-learn
