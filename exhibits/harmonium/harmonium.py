@@ -260,7 +260,7 @@ class Harmonium():
         Print basic statistics of W1 to string
 
         Returns:
-            string containing min, max, mean, and L2 norm of W1
+            string containing min, max, mean, and L2 norm of synaptic parameters/biases
         """
         _W1 = self.W1.weights.get()
         W1_msg = "W1:  min {:.4f} ;  max {:.4f}  mu {:.4f} ;  norm {:.4f}".format(

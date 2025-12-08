@@ -8,16 +8,17 @@ from ngclearn.components.neurons.graded.gaussianErrorCell import GaussianErrorCe
 from ngclearn.components.synapses.staticSynapse import StaticSynapse
 from custom.tracedHebbianSynapse import TracedHebbianSynapse
 from ngclearn.utils.distribution_generator import DistributionGenerator as dist
+from ngclearn.utils.model_utils import relu
 from ngcsimlib.operations import Summation, Product
 from ngcsimlib.global_state import stateManager
 
-
 @jit
-def update_trace(Elg, dW, tau_w, dt):
-    #dElg = -Elg + dW ## leakily integrate dW into elg-trace
-    #_Elg = Elg + dElg * dt/tau_w
-    _Elg = Elg * (dt/tau_w) + dW
-    return _Elg
+def noisify_data(dkey, obs_t, u0, alpha, sigma_in): ## applies Eqn 10/11 in (Song et al., 2016) to data obs(t)
+    _, *subkeys = random.split(dkey, 3)
+    eps = random.normal(subkeys[0], shape=obs_t.shape)
+    u_task_t = obs_t
+    u_t = relu(u0 + u_task_t + (1. / alpha) * jnp.sqrt(2. * alpha * jnp.square(sigma_in)) * eps)
+    return u_t
 
 class EI_RNN(): ## continuous-time excitatory-inhibitory (EI) recurrent neural network (RNN)
     """
@@ -38,18 +39,22 @@ class EI_RNN(): ## continuous-time excitatory-inhibitory (EI) recurrent neural n
         obs_dim: number of input units
         hid_dim: number of hidden state units (80% excitatory, 20% inhibitory)
         out_dim: number of readout units
+        sigma_in: input noise scale; if > 0, then inputs will be treated as part of a noisy time-series
+            (i.e., as per Eqn 11 in Song et al., 2016)
         exp_dir: string indicating directory to save model/analysis results
         loadDir: <unused>
     """
 
     def __init__(
-        self, dkey, obs_dim=1, hid_dim=2, out_dim=1, exp_dir="exp", model_name="ei_rnn", loadDir=None, **kwargs
+            self, dkey, obs_dim=1, hid_dim=2, out_dim=1, sigma_in=0., exp_dir="exp", model_name="ei_rnn",
+            loadDir=None, **kwargs
     ):
         self.exp_dir = exp_dir
         self.model_name = model_name
         makedir(exp_dir)
         makedir(exp_dir + "/analysis")
 
+        self.dkey = dkey
         ## EI-RNN (meta-)parameters
         exc_pct = 0.8 ## ensures we respect Dale's law (4/1 ratio for exc/inh)
         self.obs_dim = obs_dim
@@ -67,9 +72,15 @@ class EI_RNN(): ## continuous-time excitatory-inhibitory (EI) recurrent neural n
         eta = 0.0002
         optim_type = "adam" # "sgd"
         tau_elg = 40. #15. #30. #20. # ms
-    
-        dkey, *subkeys = random.split(dkey, 10)
 
+        ## noisy input parameters (if sigma_in > 0)
+        ### u(t) = relu(u0 + obs(t) + (1./alpha) * jnp.sqrt(2. * alpha * jnp.square(sigma_in)) * eps)
+        ### where eps ~ N(0, 1)
+        self.sigma_in = sigma_in
+        self.u0 = 0. ## input baseline / shift value
+        self.alpha = self.dt/tau_x
+    
+        self.dkey, *subkeys = random.split(self.dkey, 10)
         with Context("Circuit") as self.circuit:
             ## set up neural populations (input, hidden, readout)
             z0 = InputCell("z0", n_units=obs_dim) ## input state (driven by data)
@@ -130,7 +141,6 @@ class EI_RNN(): ## continuous-time excitatory-inhibitory (EI) recurrent neural n
             z1.r >> W1o.pre
             e1o.dmu >> W1o.post
 
-
             ## advance-states function
             self.advance = (MethodProcess(name="advance")
                             >> z0.advance_state
@@ -172,7 +182,7 @@ class EI_RNN(): ## continuous-time excitatory-inhibitory (EI) recurrent neural n
         Clamps input patterns (at time t) x to this model.
 
         Args:
-            obs: input patterns to clamp
+            obs: input patterns (at time t) to clamp
         """
         z0 = self.circuit.get_components("z0")
         z0.inputs.set(obs) 
@@ -219,7 +229,7 @@ class EI_RNN(): ## continuous-time excitatory-inhibitory (EI) recurrent neural n
         Print basic statistics of W1 to string
 
         Returns:
-            string containing min, max, mean, and L2 norm of W1
+            string containing min, max, mean, and L2 norm of synaptic parameters/biases
         """
         W1, V1, W1o, E1o = self.circuit.get_components("W1", "V1", "W1o", "E1o")
 
@@ -248,42 +258,48 @@ class EI_RNN(): ## continuous-time excitatory-inhibitory (EI) recurrent neural n
 
     def reset_vals(self):
         """
-        Sets model's internal states to baseline values
+        Sets model's internal states to baseline values / initial conditions
         """
         self.reset.run()
 
     def process(self, obs_seq, targ_seq=None, adapt_synapses=False): ## process temporal sequence
         """
+        Process input observation sequence (with the potential aim of making predictions of the form
+        p(o_{t+1} | o_{<=t}) (i.e., predict t+1 given the input history so far).
 
         Args:
-            obs_seq: observation sequence
-            targ_seq: target value sequence (must align one-to-one to observation sequence)
+            obs_seq: observation sequence (i.e., o(t) where t=1, 2, 3,...,T)
+            targ_seq: target value sequence (must align one-to-one to observation sequence and should be shifted
+                forward in time by one time-step, i.e., o(t) where t=2, 3, 4,...,T)
             adapt_synapses: if True, synapses will be adjusted after negative phase
                 statistics are obtained; (Default: False)
 
         Returns:
-
+            sequence of hidden variables, sequence of output variables, sequence loss (scalar)
         """
-        z0, z1_prev, z1, o1, e1o, d1 = self.circuit.get_components(
-            "z0", "z1_prev", "z1", "o1", "e1o", "d1"
-        )
+        T = obs_seq.shape[0] ## get number of timesteps in time-series
+        _obs_seq = obs_seq
+        if self.sigma_in > 0.: ## apply input noise if configured
+            self.dkey, *skey = random.split(self.dkey, 3)
+            _obs_seq = noisify_data(skey[0], _obs_seq, self.u0, self.alpha, self.sigma_in)
+
+        z0, z1_prev, z1, o1, e1o, d1 = self.circuit.get_components("z0", "z1_prev", "z1", "o1", "e1o", "d1")
         W1, V1, W1o, E1o = self.circuit.get_components("W1", "V1", "W1o", "E1o")
 
-        T = obs_seq.shape[0]
         self.reset.run()
         hids = []
         outs = []
-        loss_seq = 0. ## sequence loss - L_seq = sum_t [ L(t) ]
+        loss_seq = 0. ## sequence loss -> L_seq = sum_t [ L(t) ]
         for t in range(T):
-            obs_t = obs_seq[t:t+1, :] ## o(t)
+            obs_t = _obs_seq[t:t+1, :] ## o(t)
             self.clamp(obs_t)
             if targ_seq is not None:
                 targ_t = targ_seq[t:t+1, :]
                 e1o.target.set(targ_t) ## clamp error neurons to target
-            self.advance.run(t=t*self.dt, dt=self.dt)
+            self.advance.run(t=t*self.dt, dt=self.dt) ## take inference step forward
             loss_seq += e1o.L.get()
             if adapt_synapses:
-                self.evolve.run(t=1., dt=1.)
+                self.evolve.run(t=1., dt=1.) ## adjust synapses
                 ## enforce non-negativity
                 W1.weights.set(jnp.maximum(0., W1.weights.get()))
                 W1o.weights.set(jnp.maximum(0., W1o.weights.get()))

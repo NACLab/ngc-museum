@@ -62,8 +62,8 @@ class SNN():
 
     """
     def __init__(
-            self, dkey, in_dim, out_dim, n_hid, T=100, dt=1., **kwargs):
-
+            self, dkey, in_dim, out_dim, n_hid, T=100, dt=1., **kwargs
+    ):
         dkey, *subkeys = random.split(dkey, 10)
 
         self.T = T
