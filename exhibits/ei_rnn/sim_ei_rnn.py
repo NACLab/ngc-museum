@@ -49,7 +49,7 @@ y = y[:-1] ## Input: input values (t)
 
 ################################################################################
 ## set up EI-RNN model
-model = EI_RNN(subkeys[1], obs_dim=1, hid_dim=n_hid) ## Demo model: 8 exc, 2 inh neurons
+model = EI_RNN(subkeys[1], obs_dim=1, hid_dim=n_hid, out_dim=1) ## Demo model: 8 exc, 2 inh neurons
 model.save_to_disk()
 
 ################################################################################
