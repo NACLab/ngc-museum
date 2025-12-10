@@ -35,7 +35,7 @@ properties by learning a sparse code for natural images." Nature 381.6583
   <i>Visual depiction of the PC reconstruction architecture (Rao & Ballard, 1999).</i>
 </p>
 
-<img src="images/Figure.png" width="400"/>
+<img src="fig/Figure.png" width="400"/>
 
 <!--
 This model is also discussed in the ngc-learn
@@ -86,4 +86,5 @@ lmbda = 0.14 (strength of Laplacian prior enforced over hidden activities)
 eta = 0.005 (learning rate of SGD optimizer embedded w/in each synaptic cable for the M-step)
 batch_size = 100
 ```
+
 
