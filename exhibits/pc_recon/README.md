@@ -30,10 +30,23 @@ properties by learning a sparse code for natural images." Nature 381.6583
 (1996): 607-609.
 ```
 
-<p align="center">
-  <img height="150" src="fig/pc_estimator_rao1999.jpg"><br>
-  <i>Visual depiction of the PC reconstruction architecture (Rao & Ballard, 1999).</i>
-</p>
+
+
+
+<table>
+  <tr>
+    <td><img src="fig/pc_estimator_rao1999.jpg" width="450"/></td>
+    <td><img src="fig/Figure.png" width="600"/></td>
+  </tr>
+  <tr>
+    <td align="center">(Original) <em> Visual depiction of the PC reconstruction architecture (Rao & Ballard, 1999)</td>
+    <td align="center">(Re) <em> Replotted version of the original hierarchical PC reconstruction architecture.</td>
+  </tr>
+</table>
+
+
+
+
 
 <!--
 This model is also discussed in the ngc-learn
@@ -84,3 +97,6 @@ lmbda = 0.14 (strength of Laplacian prior enforced over hidden activities)
 eta = 0.005 (learning rate of SGD optimizer embedded w/in each synaptic cable for the M-step)
 batch_size = 100
 ```
+
+
+
