@@ -10,17 +10,17 @@ For those contributing models/algorithms in either the `exhibitors/` or `exhibit
 
 ## Current Model Exhibits in the Museum
 <b>Models with Spiking Dynamics</b>:<br>
-1. Spiking neural network, trained with broadcast feedback alignment:
+1. Spiking neural network, trained with broadcast feedback alignment: <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/bfa_snn">Model</a>,
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_bfa.html">Walkthrough / Tutorial</a>
-2. Diehl and Cook spiking network, trained with spike-timing-dependent plasticity (STDP):
+2. Diehl and Cook spiking network, trained with spike-timing-dependent plasticity (STDP):< br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/diehl_cook_snn">Model</a>,
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_dc.html">Walkthrough / Tutorial</a>
-3. Patch-level spiking network, trained with event-driven STDP:
+3. Patch-level spiking network, trained with event-driven STDP: <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/evstdp_patches">Model</a>
-4. A self-supervised spiking neural circuit, trained via contrastive-signal dependent plasticity (CSDP):
+4. A self-supervised spiking neural circuit, trained via contrastive-signal dependent plasticity (CSDP):<br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibitors/nac_lab/csdp_snn">Model</a> <!--<a href="">Paper</a>-->
-5. A spiking neural network for reinforcement learning, trained via MSTDP-ET:
+5. A spiking neural network for reinforcement learning, trained via MSTDP-ET: <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/rl_snn">Model</a> <!--<a href="">Paper</a>-->
 <!--
 6. Patch-level spiking neural circuit trained with time-integrated STDP (TI-STDP)
@@ -29,10 +29,10 @@ For those contributing models/algorithms in either the `exhibitors/` or `exhibit
 -->
 
 <b>Models with Graded Dynamics</b>:<br>
-1. Discriminative predictive coding:
+1. Discriminative predictive coding: <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_discrim">Model</a>,
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_discrim.html">Walkthrough / Tutorial</a>
-2. Sparse coding (e.g., a Cauchy prior model and iterative sparse-thresholding / ISTA), trained with 2-factor Hebbian learning:
+2. Sparse coding (e.g., a Cauchy prior model and iterative sparse-thresholding / ISTA), trained with 2-factor Hebbian learning: <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/olshausen_sc">Model</a>, 
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sparse_coding.html">Walkthrough / Tutorial</a>
 <!--
@@ -40,20 +40,20 @@ For those contributing models/algorithms in either the `exhibitors/` or `exhibit
    <a href="">Model</a>, 
    <a href="">Walkthrough / Tutorial</a>
 -->
-3. Excitatory-inhibitory recurrent neural network (EI-RNN) (Song et al., 2016): 
+3. Excitatory-inhibitory recurrent neural network (EI-RNN) (Song et al., 2016): <br> 
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/ei_rnn">Model</a>
    <!--<a href="">Walkthrough</a>-->
-4. Reconstructive hierarchical predictive coding (Rao &amp; Ballard, 1999):
+4. Reconstructive hierarchical predictive coding (Rao &amp; Ballard, 1999): <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_recon">Model (1) (MNIST)</a>, 
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_rao_ballard1999">Model (2) (Natural Images)</a>
    <!--<a href="">Walkthrough</a>-->
-5. Harmonium (restricted Boltzmann machine; RBM) with stochastic binary neurons, trained via contrastive divergence:
+5. Harmonium (restricted Boltzmann machine; RBM) with stochastic binary neurons, trained via contrastive divergence: <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/harmonium">Model</a>, 
    <a href="">Walkthrough / Tutorial</a>
-6. Sparse identification of nonlinear dynamics (SINDy): 
+6. Sparse identification of nonlinear dynamics (SINDy): <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/sindy">Model</a>, 
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sindy.html">Walkthrough / Tutorial</a> 
-7. NeuralODE / Deep learning-driven model discovery (DeepMod): 
+7. NeuralODE / Deep learning-driven model discovery (DeepMod): <br> 
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/DeepMoD_PC">Model</a>
 <!--
 8. A forward-only neural predictor trained via signal propagation:
