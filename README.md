@@ -13,7 +13,7 @@ For those contributing models/algorithms in either the `exhibitors/` or `exhibit
 1. Spiking neural network, trained with broadcast feedback alignment: <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/bfa_snn">Model</a>,
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_bfa.html">Walkthrough / Tutorial</a>
-2. Diehl and Cook spiking network, trained with spike-timing-dependent plasticity (STDP):< br>
+2. Diehl and Cook spiking network, trained with spike-timing-dependent plasticity (STDP): <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/diehl_cook_snn">Model</a>,
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/snn_dc.html">Walkthrough / Tutorial</a>
 3. Patch-level spiking network, trained with event-driven STDP: <br>
