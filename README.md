@@ -49,7 +49,7 @@ For those contributing models/algorithms in either the `exhibitors/` or `exhibit
    <!--<a href="">Walkthrough</a>-->
 5. Harmonium (restricted Boltzmann machine; RBM) with stochastic binary neurons, trained via contrastive divergence: <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/harmonium">Model</a>, 
-   <a href="">Walkthrough / Tutorial</a>
+   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/harmonium.html">Walkthrough / Tutorial</a>
 6. Sparse identification of nonlinear dynamics (SINDy): <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/sindy">Model</a>, 
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sindy.html">Walkthrough / Tutorial</a> 
