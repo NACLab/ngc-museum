@@ -2,7 +2,7 @@ from jax import jit, random
 import os
 from ngclearn import Context, numpy as jnp
 import numpy as np
-from HPC import HierarchicalPredictiveCoding
+from hierarchical_pc import HierarchicalPredictiveCoding
 import sys, getopt as gopt, optparse, time
 from sklearn.feature_extraction.image import reconstruct_from_patches_2d
 from ngclearn.utils.patch_utils import generate_patch_set
