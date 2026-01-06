@@ -73,7 +73,7 @@ class HierarchicalPredictiveCoding():
                  n_p3=1, n_p2=1, n_p1=1, n_inPatch=1,
                  batch_size=1,
                  T=30, dt=1.,
-                 tau_m=0.05,                   ## time constant for latent trajectories
+                 tau_m=20,                   ## time constant for latent trajectories
                  lr=0.05,                      ## M-step learning rate/step-size
                  sigma_e2=1., sigma_e1=1., sigma_e0=1.,
                  act_fx="identity",             ## neural activation function
