@@ -1,0 +1,15 @@
+[
+	{"absolute_path": "ngclearn.components", 
+		"attributes": [
+			{"name": "RateCell"},
+			{"name": "GaussianErrorCell"},
+			{"name": "HebbianSynapse"},
+			{"name": "StaticSynapse"}]
+	}, 
+	{"absolute_path": "ngcsimlib.operations",
+		"attributes": [
+			{"name": "overwrite"},
+			{"name": "summation"}]
+	}
+
+]
