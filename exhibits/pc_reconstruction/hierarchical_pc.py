@@ -1,18 +1,13 @@
 import os
-import matplotlib.pyplot as plt
-import numpy as np
-
 from ngclearn.utils.io_utils import makedir
 from jax import numpy as jnp, random, jit
-from ngclearn.components import (RateCell,
-                                 HebbianPatchedSynapse as BackwardSynapse,
-                                 GaussianErrorCell)
 from ngclearn.utils.model_utils import normalize_matrix
 from ngclearn.utils.viz.synapse_plot import visualize
-
 from ngcsimlib.global_state import stateManager
 from ngclearn import MethodProcess, JointProcess, Context
 from ngclearn.utils.distribution_generator import DistributionGenerator as dist
+from ngclearn.components import (RateCell, HebbianPatchedSynapse, GaussianErrorCell)
+from ngclearn.components.input_encoders.ganglionCell import RetinalGanglionCell
 
 
 class HierarchicalPredictiveCoding():
@@ -50,15 +45,54 @@ class HierarchicalPredictiveCoding():
 
         n_inPatch: number of patches in input image
 
+        area_shape: receptive field area of ganglion cells in this module all together
+
+        patch_shape: each ganglion cell receptive field area
+
+        step_shape: the non-overlapping area between each two ganglion cells
+
+        input_encoder: string name of input preprocessing kernel (Default: identity)
+
+        input_encoder_sigma: standard deviation of gaussian kernel
+
         T: number of discrete time steps to simulate neuronal dynamics; also
             known as the number of steps to take when conducting iterative
             inference/settling (number of E-steps to take)
 
         dt: integration time constant
 
+        tau_m: membrane/state time constant (milliseconds)
+
+        lr: or eta, global learning rate for synaptic update
+
+        sigma_e2: variance of the prediction in layer-2 (assumes isotropic multivariate gaussian distribution,
+                  then in this layer, covariance matrix (𝚺) collapses to a sigma * I)
+
+        sigma_e1: variance of the prediction in layer-1 (assumes isotropic multivariate gaussian distribution,
+                  then in this layer, covariance matrix (𝚺) collapses to a sigma * I)
+
+        sigma_e0: variance of the prediction in layer-0 (assumes isotropic multivariate gaussian distribution,
+                  then in this layer, covariance matrix (𝚺) collapses to a sigma * I)
+
+        act_fx: string name of activation function/nonlinearity to use
+
+        r3_prior: a kernel for specifying the type of distribution to impose over
+                  layer-3 neuronal dynamics (Default: ("laplacian", 0.))
+
+        r2_prior: a kernel for specifying the type of distribution to impose over
+                  layer-2 neuronal dynamics (Default: ("laplacian", 0.))
+
+        r1_prior: a kernel for specifying the type of distribution to impose over
+                  layer-1 neuronal dynamics (Default: ("laplacian", 0.))
+
+
+        synaptic_prior: prior applied to all synapses for reqularization during update/learning.
+        (default: ("gaussian", 0.))
+
+        circuit_name: string indicating the name of the pc circuit type
+
         batch_size: the batch size that the components of this model will operate
             under during simulation calls
-
 
         exp_dir: experimental directory to save model results
 
@@ -69,18 +103,28 @@ class HierarchicalPredictiveCoding():
     """
     # Define Functions
     def __init__(self, dkey,
+                 # ═══════════════════════   Architecture parameters
                  h3_dim=1, h2_dim=1, h1_dim=1, in_dim=1,
                  n_p3=1, n_p2=1, n_p1=1, n_inPatch=1,
                  batch_size=1,
-                 T=30, dt=1.,
-                 tau_m=20,                   ## time constant for latent trajectories
-                 lr=0.05,                      ## M-step learning rate/step-size
+                 # ═══════════════════════   Preprocessing parameters
+                 area_shape=(28, 28),
+                 patch_shape=(28, 28),
+                 step_shape=(0, 0),
+                 input_encoder = None,
+                 input_encoder_sigma = 0.,
+                 # ═══════════════════════   Neurons/Cells parameters
+                 T=30, dt=1., 
+                 tau_m=20,                    ## time constant for latent trajectories
+                 act_fx="identity",           ## neural activation function
                  sigma_e2=1., sigma_e1=1., sigma_e0=1.,
-                 act_fx="identity",             ## neural activation function
                  r3_prior=("laplacian", 0.),
                  r2_prior=("laplacian", 0.),
                  r1_prior=("laplacian", 0.),
+                 # ═══════════════════════   Synaptses parameters
+                 lr=0.05,                    ## M-step learning rate/step-size
                  synaptic_prior=("gaussian", 0.),
+                 # ═══════════════════════   Experimental parameters
                  circuit_name = "Circuit",
                  exp_dir="exp",
                  load_dir=None,
@@ -103,8 +147,7 @@ class HierarchicalPredictiveCoding():
             os.makedirs(exp_dir + "/img_recons", exist_ok=True)
             os.makedirs(exp_dir + "/raster", exist_ok=True)
 
-
-        ############ meta-parameters for model structure and dynamics
+        # ═══════════════════════ meta-parameters for model structure and dynamics
         self.in_dim = in_dim
         self.h1_dim = h1_dim
         self.h2_dim = h2_dim
@@ -115,48 +158,57 @@ class HierarchicalPredictiveCoding():
         self.n_p2 = n_p2
         self.n_p3 = n_p3
 
-        self.inPatch_dim = in_dim // n_inPatch
+        self.area_shape = area_shape
+        self.patch_shape = patch_shape
+        self.step_shape = step_shape
         self.batch_size = batch_size
+        self.inPatch_dim = in_dim // n_inPatch
+
+        self.input_encoder = input_encoder
+        self.gauss_sigma = input_encoder_sigma
 
         self.T = T                         ## number of E-steps to take (stimulus time = T * dt ms)
         self.dt = dt                       ## neural activity integration time constant (ms)
 
         #############    Synaptses parameters
-        eta = 0.005                                             ##   M-step learning rate/step-size
-        w_bound = 1.                                            ## norm constraint value
-        opt_type = "sgd"                                        ##   synaptic (weights) optimization type
+        w_bound = 1.                                                     ## norm constraint value
+        opt_type = "sgd"                                                 ## synaptic (weights) optimization type
         w3_init = dist.gaussian(mean=0., std=jnp.sqrt(2/h3_dim))         ## He initialization for layer-3 synapses
         w2_init = dist.gaussian(mean=0., std=jnp.sqrt(2/h2_dim))         ## He initialization for layer-2 synapses
         w1_init = dist.gaussian(mean=0., std=jnp.sqrt(2/h1_dim))         ## He initialization for layer-1  synapses
 
-        #############    Neurons/Cells parameters
-        # act_fx = "relu"                    ## neural activation function
-        # tau_m = 20.                        ## beta = 0.05 = (dt=1)/(tau=20) ## time constant for latent trajectories
-        prior_type = "laplacian"           ## neural activation/latent prior type
-        lmbda = 0.14                       ## strength of neural activation prior
 
-        ############# Misc
-        # self._first = False                 ## flag to indicate first process call
-
-
-
-        if_3_layers = 0.
-        if h3_dim==1:
-            if_3_layers = 1.
-        #################################################################
+        # ═════════════════════════════════════════════════════════
         if load_dir is not None:
             ## build from disk
             self.load_from_disk(load_dir)
         else:
             with Context(self.circuit_name) as self.circuit:
-                self.z3 = RateCell("z3", n_units=h3_dim, tau_m=tau_m * if_3_layers, act_fx=act_fx, prior=r3_prior)
-                self.z2 = RateCell("z2", n_units=h2_dim, tau_m=tau_m, act_fx=act_fx, prior=r2_prior)
-                self.z1 = RateCell("z1", n_units=h1_dim, tau_m=tau_m, act_fx=act_fx, prior=r1_prior)
+                self.RGC = RetinalGanglionCell("RGC", filter_type=self.input_encoder,
+                                               area_shape = self.area_shape,
+                                               n_cells=self.n_inPatch,
+                                               patch_shape=self.patch_shape,
+                                               step_shape=self.step_shape,
+                                               sigma = self.gauss_sigma,
+                                               )
 
-                self.W3 = BackwardSynapse("W3",
+                # ════════════════════════════════════════════
+                self.z0 = RateCell("z0", n_units=in_dim, tau_m=0.)
+                self.e0 = GaussianErrorCell("e0", n_units=in_dim, sigma=sigma_e0)
+
+                self.z1 = RateCell("z1", n_units=h1_dim, tau_m=tau_m, act_fx=act_fx, prior=r1_prior)
+                self.e1 = GaussianErrorCell("e1", n_units=h1_dim, sigma=sigma_e1)
+
+                self.z2 = RateCell("z2", n_units=h2_dim, tau_m=tau_m, act_fx=act_fx, prior=r2_prior)
+                self.e2 = GaussianErrorCell("e2", n_units=h2_dim, sigma=sigma_e2)
+
+                self.z3 = RateCell("z3", n_units=h3_dim, tau_m=tau_m, act_fx=act_fx, prior=r3_prior)
+
+                # ════════════════════════════════════════════
+                self.W3 = HebbianPatchedSynapse("W3",
                                          shape=(h3_dim, h2_dim),
-                                         n_sub_models=self.n_p3,     ## number of modules in the layer
-                                         sign_value=-1.,                  ## -1 means M-step solve minimization problem
+                                         n_sub_models=self.n_p3,      ## number of modules in the layer
+                                         sign_value=-1.,              ## -1 means M-step solve minimization problem
                                          optim_type=opt_type,
                                          eta=lr,
                                          weight_init=w3_init,
@@ -164,10 +216,10 @@ class HierarchicalPredictiveCoding():
                                          w_bound=w_bound,
                                          key=subkeys[2]
                                          )
-                self.W2 = BackwardSynapse("W2",
+                self.W2 = HebbianPatchedSynapse("W2",
                                          shape=(h2_dim, h1_dim),
-                                         n_sub_models=self.n_p2,     ## number of modules in the layer
-                                         sign_value=-1.,                  ## -1 means M-step solve minimization problem
+                                         n_sub_models=self.n_p2,      ## number of modules in the layer
+                                         sign_value=-1.,              ## -1 means M-step solve minimization problem
                                          optim_type=opt_type,
                                          eta=lr,
                                          weight_init=w2_init,
@@ -175,9 +227,9 @@ class HierarchicalPredictiveCoding():
                                          w_bound=w_bound,
                                          key=subkeys[1]
                                          )
-                self.W1 = BackwardSynapse("W1", shape=(h1_dim, in_dim),
-                                         n_sub_models=n_p1,              ## number of modules in the layer
-                                         sign_value=-1.,                 ## -1 means M-step solve minimization problem
+                self.W1 = HebbianPatchedSynapse("W1", shape=(h1_dim, in_dim),
+                                         n_sub_models=n_p1,            ## number of modules in the layer
+                                         sign_value=-1.,               ## -1 means M-step solve minimization problem
                                          optim_type=opt_type,
                                          eta=lr,
                                          weight_init=w1_init,
@@ -185,65 +237,61 @@ class HierarchicalPredictiveCoding():
                                          w_bound=w_bound,
                                          key=subkeys[0]
                                          )
-                # print(f"[W init] W1: {self.W1}")
-                self.e2 = GaussianErrorCell("e2", n_units=h2_dim, sigma=sigma_e2)
-                self.e1 = GaussianErrorCell("e1", n_units=h1_dim, sigma=sigma_e1)
-                self.e0 = GaussianErrorCell("e0", n_units=in_dim, sigma=sigma_e0)
 
-                ############################################################
+                # ═════════════════════════════════════════════════════════
                 ## since this model will operate with batches, we need to
                 ## its batch-size here before compiling with the loop-scan
                 self.batch_setup()
 
-                ############################################################
+                # ═════════════════════════════════════════════════════════
                 # wiring (signal pathway is according to Rao & Ballard 1999 paper)
-                ############################################################
-                ######### feedback (Top-down) #########
+                # ══════ feedback (Top-down) ═════════════
                 self.z3.zF >> self.W3.inputs
                 self.z2.zF >> self.W2.inputs
                 self.z1.zF >> self.W1.inputs
 
-                ## Top-down prediction
-                if if_3_layers:
-                    self.z2.z >> self.e2.mu
-                else:
-                    self.W3.outputs >> self.e2.mu
+                # ══════ Top-down prediction ═════════════
+                self.z2.z >> self.e2.mu
                 self.W2.outputs >> self.e1.mu
                 self.W1.outputs >> self.e0.mu
-                ## actual neural activation
+
+                # ══════ actual neural activation ════════
                 self.z2.z >> self.e2.target
                 self.z1.z >> self.e1.target
+                self.RGC.outputs >> self.e0.target
 
-                ## Top-down prediction errors
+                # ══════ Top-down prediction errors ══════
                 self.e1.dtarget >> self.z1.j_td
                 self.e2.dtarget >> self.z2.j_td
 
-                ######### forward (Bottom-up) #########
+                # ══════ forward (Bottom-up) ═════════════
                 ## feedforward the errors via synapses
                 self.e2.dmu >> self.W3.post_in
                 self.e1.dmu >> self.W2.post_in
                 self.e0.dmu >> self.W1.post_in
-                ## Bottom-up modulated errors
+
+                # ══════ Bottom-up modulated errors ══════
                 self.W3.pre_out >> self.z3.j
                 self.W2.pre_out >> self.z2.j
                 self.W1.pre_out >> self.z1.j
 
-
-                ######## Hebbian learning #########
-                ## Pre Synaptic Activation
+                # ═════════ Hebbian learning ═════════════
+                # ══════ Pre Synaptic Activation ══════
                 self.z3.zF >> self.W3.pre
                 self.z2.zF >> self.W2.pre
                 self.z1.zF >> self.W1.pre
-                ## Post Synaptic residual error
+                # ══════ Post Synaptic residuals ══════
                 self.e2.dmu >> self.W3.post
                 self.e1.dmu >> self.W2.post
                 self.e0.dmu >> self.W1.post
 
-                ############################################################
+                ## ═════════════════════════════════════════════════════════════════
                 self.reset_process = (MethodProcess(name="reset_process")
+                                >> self.RGC.reset
                                 >> self.z3.reset
                                 >> self.z2.reset
                                 >> self.z1.reset
+                                >> self.z0.reset
                                 >> self.e2.reset
                                 >> self.e1.reset
                                 >> self.e0.reset
@@ -252,6 +300,8 @@ class HierarchicalPredictiveCoding():
                                 >> self.W3.reset
                                 )
                 self.advance_process = (MethodProcess(name="advance_process")
+                                >> self.RGC.advance_state
+                                >> self.z0.advance_state
                                 >> self.z3.advance_state
                                 >> self.z2.advance_state
                                 >> self.z1.advance_state
@@ -270,9 +320,12 @@ class HierarchicalPredictiveCoding():
 
     def batch_setup(self):
         batch_size = self.batch_size
+        self.RGC.batch_size = batch_size
+
         self.z3.batch_size = batch_size
         self.z2.batch_size = batch_size
         self.z1.batch_size = batch_size
+        self.z0.batch_size = batch_size
 
         self.e2.batch_size = batch_size
         self.e1.batch_size = batch_size
@@ -282,8 +335,8 @@ class HierarchicalPredictiveCoding():
         self.W2.batch_size = batch_size
         self.W1.batch_size = batch_size
 
-    def clamp_input(self, x):
-      self.e0.target.set(x)
+    def clamp_stimuli(self, x):
+        self.RGC.inputs.set(x)
 
     def norm(self):
       self.W1.weights.set(normalize_matrix(self.W1.weights.get(), 1., order=2, axis=1))
@@ -293,10 +346,10 @@ class HierarchicalPredictiveCoding():
     def _advance_process(self, obs):
       # several E-steps, can use for loop or scan
       # for i in range(self.T):
-      #   self.clamp_input(obs)
+      #   self.clamp_stimuli(obs)
       #   z_codes = self.advance_process.run(t=self.dt * i, dt=self.dt)
-      self.clamp_input(obs)
-    #   print(f"[_advance_process] obs shape: {obs.shape}, e0 dtarget shape: {self.e0.dtarget.get().shape}, e0 dmu shape: {self.e0.dmu.get().shape}, e0 target shape: {self.e0.target.get().shape}")
+      self.clamp_stimuli(obs)
+      # print(f"[_advance_process] obs shape: {obs.shape}, e0 dtarget shape: {self.e0.dtarget.get().shape}, e0 dmu shape: {self.e0.dmu.get().shape}, e0 target shape: {self.e0.target.get().shape}")
       inputs = jnp.array(self.advance_process.pack_rows(self.T, t=lambda x: x, dt=self.dt))
       stateManager.state, z_codes = self.advance_process.scan(inputs)
       return z_codes
@@ -308,19 +361,13 @@ class HierarchicalPredictiveCoding():
         Args:
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
-        # if params_only:
-        #     model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
-        #     self.W1.save(model_dir)
-        # else:
-        #     self.circuit.save_to_json(self.exp_dir, self.model_name, overwrite=True)  ## save current parameter arrays
         if params_only:
-            model_dir = "{}/{}/component/custom".format(self.exp_dir, self.circuit_name)
+            model_dir = "{}/{}/component/custom".format(self.exp_dir, "model")
             self.W1.save(model_dir)
             self.W2.save(model_dir)
             self.W3.save(model_dir)
         else:
-            self.circuit.save_to_json(self.exp_dir, model_name=self.circuit_name, overwrite=True)
-
+            self.circuit.save_to_json(self.exp_dir, model_name="model", overwrite=True)
 
     def load_from_disk(self, model_directory):
         """
@@ -329,14 +376,7 @@ class HierarchicalPredictiveCoding():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        # with Context("Circuit") as self.circuit:
-        #     self.circuit.load_from_dir(model_directory)
-        #     processes = (self.circuit.reset_process, self.circuit.advance_process, self.circuit.evolve_process)
-        #     self._dynamic(processes)
-        # print(" > Loading model from ",model_directory)
-        # with Context("Circuit") as self.circuit:
-        #     self.circuit.load_from_dir(model_directory)
-        self.circuit = Context.load(directory=model_directory, module_name=self.circuit_name)
+        self.circuit = Context.load(directory=model_directory, module_name="model")
         with self.circuit:
             processes = self.circuit.get_objects_by_type("process") ## obtain all saved processes within this context
             self.advance_process = processes.get("advance_process")
@@ -352,7 +392,6 @@ class HierarchicalPredictiveCoding():
             self.e2, self.e1, self.e0 = (e2, e1, e0)
             self.batch_setup()
 
-
     def get_synapse_stats(self, W_id='W1'):
         """
         Print basic statistics of the choosed W to string
@@ -365,32 +404,40 @@ class HierarchicalPredictiveCoding():
         """
         if W_id == 'W1':
             _W1 = self.W1.weights.get()
-            msg = "W1: ---Sparsity {} \n  min {} ;  max {} \n  mu {} ;  norm {}".format(
-                                                    100 * (jnp.sum(jnp.where(_W1 == 0, 1, 0)) // _W1.size),
-                                                    jnp.amin(_W1),
-                                                    jnp.amax(_W1),
-                                                    jnp.mean(_W1),
-                                                    jnp.linalg.norm(_W1))
+            msg = (
+                "W1:\n"
+                f"  Sparsity : {100 * (jnp.sum(jnp.where(_W1 == 0, 1, 0)) // _W1.size):6.1f}%\n"
+                f"  min      : {jnp.min(_W1): .4f}\n"
+                f"  max      : {jnp.max(_W1): .4f}\n"
+                f"  mean     : {jnp.mean(_W1): .4f}\n"
+                f"  norm     : {jnp.linalg.norm(_W1): .3f}"
+            )
+
         if W_id == 'W2':
             _W2 = self.W2.weights.get()
-            msg = "W2: ---Sparsity {} \n  min {} ;  max {} \n  mu {} ;  norm {}".format(
-                                                    100 * (jnp.sum(jnp.where(_W2 == 0, 1, 0)) // _W2.size),
-                                                    jnp.amin(_W2),
-                                                    jnp.amax(_W2),
-                                                    jnp.mean(_W2),
-                                                    jnp.linalg.norm(_W2))
+            msg = (
+                "W2:\n"
+                f"  Sparsity : {100 * (jnp.sum(jnp.where(_W2 == 0, 1, 0)) // _W2.size):6.1f}%\n"
+                f"  min      : {jnp.min(_W2): .4f}\n"
+                f"  max      : {jnp.max(_W2): .4f}\n"
+                f"  mean     : {jnp.mean(_W2): .4f}\n"
+                f"  norm     : {jnp.linalg.norm(_W2): .3f}"
+            )
+
         if W_id == 'W3':
             _W3 = self.W3.weights.get()
-            msg = "W3: ---Sparsity {} \n  min {} ;  max {} \n  mu {} ;  norm {}".format(
-                                                    100 * (jnp.sum(jnp.where(_W3 == 0, 1, 0)) // _W3.size),
-                                                    jnp.amin(_W3),
-                                                    jnp.amax(_W3),
-                                                    jnp.mean(_W3),
-                                                    jnp.linalg.norm(_W3))
+            msg = (
+                "W3:\n"
+                f"  Sparsity : {100 * (jnp.sum(jnp.where(_W3 == 0, 1, 0)) // _W3.size):6.1f}%\n"
+                f"  min      : {jnp.min(_W3): .4f}\n"
+                f"  max      : {jnp.max(_W3): .4f}\n"
+                f"  mean     : {jnp.mean(_W3): .4f}\n"
+                f"  norm     : {jnp.linalg.norm(_W3): .3f}"
+            )
+
         return msg
 
-
-    def viz_receptive_fields(self, patch_shape, stride_shape=(0, 0), max_filter=100, fname='receptive_fields'):
+    def viz_receptive_fields(self, vis_effective_RF=False, fname='receptive_fields'):
         """
         Generates and saves a plot of the receptive fields for the current state
         of the model's synaptic efficacy values in W1.
@@ -398,7 +445,7 @@ class HierarchicalPredictiveCoding():
         Args:
             patch_shape: input image patch shape
 
-            stride_shape: the overlapping dimensions of input image patches
+            step_shape: the overlapping dimensions of input image patches
 
             max_filter: maximum number of receptive fields to visualize
 
@@ -407,32 +454,66 @@ class HierarchicalPredictiveCoding():
         """
         _W1 = self.W1.weights.get()
 
-        if self.n_p1 == 1: ## if each level-1 neuron's receptive field spans the whole input
-            visualize([_W1.T], [patch_shape], prefix=self.exp_dir + "/filters/{}".format(fname))
+        d2, d1, d0 = (self.W2.sub_shape[0], self.W1.sub_shape[0], self.W1.sub_shape[1])
+        n2, n1, n0 = (self.W3.n_sub_models, self.W2.n_sub_models, self.W1.n_sub_models)
 
-        else:             ## if each level-1 neuron's receptive field spans a portion of input
-            d1_pre, d1_erf = self.W1.sub_shape
+        px, py = self.patch_shape
+        sx, sy = self.step_shape
+
+        n_row = px + (n0 - 1) * sx              ## 16 = 16 + (2 * 0)
+        n_col = py + (n0 - 1) * sy              ## 26 = 16 + (2 * 5)
+        area_shape = (n_row, n_col)             ## (16 , 26)
+
+        if sx > 0:
+            pad_x = jnp.zeros((sx, n_col))
+        if sy > 0:
+            pad_y = jnp.zeros((n_row, sy))
+
+        ## ═════════════════════════════════════════════════════════════════
+        if n0 == 1:
+            visualize([_W1.T], [self.patch_shape], prefix=self.exp_dir + "/filters/{}".format(fname))
+
+        ## ═════════════════════════════════════════════════════════════════
+        else:
             list_filter = []
-            for i in range(self.n_p1):
-                rf_pre = _W1[i * d1_pre:(i+1) * d1_pre,
-                             i * d1_erf:(i+1) * d1_erf]
+            for i in range(n0):
+                rf_pre = _W1[i * d1:(i+1) * d1, i * d0:(i+1) * d0]
                 list_filter.append(rf_pre)
-            h1_rf = jnp.array(list_filter)     # (n_modules, dim_module, n_inPatch * dim_inPatch)
+            h1_rf = jnp.array(list_filter)
+            erf_list = []
 
-            module_idx = 0
-            rf_vis = h1_rf[module_idx, :, :].reshape(-1, self.inPatch_dim)
-            rnd_idx = np.random.randint(0, len(rf_vis), max_filter)
-            visualize([rf_vis[rnd_idx, :].T],
-                      [patch_shape], prefix=self.exp_dir + "/filters/{}".format(fname))
+            RF1 = jnp.hstack([_W1.T[i * d0: (i + 1) * d0,
+                              i * d1: (i + 1) * d1] for i in range(self.W1.n_sub_models)])
 
-            if stride_shape!=(0, 0):
-                # TODO: the effective receptive field is the summation of individual neurons RF
-                #  which will be calculated with considering overlapping pixel's
 
-                erf_vis = rf_vis.reshape(-1, self.inPatch_dim * (self.n_inPatch//self.n_p1))
-                visualize([erf_vis[:max_filter, :].T],
-                          [(patch_shape[0] * (self.n_inPatch//self.n_p1), patch_shape[1])],
+            ## ═══════════════════════════════════
+            if vis_effective_RF:
+                for n in range(h1_rf.shape[1]):
+                    erf_v2 = h1_rf[:, n, :]
+                    A = erf_v2[0].reshape(*self.patch_shape)
+                    B = erf_v2[1].reshape(*self.patch_shape)
+                    C = erf_v2[2].reshape(*self.patch_shape)
+
+                    Apad = jnp.concatenate([A, pad_y, pad_y], axis=1)
+                    Bpad = jnp.concatenate([pad_y, B, pad_y], axis=1)
+                    Cpad = jnp.concatenate([pad_y, pad_y, C], axis=1)
+
+                    effective_rf = Apad + Bpad + Cpad
+                    erf_list.append(effective_rf)
+                erf_array = jnp.array(erf_list).reshape(-1, area_shape[0]*area_shape[1])
+
+                visualize([erf_array.T, RF1],
+                          sizes=[(area_shape), (self.patch_shape)],
+                          order=['C', 'C'],
                           prefix=self.exp_dir + "/filters/{}".format(fname))
+
+            ## ═══════════════════════════════════
+            else:
+                visualize([RF1],
+                          sizes=[(self.patch_shape)],
+                          order=['C'],
+                          prefix=self.exp_dir + "/filters/{}".format(fname))
+
 
 
     def viz_recons(self, X_test, Xmu_test, image_shape=(28, 28), fname='recon'):
@@ -457,7 +538,6 @@ class HierarchicalPredictiveCoding():
 
         visualize([X_test.T, Xmu_test.T], [image_shape, image_shape], prefix=self.exp_dir + "/img_recons/{}".format(fname))
 
-
     def process(self, obs, adapt_synapses=False):
         """
         Processes an observation (sensory stimulus pattern) for a fixed
@@ -479,24 +559,31 @@ class HierarchicalPredictiveCoding():
 
         # NOTE: for debugging purposes, we print out the shapes of various model components here
         # if not self._first:
-            # self.clamp_input(obs)
+            # self.clamp_stimuli(obs)
             # self.reset_process.run()
             # self._first = True
             # print(" > [PC_Recon] First process call - model components reset to set batch size.")
             # print(f"\t obs shape: {obs.shape}, e0bs: {self.e0.batch_size} e0 dtarget shape: {self.e0.dtarget.get().shape}, e0 dmu shape: {self.e0.dmu.get().shape}, e0 target shape: {self.e0.target.get().shape}")
 
+        # ═══════════════════════════════════════════════════════════
         ## reset/set all components to their resting values / initial conditions
         self.reset_process.run()
 
         ## Perform several E-steps
         self._advance_process(obs)
 
+        # ═══════════════════════════════════════════════════════════
         ## Perform (optional) M-step (scheduled synaptic updates)
         if adapt_synapses:
             self.evolve_process.run(t=self.T, dt=self.dt)
             self.norm()
 
-        obs_mu = self.e0.mu.get()  ## get reconstructed signal
-        L0 = self.e0.L.get()  ## calculate reconstruction loss
+        # ═══════════════════════════════════════════════════════════
+        obs_mu = self.e0.mu.get()   ## get reconstructed signal
 
-        return obs_mu, L0
+        return obs_mu
+
+
+
+
+
