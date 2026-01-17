@@ -33,17 +33,28 @@ called `testX.npy`.
 
 
 # ################################################################################
+jnp.set_printoptions(suppress=True, precision=5)
+dkey = random.PRNGKey(1234)
+dkey, *subkeys = random.split(dkey, 6)
+
+# ═══════════════════════════════════════════════════════════════════════════
 ## read in general program arguments
 options, remainder = gopt.getopt(sys.argv[1:], '', ["path_data=",
                                                     "n_samples=",
                                                     "n_iter="])
 
+experiment_circuit_name = "pc_mlp"
 dataset_name = "/mnist"
-path_data = "../../data/"+dataset_name
-exp_dir = "exp/pc_recon"+dataset_name
+path_data = "../../data/" + dataset_name
+
+exp_dir = "exp/" + experiment_circuit_name + dataset_name
+
 
 n_samples = -1
 n_iter = 10                         ## total number passes through dataset
+iter_mod = 1
+viz_mod = 1
+
 for opt, arg in options:
     if opt in ("--path_data"):
         path_data = arg.strip()
@@ -53,14 +64,8 @@ for opt, arg in options:
         n_iter = int(arg.strip())
 print("Data Path: ", path_data)
 
-shuffle = True
-################################################################################
+# ═══════════════════════════════════════════════════════════════════════════
 ## load the data
-jnp.set_printoptions(suppress=True, precision=5)
-dkey = random.PRNGKey(1234)
-dkey, *subkeys = random.split(dkey, 6)
-
-################################################################################
 x_train = jnp.load(os.path.join(path_data, "trainX.npy"))
 y_train = jnp.load(os.path.join(path_data, "trainY.npy"))
 
@@ -74,18 +79,19 @@ x_test = x_test[jnp.argsort(jnp.argmax(y_test, axis=1))]
 image_size = x_train.shape[1]
 image_H = image_W = int(jnp.sqrt(image_size))
 image_shape = (image_H, image_W)
-################################################################################
-T = 20 #30 # K = 100  ## number E-steps
-dt = 1.
-iter_mod = 1
-viz_mod = 1
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Training Configuration
+shuffle = True
 mb_size = 100
-mb_vis_size = 100
-max_vis_filter = 100
 
-patch_shape = image_shape    ## full image
-# patch_shape = (8, 8)           ## (image_shape) shape of each image patch
+# ════  Stimuli Configuration  ══════════════════════════════════════════════
+patch_shape = image_shape        ## (ix, iy): full image
+step_shape = patch_shape         ## (sx, sy) --- ix = px + (nx-1) * sx
+
+# patch_shape = (8, 8)           ## (px, py) shape of each image patch
+# step_shape = (3, 3)            ## (sx, sy)
+
 n_inPatch = 1                  ## ==1 means full image at the time image
 n_p1 = 1                       ## number of h1 patches/PE-modules
 n_p2 = 1                       ## number of h2 patches/PE-modules
@@ -96,12 +102,14 @@ p2_size = 64                   ## h2 patch dimension
 p1_size = 128                  ## h1 patch dimension
 pin_size = patch_shape[0] * patch_shape[1]     ## input patch dim (== h1 neurons receptive field size)
 
-h3_dim, h2_dim, h1_dim, in_dim = (p3_size * n_p3,
-                                  p2_size * n_p2,
-                                  p1_size * n_p1,
-                                  pin_size * n_inPatch
-                                  )
-################################################################################
+## ═══════════════════════════════════════════════════════════════════════════
+## Computed Dimensions
+h3_dim = p3_size * n_p3
+h2_dim = p2_size * n_p2                        # = 128 × 1  = 128
+h1_dim = p1_size * n_p1                        # =  32 × 3  = 96
+in_dim = pin_size * n_inPatch                  # = 256 × 3  = 768
+
+# ═══════════════════════════════════════════════════════════════════════════
 n_h = image_shape[0] - patch_shape[0] + 1
 n_w = image_shape[1] - patch_shape[1] + 1
 tot_patch_per_image = n_h * n_w
@@ -120,47 +128,37 @@ else:  # Patch case
     mb_size = tot_patch_per_image // n_inPatch
     images_per_batch = 1
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Energy Dynamics
+T = 50                               ## number E-steps
+dt = 1.
 
-print("Network Dimensions: {} >> {} >> {} >> {}".format(h3_dim, h2_dim, h1_dim, in_dim))
-print("Network Dimensions: {}{} >> {}{} >> {}{} >> {}{}".format(
-                                                n_p3, p3_size,
-                                                n_p2, p2_size,
-                                                n_p1, p1_size,
-                                                n_inPatch, pin_size,
-))
 
-print("    mini-batch size : ", mb_size)
-print("    number of images per mini-batch: {}".format(mb_size))
-print("    mini-batch size per image: ", images_per_batch)
 ################################################################################
 ## initialize and compile the model with fixed hyper-parameters
-model = HierarchicalPredictiveCoding(dkey, T=T, dt=dt,
+model = HierarchicalPredictiveCoding(dkey,
+                                     circuit_name=experiment_circuit_name,
                                      h3_dim=h3_dim, h2_dim=h2_dim, h1_dim=h1_dim, in_dim=in_dim,
                                      n_p3=n_p3, n_p2=n_p2, n_p1=n_p1, n_inPatch=n_inPatch,
+                                     area_shape = image_shape,
+                                     patch_shape = patch_shape,
+                                     step_shape = step_shape,          ## step = px - overalp
                                      batch_size=mb_size,
+                                     T=T, dt=dt,
                                      tau_m=20, lr=0.005,
                                      act_fx = "relu",
                                      r3_prior = ("laplacian", 0.14),
                                      r2_prior = ("laplacian", 0.14),
                                      r1_prior = ("laplacian", 0.14),
-                                     circuit_name="PC_Circuit",
-                                     exp_dir=exp_dir,
-                                     reset_exp_dir = False
+                                     exp_dir=exp_dir, reset_exp_dir=True
                                      )
 
-  ## time constant for latent trajectories
-# lr = 0.05,  ## M-step learning rate/step-size
-# sigma_e2 = 1., sigma_e1 = 1., sigma_e0 = 1.,
-# act_fx = "identity",  ## neural activation function
 
-# synaptic_prior = ("gaussian", 0.),
-# circuit_name = "Circuit",
-# load_dir = None,
 
 # model.load_from_disk("exp") # Uncomment this line and comment the lines below to load a saved model
 model.save_to_disk()          # Save initial model parameters to disk -- Comment this line if we are loading a saved model
 print(model.get_synapse_stats())
-model.viz_receptive_fields(patch_shape, max_filter=max_vis_filter, fname='erf_t0')
+model.viz_receptive_fields(fname='erf_t0')
 
 ################################################################################
 ## begin simulation of the model using the loaded data
@@ -168,7 +166,10 @@ if n_samples > 0:
     x_train = x_train[:n_samples, :]
     print("-> Fitting model to only {} samples".format(n_samples))
 
+
 n_batches = x_train.shape[0] // images_per_batch
+mb_vis_size = 100
+max_vis_filter = 100
 
 for i in range(n_iter):
     X = x_train
@@ -187,14 +188,12 @@ for i in range(n_iter):
     print("========= Iter {}/{} ========".format(i+1, n_iter))
     for nb in range(n_batches):
         Xb = X[nb * images_per_batch: (nb + 1) * images_per_batch, :]                     # shape: (batch_size, 784)
-        Xb = generate_patch_set(Xb, patch_shape, max_patches=None, center=True, seed=None)
+        Xb = Xb.reshape(-1, *patch_shape)
 
-
-        Xb = Xb.reshape(mb_size, -1)
-
-        Xmu, Lb = model.process(Xb, adapt_synapses=True)
+        Xmu= model.process(Xb, adapt_synapses=True)
 
         n_pat_seen = n_pat_seen + Xb.shape[0]                               ## total number of patterns seen
+        Lb = model.e0.L.get()
         L = Lb + L                                                          ## track current global loss
         print("\r > Seen {} patterns   | n_batch {}/{}   | Train-Recon-Loss = {}".format(
             n_pat_seen, (nb+1), n_batches, L/(n_pat_seen+1)), end="")
@@ -210,10 +209,10 @@ for i in range(n_iter):
             Xb_test, x_test_mean = generate_patch_set(Xtest, patch_shape, max_patches=None, seed=None,
                                                       center=True, vis_mode=True)
             ## only perform E-steps/inference
-            Xt_mu, L_test = model.process(Xb_test.reshape(mb_size, -1), adapt_synapses=False)
+            Xt_mu = model.process(Xb_test.reshape(mb_size, *patch_shape), adapt_synapses=False)
             Xtest_mu = Xt_mu.reshape(mb_size * n_inPatch, -1) + x_test_mean
             ###############################################
-            print("\r >  Test Recon Loss = {} ".format(L_test / mb_vis_size))
+            print("\r >  Test Recon Loss = {} ".format(model.e0.L.get() / mb_vis_size))
             model.viz_recons(Xtest, Xtest_mu, image_shape=image_shape, fname=f"recons_t{i+1}")
 
         ## for patched inputs
@@ -221,14 +220,15 @@ for i in range(n_iter):
             l0 = 0
             Xmu_list = []
             for jb in range(mb_vis_size):
-                Xt = Xtest[jb:jb+1, :]
-                Xb_test, x_test_mean = generate_patch_set(Xt, patch_shape, max_patches=None, seed=None,
-                                                          center=True, vis_mode=True)
+                Xb_test = Xtest[jb:jb+1, :]
+                Xb_test = Xb_test.reshape(mb_size, *patch_shape)
+
                 ## only perform E-steps/inference
-                Xt_mu, L_test = model.process(Xb_test.reshape(mb_size, -1), adapt_synapses=False)
-                l0 = l0 + L_test
+                Xt_mu = model.process(Xb_test, adapt_synapses=False)
+
+                l0 = l0 + model.e0.L.get()
                 ## reconstruct images from patches
-                Xtest_mu = Xt_mu.reshape(mb_size * n_inPatch, -1) + x_test_mean
+                Xtest_mu = Xt_mu.reshape(mb_size * n_inPatch, -1)
                 X_mu = reconstruct_from_patches_2d(np.asarray(Xtest_mu).reshape(-1, *patch_shape), image_shape)
                 Xmu_list.append(X_mu.reshape(image_shape[0] * image_shape[1]))
             ###############################################
@@ -241,7 +241,12 @@ for i in range(n_iter):
     print()
     if i % viz_mod == 0:
         print(model.get_synapse_stats())
-        model.viz_receptive_fields(patch_shape, max_filter=max_vis_filter, fname=f"erf_t{i+1}")
+        model.viz_receptive_fields(fname=f"erf_t{i+1}")
 
 ## collect a test sample raster plot
 model.save_to_disk(params_only=True) ## save final model parameters to disk
+
+
+
+
+
