@@ -32,13 +32,13 @@ options, remainder = gopt.getopt(sys.argv[1:], '', ["n_iter="])
 
 experiment_circuit_name = "Rao1999_ExtraClassicalRF"
 dataset_name = "/natural_scenes"
-path_data = "../../data" + dataset_name
+path_data = "../../data" + dataset_name + "/dataX.npy"
 
 exp_dir = "exp/" + experiment_circuit_name + dataset_name
 
 n_samples = -1
 n_iter = 10                         ## total number passes through dataset
-iter_mod = 2
+iter_mod = 1
 
 for opt, arg in options:
     if opt in ("--n_iter"):
@@ -46,15 +46,6 @@ for opt, arg in options:
 
 print("Data Path: ", path_data)
 
-# ═══════════════════════════════════════════════════════════════════════════
-## load the data
-images = jnp.load(os.path.join(path_data, "dataX.npy"))
-
-image_size = images.shape[1]
-image_H = image_W = int(jnp.sqrt(image_size))
-image_shape = (image_H, image_W)
-
-images = images.reshape(-1, *image_shape)
 # ═══════════════════════════════════════════════════════════════════════════
 # Training Configuration
 shuffle = True
@@ -83,7 +74,6 @@ h2_dim = p2_size * n_p2                        # = 64  × 1  = 64
 h1_dim = p1_size * n_p1                        # = 32  × 9  = 288
 in_dim = pin_size * n_inPatch                  # = 64  × 9  = 576
 
-
 # ═══════════════════════════════════════════════════════════════════════════
 act_fx = "tanh"
 
@@ -102,6 +92,23 @@ T = 30                                    # Number of E-steps
 dt = 1.
 tau_m = 1 / k1
 
+# ═══════════════════════════════════════════════════════════════════════════
+## load the data
+images = jnp.load(path_data)
+
+image_size = images.shape[1]
+image_H = image_W = int(jnp.sqrt(image_size))
+image_shape = (image_H, image_W)
+
+images = images.reshape(-1, *image_shape)
+
+# ═══════════════════════════════════════════════════════════════════════════
+## split the full image into local views for retinal ganglion cells local receptive fields
+x_train = create_patches(images, patch_shape=area_shape, step_shape=area_shape)  ### shape: (N | n_areas | (area_shape))
+x_train = x_train.reshape(-1, *area_shape)                                       ### shape: (n_total_obs | (area_shape))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 ################################################################################
 ## initialize and compile the model with fixed hyper-parameters
 model = HierarchicalPredictiveCoding(dkey,
@@ -113,10 +120,10 @@ model = HierarchicalPredictiveCoding(dkey,
                                      step_shape = step_shape,
                                      batch_size = mb_size,
                                      dt=dt, T=T,
-                                     act_fx=act_fx,                            ## non-linear activation function
+                                     act_fx=act_fx,         ## non-linear activation function
                                      tau_m=tau_m,
                                      lr=k2,
-                                     sigma_e1 = sigma_td, sigma_e0 = sigma,
+                                     sigma_e1=sigma_td, sigma_e0=sigma,
                                      r1_prior=(r1_prior_type, alpha_1),
                                      r2_prior=(r2_prior_type, alpha_2),
                                      synaptic_prior = ("ridge", 0.02),
@@ -126,11 +133,9 @@ model = HierarchicalPredictiveCoding(dkey,
 model.save_to_disk()          # NOTE: save initial model parameters to disk, uncomment this line if we are loading a saved model
 model.load_from_disk(exp_dir) # NOTE: uncomment this line and comment the above lines to load a saved model
 print(model.get_synapse_stats())
-model.viz_receptive_fields(fname="erf_t0")
+model.viz_receptive_fields(max_n_vis=81, fname="erf_t0")
 
-################################################################################
-x_train = create_patches(images, patch_shape=area_shape, step_shape=area_shape)
-x_train = x_train.reshape(-1, *area_shape)
+# ═══════════════════════════════════════════════════════════════════════════
 total_batches = x_train.shape[0] // mb_size
 
 for i in range(n_iter):
@@ -152,6 +157,7 @@ for i in range(n_iter):
 
         # ═══════════════════   Progress Display  ════════════════════
         print( f"\r "
+            f"│ Iter: {i:>1} "
             f"│ Seen: {n_seen:>6} patterns "
             f"│ Batch: {nb + 1:>4}/{total_batches:<4} "
             f"│ Train-Recon-Loss: {avg_loss:>7.4f} │",
@@ -161,9 +167,13 @@ for i in range(n_iter):
     if (i+1) % iter_mod == 0:
         print()
         model.save_to_disk(params_only=True)                                ## save final state of synapses to disk
-        model.viz_receptive_fields(fname=f"erf_t{(i+1) // iter_mod}")
+        model.viz_receptive_fields(max_n_vis=81, fname=f"erf_t{(i+1) // iter_mod}")
 
 print(model.get_synapse_stats())
 
 ## collect a test sample raster plot
 model.save_to_disk(params_only=True) ## save final model parameters to disk
+
+
+
+
