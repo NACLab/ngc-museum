@@ -1,9 +1,9 @@
 from jax import jit, random
-import os
 from ngclearn import numpy as jnp
 from hierarchical_pc import HierarchicalPredictiveCoding
 import sys, getopt as gopt, optparse, time
-from ngclearn.components.input_encoders.ganglionCell import create_patches
+from ngclearn.components.input_encoders.ganglionCell import create_patches, create_gaussian_filter
+from jax.scipy.signal import convolve2d
 
 
 """
@@ -21,6 +21,7 @@ $ python rao_ballard1999_endstopping_sim.py"
 ################################################################################
 """
 
+
 # ################################################################################
 jnp.set_printoptions(suppress=True, precision=5)
 dkey = random.PRNGKey(1234)
@@ -32,13 +33,13 @@ options, remainder = gopt.getopt(sys.argv[1:], '', ["n_iter="])
 
 experiment_circuit_name = "Rao1999_EndStopping"
 dataset_name = "/natural_scenes"
-path_data = "../../data" + dataset_name
+path_data = "../../data" + dataset_name + "/dataX.npy"
 
 exp_dir = "exp/" + experiment_circuit_name + dataset_name
 
 n_samples = -1
 n_iter = 10                         ## total number passes through dataset
-iter_mod = 2
+iter_mod = 1
 
 for opt, arg in options:
     if opt in ("--n_iter"):
@@ -47,17 +48,8 @@ for opt, arg in options:
 print("Data Path: ", path_data)
 
 # ═══════════════════════════════════════════════════════════════════════════
-## load the data
-images = jnp.load(os.path.join(path_data, "dataX.npy"))
-
-image_size = images.shape[1]
-image_H = image_W = int(jnp.sqrt(image_size))
-image_shape = (image_H, image_W)
-
-images = images.reshape(-1, *image_shape)
-# ═══════════════════════════════════════════════════════════════════════════
 # Training Configuration
-shuffle = False
+shuffle = True
 mb_size = 100
 
 # ════  Stimuli Configuration  ══════════════════════════════════════════════
@@ -85,14 +77,15 @@ in_dim = pin_size * n_inPatch                  # = 256 × 3  = 768
 
 # ═══════════════════════════════════════════════════════════════════════════
 input_encoder = "gaussian"
-gauss_sigma = 2.3
+gauss_sigma = 2.
+
 act_fx = "identity"
 
-r1_prior_type, alpha_1 = ("laplacian", 0.5)
-r2_prior_type, alpha_2 = ("laplacian", 0.05)
+r1_prior_type, alpha_1 = ("gaussian", 1.)   ## prior probability for level 1 and its coefficient
+r2_prior_type, alpha_2 = ("gaussian", 0.05) ## prior probability for level 2 and its coefficient
 
 k1 = 0.05
-k2 = 0.05
+k2 = 1.
 
 sigma = 1.                  ## sigma of layer 0
 sigma_td = 10.              ## sigma of layer 1
@@ -103,7 +96,28 @@ T = 30                                    # Number of E-steps
 dt = 1.
 tau_m = 1 / k1
 
-################################################################################
+# ═══════════════════════════════════════════════════════════════════════════
+## load the data
+images = jnp.load(path_data) * 40
+
+image_size = images.shape[1]
+image_H = image_W = int(jnp.sqrt(image_size))
+image_shape = (image_H, image_W)
+
+images = images.reshape(-1, *image_shape)
+
+# ═══════════════════════════════════════════════════════════════════════════
+## preprocessing | gaussian windowing / whitening
+gaussian_window = create_gaussian_filter(patch_shape=(5, 5), sigma=5)
+images = jnp.array([convolve2d(images[i], gaussian_window) for i in range(len(images))])
+
+# ═══════════════════════════════════════════════════════════════════════════
+## split the full image into local views for retinal ganglion cells local receptive fields
+x_train = create_patches(images, patch_shape=area_shape, step_shape=area_shape)  ### shape: (N | n_areas | (area_shape))
+x_train = x_train.reshape(-1, *area_shape)                                       ### shape: (n_total_obs | (area_shape))
+
+# ═══════════════════════════════════════════════════════════════════════════
+#############################################################################
 ## initialize and compile the model with fixed hyper-parameters
 model = HierarchicalPredictiveCoding(dkey,
                                      circuit_name = experiment_circuit_name,
@@ -116,7 +130,7 @@ model = HierarchicalPredictiveCoding(dkey,
                                      input_encoder = input_encoder,
                                      input_encoder_sigma = gauss_sigma,
                                      dt=dt, T=T,
-                                     act_fx=act_fx,                            ## linear activation function
+                                     act_fx=act_fx,        ## linear activation for linear combination of l1 filters
                                      tau_m=tau_m,
                                      lr=k2,
                                      sigma_e1=sigma_td, sigma_e0=sigma,
@@ -129,11 +143,9 @@ model = HierarchicalPredictiveCoding(dkey,
 model.save_to_disk()          # NOTE: save initial model parameters to disk, uncomment this line if we are loading a saved model
 model.load_from_disk(exp_dir) # NOTE: uncomment this line and comment the above lines to load a saved model
 print(model.get_synapse_stats())
-model.viz_receptive_fields(vis_effective_RF=True, fname="erf_t0")
+model.viz_receptive_fields(vis_effective_RF=True, max_n_vis=49, fname="erf_t0")
 
-################################################################################
-x_train = create_patches(images, patch_shape=area_shape, step_shape=area_shape)
-x_train = x_train.reshape(-1, *area_shape)
+# ═══════════════════════════════════════════════════════════════════════════
 total_batches = x_train.shape[0] // mb_size
 
 for i in range(n_iter):
@@ -155,6 +167,7 @@ for i in range(n_iter):
 
         # ═══════════════════   Progress Display  ════════════════════
         print( f"\r "
+            f"│ Iter: {i:>1} "
             f"│ Seen: {n_seen:>6} patterns "
             f"│ Batch: {nb + 1:>4}/{total_batches:<4} "
             f"│ Train-Recon-Loss: {avg_loss:>7.4f} │",
@@ -164,13 +177,12 @@ for i in range(n_iter):
     if (i+1) % iter_mod == 0:
         print()
         model.save_to_disk(params_only=True)                                ## save final state of synapses to disk
-        model.viz_receptive_fields(vis_effective_RF=True, fname=f"erf_t{(i+1) // iter_mod}")
+        model.viz_receptive_fields(vis_effective_RF=True, max_n_vis=49, fname=f"erf_t{(i+1) // iter_mod}")
 
 print(model.get_synapse_stats())
 
 ## collect a test sample raster plot
 model.save_to_disk(params_only=True) ## save final model parameters to disk
-
 
 
 
