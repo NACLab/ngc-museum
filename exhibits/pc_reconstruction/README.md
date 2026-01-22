@@ -45,18 +45,19 @@ properties by learning a sparse code for natural images." Nature 381.6583
 </table>
 
 
+<p align="center">
+  <img src="fig/level2_receptive_fields.png" width="500">
+  <img src="fig/level1_receptive_fields.png" width="500">
+  <br>
+  <figcaption><em>
+    Figure 1: Receptive field weighting profiles (Learned synaptic weights) 
+    (left) RF profiles of level-2 feedforward model neurons 
+    (right) RF profiles of level-1 feedforward model neurons, 
+    Resembling classical oriented-edge/bar detectors characteristic of simple cells.
+  </em></figcaption>
+</p>
 
-Receptive field weighting profiles (Learned synaptic weights)
-<table>
-  <tr>
-    <td><img src="fig/level2_receptive_fields.png" width="500"/></td>
-    <td><img src="fig/level1_receptive_fields.png" width="500"/></td>
-  </tr>
-  <tr>
-    <td align="center">(Le) <em> RF profiles of level-2 feedforward model neurons (Rao & Ballard, 1999 - Figure 2.C)</td>
-    <td align="center">(Re) <em> RF profiles of level-1 feedforward model neurons (Rao & Ballard, 1999 - Figure 2.b). Resembling classical oriented-edge/bar detectors characteristic of simple cells. </td>
-  </tr>
-</table>
+
 
 
 <!--
@@ -108,6 +109,7 @@ lmbda = 0.14 (strength of Laplacian prior enforced over hidden activities)
 eta = 0.005 (learning rate of SGD optimizer embedded w/in each synaptic cable for the M-step)
 batch_size = 100
 ```
+
 
 
 
