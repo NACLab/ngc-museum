@@ -1,4 +1,4 @@
-# Reconstructive Hierarchical Predictive Coding (Rao &amp; Ballard, 1999)
+# Hierarchical Predictive Coding (Rao &amp; Ballard, 1999)
 
 <b>Version</b>: ngclearn==3.0.0, ngcsimlib==3.0.0 <!--2.0.0 1.0.0 -->
 
@@ -109,6 +109,7 @@ lmbda = 0.14 (strength of Laplacian prior enforced over hidden activities)
 eta = 0.005 (learning rate of SGD optimizer embedded w/in each synaptic cable for the M-step)
 batch_size = 100
 ```
+
 
 
 
