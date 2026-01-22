@@ -103,37 +103,40 @@ class HierarchicalPredictiveCoding():
     """
     # Define Functions
     def __init__(self, dkey,
-                 # ═══════════════════════   Architecture parameters
+                 # ═══════════  Architecture parameters ════════════
                  h3_dim=1, h2_dim=1, h1_dim=1, in_dim=1,
                  n_p3=1, n_p2=1, n_p1=1, n_inPatch=1,
                  batch_size=1,
-                 # ═══════════════════════   Preprocessing parameters
+                 # ═══════════════ Preprocessing parameters ═════════════
                  area_shape=(28, 28),
                  patch_shape=(28, 28),
                  step_shape=(0, 0),
                  input_encoder = None,
                  input_encoder_sigma = 0.,
-                 # ═══════════════════════   Neurons/Cells parameters
-                 T=30, dt=1., 
+                 # ════════════ Neurons/Cells parameters ════════════
+                 T=30, dt=1.,
                  tau_m=20,                    ## time constant for latent trajectories
                  act_fx="identity",           ## neural activation function
                  sigma_e2=1., sigma_e1=1., sigma_e0=1.,
                  r3_prior=("laplacian", 0.),
                  r2_prior=("laplacian", 0.),
                  r1_prior=("laplacian", 0.),
-                 # ═══════════════════════   Synaptses parameters
+                 # ═══════════   Synaptses parameters  ════════════
                  lr=0.05,                    ## M-step learning rate/step-size
                  synaptic_prior=("gaussian", 0.),
-                 # ═══════════════════════   Experimental parameters
+                 # ═════════   Experimental parameters ════════════
                  circuit_name = "Circuit",
                  exp_dir="exp",
                  load_dir=None,
                  reset_exp_dir=True,
                  **kwargs):
 
+        ## ═════════════════════════ Simiulation Initializations ════════════════════════
         dkey, *subkeys = random.split(dkey, 10)
         self.circuit_name = circuit_name
         self.exp_dir = exp_dir
+
+        ## ═══════════════════════  Model reading/writing directories  ═══════════════════
         if reset_exp_dir: # remove everything and create experiment directory from scratch
             makedir(exp_dir)
             makedir(exp_dir + "/filters")
@@ -147,7 +150,7 @@ class HierarchicalPredictiveCoding():
             os.makedirs(exp_dir + "/img_recons", exist_ok=True)
             os.makedirs(exp_dir + "/raster", exist_ok=True)
 
-        # ═══════════════════════ meta-parameters for model structure and dynamics
+        ## ══════════════ meta-parameters for model structure ══════════════
         self.in_dim = in_dim
         self.h1_dim = h1_dim
         self.h2_dim = h2_dim
@@ -164,15 +167,17 @@ class HierarchicalPredictiveCoding():
         self.batch_size = batch_size
         self.inPatch_dim = in_dim // n_inPatch
 
+        ## ═══════════════ meta-parameters for model dynamic ═════════════
         self.input_encoder = input_encoder
         self.gauss_sigma = input_encoder_sigma
 
         self.T = T                         ## number of E-steps to take (stimulus time = T * dt ms)
         self.dt = dt                       ## neural activity integration time constant (ms)
 
-        #############    Synaptses parameters
-        w_bound = 1.                                                     ## norm constraint value
+        ## ═════════════════════ Synaptses parameters ═══════════════════
+        w_bound = 0.                                                     ## norm constraint value
         opt_type = "sgd"                                                 ## synaptic (weights) optimization type
+
         w3_init = dist.gaussian(mean=0., std=jnp.sqrt(2/h3_dim))         ## He initialization for layer-3 synapses
         w2_init = dist.gaussian(mean=0., std=jnp.sqrt(2/h2_dim))         ## He initialization for layer-2 synapses
         w1_init = dist.gaussian(mean=0., std=jnp.sqrt(2/h1_dim))         ## He initialization for layer-1  synapses
@@ -404,40 +409,40 @@ class HierarchicalPredictiveCoding():
         """
         if W_id == 'W1':
             _W1 = self.W1.weights.get()
-            msg = (
+            msg = ("\n"+"-"*20+"\n"
                 "W1:\n"
                 f"  Sparsity : {100 * (jnp.sum(jnp.where(_W1 == 0, 1, 0)) // _W1.size):6.1f}%\n"
                 f"  min      : {jnp.min(_W1): .4f}\n"
                 f"  max      : {jnp.max(_W1): .4f}\n"
                 f"  mean     : {jnp.mean(_W1): .4f}\n"
                 f"  norm     : {jnp.linalg.norm(_W1): .3f}"
-            )
+            "\n"+"-"*20+"\n\n")
 
         if W_id == 'W2':
             _W2 = self.W2.weights.get()
-            msg = (
+            msg = ("\n"+"-"*20+"\n"
                 "W2:\n"
                 f"  Sparsity : {100 * (jnp.sum(jnp.where(_W2 == 0, 1, 0)) // _W2.size):6.1f}%\n"
                 f"  min      : {jnp.min(_W2): .4f}\n"
                 f"  max      : {jnp.max(_W2): .4f}\n"
                 f"  mean     : {jnp.mean(_W2): .4f}\n"
-                f"  norm     : {jnp.linalg.norm(_W2): .3f}"
-            )
+                f"  norm     : {jnp.linalg.norm(_W2): .3f}",
+            "\n"+"-"*20+"\n\n")
 
         if W_id == 'W3':
             _W3 = self.W3.weights.get()
-            msg = (
+            msg = ("\n"+"-"*20+"\n"
                 "W3:\n"
                 f"  Sparsity : {100 * (jnp.sum(jnp.where(_W3 == 0, 1, 0)) // _W3.size):6.1f}%\n"
                 f"  min      : {jnp.min(_W3): .4f}\n"
                 f"  max      : {jnp.max(_W3): .4f}\n"
                 f"  mean     : {jnp.mean(_W3): .4f}\n"
                 f"  norm     : {jnp.linalg.norm(_W3): .3f}"
-            )
+            "\n"+"-"*20+"\n\n")
 
         return msg
 
-    def viz_receptive_fields(self, vis_effective_RF=False, fname='receptive_fields'):
+    def viz_receptive_fields(self, vis_effective_RF=False, vis_brain_in=False, max_n_vis=-1, fname='receptive_fields'):
         """
         Generates and saves a plot of the receptive fields for the current state
         of the model's synaptic efficacy values in W1.
@@ -457,6 +462,7 @@ class HierarchicalPredictiveCoding():
         d2, d1, d0 = (self.W2.sub_shape[0], self.W1.sub_shape[0], self.W1.sub_shape[1])
         n2, n1, n0 = (self.W3.n_sub_models, self.W2.n_sub_models, self.W1.n_sub_models)
 
+        ix, iy = self.area_shape
         px, py = self.patch_shape
         sx, sy = self.step_shape
 
@@ -471,7 +477,8 @@ class HierarchicalPredictiveCoding():
 
         ## ═════════════════════════════════════════════════════════════════
         if n0 == 1:
-            visualize([_W1.T], [self.patch_shape], prefix=self.exp_dir + "/filters/{}".format(fname))
+            ## >>>>>>>>>>>>>>>>>>>>>>>>>>>
+            visualize([_W1[:max_n_vis].T], [self.patch_shape], prefix=self.exp_dir + "/filters/{}".format(fname))
 
         ## ═════════════════════════════════════════════════════════════════
         else:
@@ -480,14 +487,20 @@ class HierarchicalPredictiveCoding():
                 rf_pre = _W1[i * d1:(i+1) * d1, i * d0:(i+1) * d0]
                 list_filter.append(rf_pre)
             h1_rf = jnp.array(list_filter)
-            erf_list = []
 
-            RF1 = jnp.hstack([_W1.T[i * d0: (i + 1) * d0,
-                              i * d1: (i + 1) * d1] for i in range(self.W1.n_sub_models)])
+            RF1 = jnp.hstack([_W1[:max_n_vis].T[i * d0: (i + 1) * d0,
+                              i * d1: (i + 1) * d1] for i in range(self.W1.n_sub_models)]
+                             )[:, :max_n_vis]
 
+            ## >>>>>>>>>>>>>>>>>>>>>>>>>>
+            visualize([RF1],
+                      sizes=[(self.patch_shape)],
+                      order=['C'],
+                      prefix=self.exp_dir + "/filters/L1_{}".format(fname))
 
-            ## ═══════════════════════════════════
+            ## ══════════════════════════════════════════════════════════════
             if vis_effective_RF:
+                erf_list = []
                 for n in range(h1_rf.shape[1]):
                     erf_v2 = h1_rf[:, n, :]
                     A = erf_v2[0].reshape(*self.patch_shape)
@@ -500,19 +513,38 @@ class HierarchicalPredictiveCoding():
 
                     effective_rf = Apad + Bpad + Cpad
                     erf_list.append(effective_rf)
-                erf_array = jnp.array(erf_list).reshape(-1, area_shape[0]*area_shape[1])
+                erf_array = jnp.array(erf_list).reshape(-1, area_shape[0]*area_shape[1])[:max_n_vis]
 
-                visualize([erf_array.T, RF1],
-                          sizes=[(area_shape), (self.patch_shape)],
-                          order=['C', 'C'],
-                          prefix=self.exp_dir + "/filters/{}".format(fname))
-
-            ## ═══════════════════════════════════
-            else:
-                visualize([RF1],
-                          sizes=[(self.patch_shape)],
+                ## >>>>>>>>>>>>>>>>>>>>>>>>>>
+                visualize([erf_array.T],
+                          sizes=[(area_shape)],
                           order=['C'],
-                          prefix=self.exp_dir + "/filters/{}".format(fname))
+                          prefix=self.exp_dir + "/filters/L2_{}".format(fname))
+
+                ## ══════════════════════════════════════════════════════════════
+                if vis_brain_in:
+                    rgc_out = self.RGC.outputs.get().reshape(-1, self.RGC.n_cells, *self.patch_shape)
+
+                    A = rgc_out[:, 0, :, :].reshape(-1, *self.patch_shape)
+                    B = rgc_out[:, 1, :, :].reshape(-1, *self.patch_shape)
+                    C = rgc_out[:, 2, :, :].reshape(-1, *self.patch_shape)
+
+                    pad_iy = jnp.zeros((A.shape[0], n_row, sy))
+
+                    Apad = jnp.concatenate([A, pad_iy, pad_iy], axis=2)
+                    Bpad = jnp.concatenate([pad_iy, B, pad_iy], axis=2)
+                    Cpad = jnp.concatenate([pad_iy, pad_iy, C], axis=2)
+
+                    I_in = Apad + Bpad + Cpad
+                    brain_in = I_in.reshape(-1, ix * iy)[:max_n_vis, :]
+
+                    obs = self.RGC.inputs.get().reshape(-1, ix * iy)[:max_n_vis, :]
+                    ## >>>>>>>>>>>>>>>>>>>>>>>>>>
+                    visualize([obs.T, brain_in.T],
+                              sizes=[(area_shape), (area_shape)],
+                              order=['C', 'C'],
+                              prefix=self.exp_dir + "/filters/L2_{}".format(fname))
+                    ## ══════════════════════════════════════════════════════════════
 
 
 
@@ -582,6 +614,9 @@ class HierarchicalPredictiveCoding():
         obs_mu = self.e0.mu.get()   ## get reconstructed signal
 
         return obs_mu
+
+
+
 
 
 
