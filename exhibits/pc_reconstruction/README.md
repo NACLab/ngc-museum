@@ -1,4 +1,4 @@
-# Reconstructive Hierarchical Predictive Coding (Rao &amp; Ballard, 1999)
+# Hierarchical Predictive Coding (Rao &amp; Ballard, 1999)
 
 <b>Version</b>: ngclearn==3.0.0, ngcsimlib==3.0.0 <!--2.0.0 1.0.0 -->
 
@@ -44,6 +44,18 @@ properties by learning a sparse code for natural images." Nature 381.6583
   </tr>
 </table>
 
+
+<p align="center">
+  <img src="fig/level2_receptive_fields.png" width="500">
+  <img src="fig/level1_receptive_fields.png" width="500">
+  <br>
+  <figcaption><em>
+    Figure 1: Receptive field weighting profiles (Learned synaptic weights) 
+    (left) RF profiles of level-2 feedforward model neurons 
+    (right) RF profiles of level-1 feedforward model neurons, 
+    Resembling classical oriented-edge/bar detectors characteristic of simple cells.
+  </em></figcaption>
+</p>
 
 
 
@@ -97,6 +109,9 @@ lmbda = 0.14 (strength of Laplacian prior enforced over hidden activities)
 eta = 0.005 (learning rate of SGD optimizer embedded w/in each synaptic cable for the M-step)
 batch_size = 100
 ```
+
+
+
 
 
 
