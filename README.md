@@ -44,8 +44,8 @@ For those contributing models/algorithms in either the `exhibitors/` or `exhibit
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/ei_rnn">Model</a>
    <!--<a href="">Walkthrough</a>-->
 4. Reconstructive hierarchical predictive coding (Rao &amp; Ballard, 1999): <br>
-   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_recon">Model (1) (MNIST)</a>, 
-   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_rao_ballard1999">Model (2) (Natural Images)</a>
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_reconstruction">Model</a> 
+   <!-- <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/pc_rao_ballard1999">Model (2) (Natural Images)</a> -->
    <!--<a href="">Walkthrough</a>-->
 5. Harmonium (restricted Boltzmann machine; RBM) with stochastic binary neurons, trained via contrastive divergence: <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/harmonium">Model</a>, 
