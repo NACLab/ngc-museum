@@ -1,4 +1,4 @@
-# Hierarchical Predictive Coding (Rao &amp; Ballard, 1999)
+# Hierarchical Predictive Coding
 
 <b>Version</b>: ngclearn==3.0.0, ngcsimlib==3.0.0 <!--2.0.0 1.0.0 -->
 
@@ -11,8 +11,40 @@ Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a
 functional interpretation of some extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
 ```
 
+
+
+
+<table>
+  <tr>
+    <td><img src="fig/pc_estimator_rao1999.jpg" width="450"/></td>
+    <td><img src="fig/Figure.png" width="600"/></td>
+  </tr>
+  <tr>
+    <td align="center">(Original) <em> Visual depiction of the PC reconstruction architecture (Rao & Ballard, 1999)</td>
+    <td align="center">(Re) <em> Replotted version of the original hierarchical PC reconstruction architecture.</td>
+  </tr>
+</table>
+
+
 This model is discussed in more details in the ngc-learn
 <a href="https://github.com/NACLab/ngc-learn/blob/main/docs/museum/pc_rao_ballard1999.md">documentation</a>.
+
+
+
+<p align="center">
+  <img src="fig/level2_receptive_fields.png" width="300">
+  <img src="fig/level1_receptive_fields.png" width="300">
+  <img src="fig/ECRF.png" width="250">
+  <br>
+  <figcaption><em>
+    Figure 1: Receptive field weighting profiles (Learned synaptic weights) 
+    (left) RF profiles of level-2 feedforward model neurons 
+    (middle) RF profiles of level-1 feedforward model neurons, 
+    Resembling classical oriented-edge/bar detectors characteristic of simple cells.
+    (right) RF profiles of level-1 feedforward model neurons for extra-classical receptive fields effect.
+  </em></figcaption>
+</p>
+
 
 ```
 Ororbia, Alexander, and Daniel Kifer. "The neural coding framework for learning 
@@ -41,34 +73,6 @@ Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a 
 ```
 -->
 
-
-
-
-<table>
-  <tr>
-    <td><img src="fig/pc_estimator_rao1999.jpg" width="450"/></td>
-    <td><img src="fig/Figure.png" width="600"/></td>
-  </tr>
-  <tr>
-    <td align="center">(Original) <em> Visual depiction of the PC reconstruction architecture (Rao & Ballard, 1999)</td>
-    <td align="center">(Re) <em> Replotted version of the original hierarchical PC reconstruction architecture.</td>
-  </tr>
-</table>
-
-
-<p align="center">
-  <img src="fig/level2_receptive_fields.png" width="300">
-  <img src="fig/level1_receptive_fields.png" width="300">
-  <img src="fig/ECRF.png" width="250">
-  <br>
-  <figcaption><em>
-    Figure 1: Receptive field weighting profiles (Learned synaptic weights) 
-    (left) RF profiles of level-2 feedforward model neurons 
-    (middle) RF profiles of level-1 feedforward model neurons, 
-    Resembling classical oriented-edge/bar detectors characteristic of simple cells.
-    (right) RF profiles of level-1 feedforward model neurons for extra-classical receptive fields effect.
-  </em></figcaption>
-</p>
 
 
 
@@ -116,6 +120,7 @@ lmbda = 0.14 (strength of Laplacian prior enforced over hidden activities)
 eta = 0.005 (learning rate of SGD optimizer embedded w/in each synaptic cable for the M-step)
 batch_size = 100
 ```
+
 
 
 
