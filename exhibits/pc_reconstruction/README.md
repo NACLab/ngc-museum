@@ -30,7 +30,6 @@ This model is discussed in more details in the ngc-learn
 <a href="https://github.com/NACLab/ngc-learn/blob/main/docs/museum/pc_rao_ballard1999.md">documentation</a>.
 
 
-
 <p align="center">
   <img src="fig/level2_receptive_fields.png" width="300">
   <img src="fig/level1_receptive_fields.png" width="300">
@@ -60,6 +59,8 @@ properties by learning a sparse code for natural images." Nature 381.6583
 (1996): 607-609.
 ```
 
+This model is discussed in more details in the ngc-learn
+<a href="https://github.com/NACLab/ngc-learn/blob/main/docs/museum/sparse_coding.md">documentation</a>.
 
 
 
@@ -120,6 +121,7 @@ lmbda = 0.14 (strength of Laplacian prior enforced over hidden activities)
 eta = 0.005 (learning rate of SGD optimizer embedded w/in each synaptic cable for the M-step)
 batch_size = 100
 ```
+
 
 
 
