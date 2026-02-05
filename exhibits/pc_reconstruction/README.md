@@ -7,20 +7,18 @@ for the task of reconstruction. This model is effectively a variant that embodie
 characteristics across several classical efforts, such as:
 
 ```
-Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a functional interpretation of some extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
+Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a
+functional interpretation of some extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
 ```
 
-<!--
-```
-Friston, Karl. "Hierarchical models in the brain." PLoS computational biology 4.11 
-(2008): e1000211.
+This model is discussed in more details in the ngc-learn
+<a href="https://github.com/NACLab/ngc-learn/blob/main/docs/museum/pc_rao_ballard1999.md">documentation</a>.
 
+```
 Ororbia, Alexander, and Daniel Kifer. "The neural coding framework for learning 
 generative models." Nature communications 13.1 (2022): 2064.
-
-Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a functional interpretation of some extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
 ```
--->
+
 
 and, furthermore, incorporating the sparse kurtotic prior (over neural activities) from:
 
@@ -29,6 +27,19 @@ Olshausen, Bruno A., and David J. Field. "Emergence of simple-cell receptive fie
 properties by learning a sparse code for natural images." Nature 381.6583 
 (1996): 607-609.
 ```
+
+
+
+
+<!--
+```
+Friston, Karl. "Hierarchical models in the brain." PLoS computational biology 4.11 
+(2008): e1000211.
+
+
+Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a functional interpretation of some extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
+```
+-->
 
 
 
@@ -60,12 +71,6 @@ properties by learning a sparse code for natural images." Nature 381.6583
 </p>
 
 
-
-
-<!--
-This model is also discussed in the ngc-learn
-<a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_recon.html">documentation</a>.
--->
 
 ## Running the Model's Simulation
 
@@ -111,6 +116,7 @@ lmbda = 0.14 (strength of Laplacian prior enforced over hidden activities)
 eta = 0.005 (learning rate of SGD optimizer embedded w/in each synaptic cable for the M-step)
 batch_size = 100
 ```
+
 
 
 
