@@ -1,4 +1,4 @@
-# Hierarchical Predictive Coding (Rao &amp; Ballard, 1999)
+# Hierarchical Predictive Coding
 
 <b>Version</b>: ngclearn==3.0.0, ngcsimlib==3.0.0 <!--2.0.0 1.0.0 -->
 
@@ -7,27 +7,8 @@ for the task of reconstruction. This model is effectively a variant that embodie
 characteristics across several classical efforts, such as:
 
 ```
-Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a functional interpretation of some extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
-```
-
-<!--
-```
-Friston, Karl. "Hierarchical models in the brain." PLoS computational biology 4.11 
-(2008): e1000211.
-
-Ororbia, Alexander, and Daniel Kifer. "The neural coding framework for learning 
-generative models." Nature communications 13.1 (2022): 2064.
-
-Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a functional interpretation of some extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
-```
--->
-
-and, furthermore, incorporating the sparse kurtotic prior (over neural activities) from:
-
-```
-Olshausen, Bruno A., and David J. Field. "Emergence of simple-cell receptive field 
-properties by learning a sparse code for natural images." Nature 381.6583 
-(1996): 607-609.
+Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a
+functional interpretation of some extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
 ```
 
 
@@ -45,25 +26,56 @@ properties by learning a sparse code for natural images." Nature 381.6583
 </table>
 
 
+This model is discussed in more details in the ngc-learn
+<a href="https://github.com/NACLab/ngc-learn/blob/main/docs/museum/pc_rao_ballard1999.md">documentation</a>.
+
+
 <p align="center">
-  <img src="fig/level2_receptive_fields.png" width="500">
-  <img src="fig/level1_receptive_fields.png" width="500">
+  <img src="fig/level2_receptive_fields.png" width="300">
+  <img src="fig/level1_receptive_fields.png" width="300">
+  <img src="fig/ECRF.png" width="250">
   <br>
   <figcaption><em>
     Figure 1: Receptive field weighting profiles (Learned synaptic weights) 
     (left) RF profiles of level-2 feedforward model neurons 
-    (right) RF profiles of level-1 feedforward model neurons, 
+    (middle) RF profiles of level-1 feedforward model neurons, 
     Resembling classical oriented-edge/bar detectors characteristic of simple cells.
+    (right) RF profiles of level-1 feedforward model neurons for extra-classical receptive fields effect.
   </em></figcaption>
 </p>
 
 
+```
+Ororbia, Alexander, and Daniel Kifer. "The neural coding framework for learning 
+generative models." Nature communications 13.1 (2022): 2064.
+```
+
+
+and, furthermore, incorporating the sparse kurtotic prior (over neural activities) from:
+
+```
+Olshausen, Bruno A., and David J. Field. "Emergence of simple-cell receptive field 
+properties by learning a sparse code for natural images." Nature 381.6583 
+(1996): 607-609.
+```
+
+This model is discussed in more details in the ngc-learn
+<a href="https://github.com/NACLab/ngc-learn/blob/main/docs/museum/sparse_coding.md">documentation</a>.
+
 
 
 <!--
-This model is also discussed in the ngc-learn
-<a href="https://ngc-learn.readthedocs.io/en/latest/museum/pcn_recon.html">documentation</a>.
+```
+Friston, Karl. "Hierarchical models in the brain." PLoS computational biology 4.11 
+(2008): e1000211.
+
+
+Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual cortex: a functional interpretation of some extra-classical receptive-field effects." Nature neuroscience 2.1 (1999): 79-87.
+```
 -->
+
+
+
 
 ## Running the Model's Simulation
 
@@ -109,6 +121,10 @@ lmbda = 0.14 (strength of Laplacian prior enforced over hidden activities)
 eta = 0.005 (learning rate of SGD optimizer embedded w/in each synaptic cable for the M-step)
 batch_size = 100
 ```
+
+
+
+
 
 
 
