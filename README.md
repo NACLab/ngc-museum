@@ -53,7 +53,9 @@ For those contributing models/algorithms in either the `exhibitors/` or `exhibit
 6. Sparse identification of nonlinear dynamics (SINDy): <br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/sindy">Model</a>, 
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sindy.html">Walkthrough / Tutorial</a> 
-7. NeuralODE / Deep learning-driven model discovery (DeepMod): <br> 
+7. Self-organizing (Kohonen) map (SOM): <br>
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/som">Model</a> 
+8. NeuralODE / Deep learning-driven model discovery (DeepMod): <br> 
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/DeepMoD_PC">Model</a>
 <!--
 8. A forward-only neural predictor trained via signal propagation:
