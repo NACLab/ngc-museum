@@ -14,6 +14,22 @@ from ngclearn.utils.distribution_generator import DistributionGenerator as dist
 ## an SOM in ngc-learn is really a special kind of synaptic transform
 from ngclearn.components.synapses.competitive.SOMSynapse import SOMSynapse
 
+"""
+################################################################################
+Self-Organizing Map Exhibit File:
+
+Adapts a self-organizing map (SOM) model to images pulled from the MNIST 
+database. Note that an ngc-learn implementation of the SOM assumes online 
+learning (one sample presented to the model at a time, iteratively). 
+
+Usage:
+$ python fit_som.py --dataX="/path/to/train_patterns.npy" --n_epochs=5 \
+                    --verbosity=0
+
+@author: The Neural Adaptive Computing Laboratory
+################################################################################
+"""
+
 ################################################################################
 ## read in general program arguments
 options, remainder = gopt.getopt(
@@ -47,7 +63,8 @@ sample_dim = int(jnp.sqrt(in_dim))
 
 dkey = random.PRNGKey(seed)
 dkey, *subkeys = random.split(dkey, 3)
-## set up a single layer SOM
+## set up a single layer SOM 
+### NOTE: the ngc-learn SOM only operates online (1 pattern at a time)
 with Context("som_ctx") as som_ctx:
     som = SOMSynapse(
         name="a",

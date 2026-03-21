@@ -75,3 +75,6 @@ neighbor_function = "gaussian" (neighborhood function to weight around BMU)
 eta = 0.5 (initial global learning rate, e.g., alpha)
 ```
 
+Note: This implementation of the SOM assumes it adapts online/iteratively; thus, this format 
+will operate only with samples presented to the model one at a time. 
+
