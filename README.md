@@ -54,7 +54,7 @@ For those contributing models/algorithms in either the `exhibitors/` or `exhibit
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/sindy">Model</a>, 
    <a href="https://ngc-learn.readthedocs.io/en/latest/museum/sindy.html">Walkthrough / Tutorial</a> 
 7. Self-organizing (Kohonen) map (SOM): <br>
-   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/som">Model</a> 
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/self_organizing_map">Model</a> 
 8. NeuralODE / Deep learning-driven model discovery (DeepMod): <br> 
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/DeepMoD_PC">Model</a>
 <!--
