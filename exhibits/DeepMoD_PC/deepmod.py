@@ -338,7 +338,7 @@ class DeepMoD():
         self.E1.weights.set(self.W1.weights.get().T)
         self.E2.weights.set(self.W2.weights.get().T)
 
-        self.reset_process.run()
+        self.reset_process.run(batch_size=len(input))
         self.clamps(input, target)
 
         # self.model._process(jnp.array([[self.dt * i, self.dt] for i in range(self.T)]))
