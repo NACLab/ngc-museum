@@ -168,17 +168,15 @@ if n_samples > 0:
     print("-> Fitting model to only {} samples".format(n_samples))
 
 n_batch_train = x_train.shape[0] // mb_size
-n_batch_test = x_test.shape[0] // mb_size
 ptrs_ = random.permutation(subkeys[1], x_test.shape[0])
 X_test = x_test[ptrs_, :]
 
 for i in range(n_iter):
+    X = x_train
     # ════════════════════  shuffle   ═════════════════════
     if shuffle:
         ptrs = random.permutation(subkeys[0], x_train.shape[0])
         X = x_train[ptrs, :]
-    else:
-        X = x_train
 
     # ═══════════════════════════════════════════════════════════════════════════
     n_seen = 0
@@ -206,37 +204,19 @@ for i in range(n_iter):
             end="", flush=True
         )
 
-    # ═══════════════════════════════════════════════════════════════════════════
+    #############################################################################
     if (i+1) % iter_mod == 0:
+        # ═══════════════════   test phase  ════════════════════
+        xb_test = X_test[:mb_vis_size, :]
+        ##################   infer test data
+        Xb_mu = model.process(xb_test, adapt_synapses=False)
+        ##################   test metric display
+        print(f"│ Test-Loss: {model.e0.L.get() / mb_vis_size :>7.4f}   │ \n")
+        ##################   show test reconstruction
+        model.viz_recons(X_test=xb_test, Xmu_test=Xb_mu, image_shape=image_shape, fname=f"recons_t{i+1}")
+
         # ═══════════════════   L1 Synaptic Filters Display  ════════════════════
         model.viz_receptive_fields(max_n_vis=mb_vis_size, fname=f"erf_t{i+1}")
-
-
-        ## ════════════════════════════════════════════════════════════════════
-        ##################   test phase
-        X_vis_test = X_test[:mb_vis_size, :]
-
-        test_loss = 0
-        for nb_t in range(n_batch_test):
-            # ════════════════════  get data batch  ═════════════════════
-            mb_t = nb_t * mb_size
-            xb_test = X_test[mb_t:mb_t + mb_size, :]  # Extract batch: (B | ax, ay)
-
-            # ═══════════════════ Infer Test Data ══════════════════════
-            Xbt_mu = model.process(xb_test, adapt_synapses=False)
-
-            # ════════════════════  Test Metric  ═════════════════════
-            test_loss += model.e0.L.get()
-
-        ## ═══════════════════  Test Metrics Display  ════════════════════
-        print(f"│ Test-Loss: {test_loss / len(X_test):>7.4f}  ",
-              f"│\n")
-        ## ═══════════════════ Show Test Reconstruction  ════════════════════
-        model.viz_recons(X_test=xb_test,
-                         Xmu_test=Xbt_mu,
-                         image_shape=image_shape,
-                         fname=f"recons_t{i+1}")
-
         ## ═════════════════════════ Save current state of synapses to disk  ═════════════════════════
         model.save_to_disk(params_only=True)    ## save final state of synapses to disk
 
