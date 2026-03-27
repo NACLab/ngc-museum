@@ -71,9 +71,9 @@ with Context("som_ctx") as som_ctx:
         n_inputs=in_dim,
         n_units_x=15, ## square height = 15
         n_units_y=15, ## square width = 15
-        eta=0.5, ## initial learning-rate (alpha)
+        eta=0.05, ## initial learning-rate (alpha)
         distance_function="euclidean",
-        neighbor_function="gaussian", 
+        neighbor_function="ricker", 
         weight_init=dist.uniform(0., 1.),
         key=subkeys[0]
     )
