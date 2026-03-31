@@ -599,7 +599,7 @@ class HierarchicalPredictiveCoding():
 
         # ═══════════════════════════════════════════════════════════
         ## reset/set all components to their resting values / initial conditions
-        self.reset_process.run()
+        self.reset_process.run(batch_size=len(obs))
 
         ## Perform several E-steps
         self._advance_process(obs)
