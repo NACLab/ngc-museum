@@ -292,17 +292,17 @@ class HierarchicalPredictiveCoding():
 
                 ## ═════════════════════════════════════════════════════════════════
                 self.reset_process = (MethodProcess(name="reset_process")
-                                >> self.RGC.reset
-                                >> self.z3.reset
-                                >> self.z2.reset
-                                >> self.z1.reset
-                                >> self.z0.reset
-                                >> self.e2.reset
-                                >> self.e1.reset
-                                >> self.e0.reset
-                                >> self.W1.reset
-                                >> self.W2.reset
-                                >> self.W3.reset
+                                >> self.RGC.batched_reset
+                                >> self.z3.batched_reset
+                                >> self.z2.batched_reset
+                                >> self.z1.batched_reset
+                                >> self.z0.batched_reset
+                                >> self.e2.batched_reset
+                                >> self.e1.batched_reset
+                                >> self.e0.batched_reset
+                                >> self.W1.batched_reset
+                                >> self.W2.batched_reset
+                                >> self.W3.batched_reset
                                 )
                 self.advance_process = (MethodProcess(name="advance_process")
                                 >> self.RGC.advance_state
@@ -599,7 +599,7 @@ class HierarchicalPredictiveCoding():
 
         # ═══════════════════════════════════════════════════════════
         ## reset/set all components to their resting values / initial conditions
-        self.reset_process.run()
+        self.reset_process.run(batch_size=len(obs))
 
         ## Perform several E-steps
         self._advance_process(obs)
