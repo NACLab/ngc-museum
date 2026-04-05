@@ -37,6 +37,7 @@ options, remainder = gopt.getopt(
 )
 
 seed = 1234
+batch_size = 4 ## batch size for training; note that the ngc-learn SOM only operates online (1 pattern at a time)
 n_epochs = 5 ## total number passes through dataset
 dataX = "../../data/mnist/dataX.npy"
 exp_dir = "exp_out/" ## experimental output directory
@@ -95,9 +96,10 @@ print(f"SOM.radius(0): {som.radius.get()[0,0]:.5f}  "
 for i in range(n_epochs):
     dkey, *subkeys = random.split(dkey, 3)
     ptrs = random.permutation(subkeys[0], n_samples) ## randomly shuffle data
-    for j in range(n_samples):
+    # for j in range(n_samples):
+    for j in range(0, n_samples - batch_size, batch_size):
         ptr = ptrs[j]
-        x_n = X[ptr:ptr+1, :] ## get data pattern
+        x_n = X[ptr:ptr+batch_size, :] ## get data pattern
 
         ## run SOM simulation step
         reset_process.run()
