@@ -43,8 +43,18 @@ class DC_SNN():
         loadDir: directory to load model from, overrides initialization/model
             object creation if non-None (Default: None)
     """
-    def __init__(self, dkey, in_dim=1, hid_dim=100, T=200, dt=1., exp_dir="exp",
-                 model_name="snn_stdp", loadDir=None, **kwargs):
+    def __init__(
+            self, 
+            dkey, 
+            in_dim=1, 
+            hid_dim=100, 
+            T=200, 
+            dt=1., 
+            exp_dir="exp", 
+            model_name="snn_stdp", 
+            loadDir=None, 
+            **kwargs
+    ):
         self.exp_dir = exp_dir
         self.model_name = model_name
         makedir(exp_dir)
@@ -72,30 +82,73 @@ class DC_SNN():
             with Context("Circuit") as self.circuit:
                 self.z0 = PoissonCell("z0", n_units=in_dim, target_freq=63.75, key=subkeys[0])
                 self.W1 = TraceSTDPSynapse(
-                    "W1", shape=(in_dim, hid_dim), A_plus=Aplus, A_minus=Aminus, eta=1., pretrace_target=0.,
-                    weight_init=DistributionGenerator.uniform(0.0, 0.3), key=subkeys[1]
+                    "W1", 
+                    shape=(in_dim, hid_dim), 
+                    A_plus=Aplus, 
+                    A_minus=Aminus, 
+                    eta=1., 
+                    pretrace_target=0.,
+                    weight_init=DistributionGenerator.uniform(0.0, 0.3), 
+                    key=subkeys[1]
                 )
                 self.z1e = LIFCell(
-                    "z1e", n_units=hid_dim, tau_m=tau_m_e, resist_m=tau_m_e / dt, thr=-52., v_rest=-65.,
-                    v_reset=-60., tau_theta=1e7, theta_plus=0.05, refract_time=5., one_spike=True, key=subkeys[2]
+                    "z1e", 
+                    n_units=hid_dim, 
+                    tau_m=tau_m_e, 
+                    resist_m=tau_m_e / dt, 
+                    thr=-52., 
+                    v_rest=-65.,
+                    v_reset=-60., 
+                    tau_theta=1e7, 
+                    theta_plus=0.05, 
+                    refract_time=5., 
+                    one_spike=True, 
+                    key=subkeys[2]
                 )
                 self.z1i = LIFCell(
-                    "z1i", n_units=hid_dim, tau_m=tau_m_i, resist_m=tau_m_i / dt, thr=-40., v_rest=-60.,
-                    v_reset=-45., tau_theta=0., refract_time=5., one_spike=False, key=subkeys[3]
+                    "z1i", 
+                    n_units=hid_dim, 
+                    tau_m=tau_m_i, 
+                    resist_m=tau_m_i / dt, 
+                    thr=-40., 
+                    v_rest=-60.,
+                    v_reset=-45., 
+                    tau_theta=0., 
+                    refract_time=5., 
+                    one_spike=False, 
+                    key=subkeys[3]
                 )
 
                 # ie -> inhibitory to excitatory; ei -> excitatory to inhibitory
                 #       (eta = 0 means no learning)
                 self.W1ie = StaticSynapse(
-                    "W1ie", shape=(hid_dim, hid_dim),
-                                          weight_init=DistributionGenerator.constant(-120., hollow=True),
-                                          key=subkeys[4])
-                self.W1ei = StaticSynapse(
-                    "W1ei", shape=(hid_dim, hid_dim),
-                    weight_init=DistributionGenerator.constant(22.5, eye=True), key=subkeys[5]
+                    "W1ie", 
+                    shape=(hid_dim, hid_dim),
+                    weight_init=DistributionGenerator.constant(-120., hollow=True),
+                    key=subkeys[4]
                 )
-                self.tr0 = VarTrace("tr0", n_units=in_dim, tau_tr=tau_tr, decay_type="exp", a_delta=0., key=subkeys[6])
-                self.tr1 = VarTrace("tr1", n_units=hid_dim, tau_tr=tau_tr, decay_type="exp", a_delta=0., key=subkeys[7])
+                self.W1ei = StaticSynapse(
+                    "W1ei", 
+                    shape=(hid_dim, hid_dim),
+                    weight_init=DistributionGenerator.constant(22.5, eye=True), 
+                    key=subkeys[5]
+                )
+                self.tr0 = VarTrace(
+                    "tr0", 
+                    n_units=in_dim, 
+                    tau_tr=tau_tr, 
+                    decay_type="exp", 
+                    a_delta=0., 
+                    key=subkeys[6]
+                )
+                self.tr1 = VarTrace(
+                    "tr1", 
+                    n_units=hid_dim, 
+                    tau_tr=tau_tr, 
+                    decay_type="exp", 
+                    a_delta=0., 
+                    key=subkeys[7]
+                )
 
                 self.z0.outputs >> self.W1.inputs
                 self.z1i.s >> self.W1ie.inputs

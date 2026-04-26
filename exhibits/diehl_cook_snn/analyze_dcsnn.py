@@ -50,8 +50,6 @@ model = Model(dkey=dkey, loadDir="exp/")
 #model = load_model("exp/snn_stdp", dt=1., T=200, in_dim=_X.shape[1]) ## load in pre-trained SNN model
 print(model.get_synapse_stats())
 
-print(model.advance_proc.run.compiled.code)
-
 print("****")
 ## save final receptive fields
 print("=> Plotting receptive fields...")
