@@ -47,9 +47,23 @@ class PCN():
 
         save_init: save model at initialization/first configuration time (Default: True)
     """
-    def __init__(self, dkey, in_dim=1, out_dim=1, hid1_dim=128, hid2_dim=64, T=10,
-                 dt=1., tau_m=10., act_fx="tanh", eta=0.001, exp_dir="exp",
-                 model_name="pc_disc", loadDir=None, **kwargs):
+    def __init__(
+            self, 
+            dkey, 
+            in_dim=1, 
+            out_dim=1, 
+            hid1_dim=128, 
+            hid2_dim=64, 
+            T=10,
+            dt=1., 
+            tau_m=10., 
+            act_fx="tanh", 
+            eta=0.001, 
+            exp_dir="exp",
+            model_name="pc_disc", 
+            loadDir=None, 
+            **kwargs
+    ):
         self.exp_dir = exp_dir
         self.model_name = model_name
         self.nodes = None
@@ -72,12 +86,20 @@ class PCN():
             with Context("Circuit") as self.circuit:
                 self.z0 = RateCell("z0", n_units=in_dim, tau_m=0., act_fx="identity")
                 self.z1 = RateCell(
-                    "z1", n_units=hid1_dim, tau_m=tau_m, act_fx=act_fx, prior=("gaussian", 0.),
+                    "z1", 
+                    n_units=hid1_dim, 
+                    tau_m=tau_m, 
+                    act_fx=act_fx, 
+                    prior=("gaussian", 0.),
                     integration_type="euler"
                 )
                 self.e1 = ErrorCell("e1", n_units=hid1_dim)
                 self.z2 = RateCell(
-                    "z2", n_units=hid2_dim, tau_m=tau_m, act_fx=act_fx, prior=("gaussian", 0.),
+                    "z2", 
+                    n_units=hid2_dim, 
+                    tau_m=tau_m, 
+                    act_fx=act_fx, 
+                    prior=("gaussian", 0.),
                     integration_type="euler"
                 )
                 self.e2 = ErrorCell("e2", n_units=hid2_dim)
@@ -85,23 +107,49 @@ class PCN():
                 self.e3 = ErrorCell("e3", n_units=out_dim)
                 ### set up generative/forward synapses
                 self.W1 = HebbianSynapse(
-                    "W1", shape=(in_dim, hid1_dim), eta=eta, weight_init=dist.uniform(low=wlb, high=wub),
-                    bias_init=dist.constant(value=0.), w_bound=0., optim_type=optim_type, sign_value=-1., key=subkeys[4]
+                    "W1", 
+                    shape=(in_dim, hid1_dim), 
+                    eta=eta, 
+                    weight_init=dist.uniform(low=wlb, high=wub),
+                    bias_init=dist.constant(value=0.), 
+                    w_bound=0., 
+                    optim_type=optim_type, 
+                    sign_value=-1., 
+                    key=subkeys[4]
                 )
                 self.W2 = HebbianSynapse(
-                    "W2", shape=(hid1_dim, hid2_dim), eta=eta, weight_init=dist.uniform(low=wlb, high=wub),
-                    bias_init=dist.constant(value=0.), w_bound=0., optim_type=optim_type, sign_value=-1., key=subkeys[5]
+                    "W2", 
+                    shape=(hid1_dim, hid2_dim), 
+                    eta=eta, weight_init=dist.uniform(low=wlb, high=wub),
+                    bias_init=dist.constant(value=0.), 
+                    w_bound=0., 
+                    optim_type=optim_type, 
+                    sign_value=-1., 
+                    key=subkeys[5]
                 )
                 self.W3 = HebbianSynapse(
-                    "W3", shape=(hid2_dim, out_dim), eta=eta, weight_init=dist.uniform(low=wlb, high=wub),
-                    bias_init=dist.constant(value=0.), w_bound=0., optim_type=optim_type, sign_value=-1., key=subkeys[6]
+                    "W3", 
+                    shape=(hid2_dim, out_dim), 
+                    eta=eta, 
+                    weight_init=dist.uniform(low=wlb, high=wub),
+                    bias_init=dist.constant(value=0.), 
+                    w_bound=0., 
+                    optim_type=optim_type, 
+                    sign_value=-1., 
+                    key=subkeys[6]
                 )
                 ## set up feedback/error synapses
                 self.E2 = StaticSynapse(
-                    "E2", shape=(hid2_dim, hid1_dim), weight_init=dist.uniform(low=wlb, high=wub), key=subkeys[4]
+                    "E2", 
+                    shape=(hid2_dim, hid1_dim), 
+                    weight_init=dist.uniform(low=wlb, high=wub), 
+                    key=subkeys[4]
                 )
                 self.E3 = StaticSynapse(
-                    "E3", shape=(out_dim, hid2_dim), weight_init=dist.uniform(low=wlb, high=wub), key=subkeys[5]
+                    "E3", 
+                    shape=(out_dim, hid2_dim), 
+                    weight_init=dist.uniform(low=wlb, high=wub), 
+                    key=subkeys[5]
                 )
 
                 ## wire z0 to e1.mu via W1
@@ -210,31 +258,6 @@ class PCN():
                 self.advance = advance_process
                 self.evolve = evolve_process
                 self.project = project_process
-                
-                #processes = (reset_process, advance_process, evolve_process, project_process)
-
-                #self._dynamic(processes)
-
-    '''
-    def _dynamic(self, processes):## create dynamic commands for circuit
-        vars = self.circuit.get_components("q0", "q1", "q2", "q3", "eq3",
-                                           "Q1", "Q2", "Q3",
-                                           "z0", "z1", "z2", "z3",
-                                           "e1", "e2", "e3",
-                                           "W1", "W2", "W3", "E2", "E3")
-        (self.q0, self.q1, self.q2, self.q3, self.eq3, self.Q1, self.Q2, self.Q3,
-         self.z0, self.z1, self.z2, self.z3, self.e1, self.e2, self.e3, self.W1,
-         self.W2, self.W3, self.E2, self.E3) = vars
-        self.nodes = vars
-
-        reset_proc, advance_proc, evolve_proc, project_proc = processes
-
-        self.circuit.wrap_and_add_command(jit(reset_proc.pure), name="reset")
-        self.circuit.wrap_and_add_command(jit(advance_proc.pure), name="advance")
-        self.circuit.wrap_and_add_command(jit(project_proc.pure), name="project")
-        self.circuit.wrap_and_add_command(jit(evolve_proc.pure), name="evolve")
-    '''
-
 
     def clamp_input(self, x):
         self.z0.j.set(x)
@@ -269,14 +292,6 @@ class PCN():
         Args:
             model_directory: directory/path to saved model parameter/config values
         """
-        # print(" > Loading model from ",model_directory)
-        # with Context("Circuit") as self.circuit:
-        #     self.circuit.load_from_dir(model_directory)
-            # processes = (
-            #     self.circuit.reset_process, self.circuit.advance_process,
-            #     self.circuit.evolve_process, self.circuit.project_process
-            # )
-            # self._dynamic(processes)
         self.circuit = Context.load(directory=model_directory, module_name=self.model_name)
         processes = self.circuit.get_objects_by_type("process") ## obtain all saved processes within this context
         self.advance = processes.get("advance_process")
@@ -355,7 +370,8 @@ class PCN():
             if adapt_synapses == True:
                 #self.circuit.evolve(t=self.T, dt=1.)
                 self.evolve.run(t=self.T, dt=1.)
-        ## skip E/M steps if just doing test-time inference
+        ## skip E/M steps if just doing test-time inference (we just project)
+
         return y_mu_inf, y_mu, EFE
 
     def get_latents(self):
