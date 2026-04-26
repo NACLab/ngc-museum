@@ -114,26 +114,36 @@ class SparseCoding():
         else:
             with Context("Circuit") as self.circuit:
                 self.z1 = RateCell(
-                    "z1", n_units=hid_dim, tau_m=tau_m, act_fx=act_fx, prior=(prior_type, lmbda),
-                    threshold=(threshold_type, lmbda), integration_type="euler", key=subkeys[0], batch_size=batch_size
+                    "z1", 
+                    n_units=hid_dim, 
+                    tau_m=tau_m, 
+                    act_fx=act_fx, 
+                    prior=(prior_type, lmbda),
+                    threshold=(threshold_type, lmbda), 
+                    integration_type="euler", 
+                    key=subkeys[0], 
+                    batch_size=batch_size
                 )
                 self.e0 = ErrorCell("e0", n_units=in_dim, batch_size=batch_size)
                 self.W1 = HebbianSynapse(
-                    "W1", shape=(hid_dim, in_dim), eta=eta_w, weight_init=DistributionGenerator.fan_in_gaussian(),
-                    bias_init=None, w_bound=0., optim_type="sgd", sign_value=-1., key=subkeys[1], batch_size=batch_size
+                    "W1", 
+                    shape=(hid_dim, in_dim), 
+                    eta=eta_w, weight_init=DistributionGenerator.fan_in_gaussian(),
+                    bias_init=None, 
+                    w_bound=0., 
+                    optim_type="sgd", 
+                    sign_value=-1., 
+                    key=subkeys[1], 
+                    batch_size=batch_size
                 )
                 self.E1 = DenseSynapse(
-                    "E1", shape=(in_dim, hid_dim), weight_init=DistributionGenerator.uniform(-0.2, 0.2), #dist.uniform(-0.2, 0.2),
-                    resist_scale=1., key=subkeys[2], batch_size=batch_size
+                    "E1", 
+                    shape=(in_dim, hid_dim), 
+                    weight_init=DistributionGenerator.uniform(-0.2, 0.2),
+                    resist_scale=1., 
+                    key=subkeys[2], 
+                    batch_size=batch_size
                 )
-                '''
-                ## since this model will operate with batches, we need to
-                ## configure its batch-size here before compiling with the loop-scan
-                self.e0.batch_size = batch_size
-                self.z1.batch_size = batch_size
-                self.W1.batch_size = batch_size
-                self.E1.batch_size = batch_size
-                '''
 
                 ## wire z1.zF to e0.mu via W1
                 self.z1.zF >> self.W1.inputs
