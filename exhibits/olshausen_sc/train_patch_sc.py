@@ -66,6 +66,7 @@ dkey = random.PRNGKey(1234)
 dkey, *subkeys = random.split(dkey, 6)
 
 _X = jnp.load(dataX)
+print(f"=> Data X.shape {_X.shape}")
 if n_samples > 0:
     _X = _X[0:n_samples,:]
     print("-> Fitting model to only {} samples".format(n_samples))

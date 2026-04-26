@@ -67,8 +67,19 @@ class SparseCoding():
             configuration on disk (default: None)
     """
     # Define Functions
-    def __init__(self, dkey, in_dim, hid_dim=100, T=200, dt=1., batch_size=1,
-                 model_type="sc_cauchy", exp_dir="exp", load_dir=None, **kwargs):
+    def __init__(
+            self, 
+            dkey, 
+            in_dim, 
+            hid_dim=100, 
+            T=200, 
+            dt=1., 
+            batch_size=1, 
+            model_type="sc_cauchy", 
+            exp_dir="exp", 
+            load_dir=None, 
+            **kwargs
+    ):
         model_name = model_type
         dkey, *subkeys = random.split(dkey, 10)
         self.exp_dir = exp_dir
@@ -104,23 +115,25 @@ class SparseCoding():
             with Context("Circuit") as self.circuit:
                 self.z1 = RateCell(
                     "z1", n_units=hid_dim, tau_m=tau_m, act_fx=act_fx, prior=(prior_type, lmbda),
-                    threshold=(threshold_type, lmbda), integration_type="euler", key=subkeys[0]
+                    threshold=(threshold_type, lmbda), integration_type="euler", key=subkeys[0], batch_size=batch_size
                 )
-                self.e0 = ErrorCell("e0", n_units=in_dim)
+                self.e0 = ErrorCell("e0", n_units=in_dim, batch_size=batch_size)
                 self.W1 = HebbianSynapse(
-                    "W1", shape=(hid_dim, in_dim), eta=eta_w, weight_init=DistributionGenerator.fan_in_gaussian(), #dist.fan_in_gaussian(),
-                    bias_init=None, w_bound=0., optim_type="sgd", sign_value=-1., key=subkeys[1]
+                    "W1", shape=(hid_dim, in_dim), eta=eta_w, weight_init=DistributionGenerator.fan_in_gaussian(),
+                    bias_init=None, w_bound=0., optim_type="sgd", sign_value=-1., key=subkeys[1], batch_size=batch_size
                 )
                 self.E1 = DenseSynapse(
                     "E1", shape=(in_dim, hid_dim), weight_init=DistributionGenerator.uniform(-0.2, 0.2), #dist.uniform(-0.2, 0.2),
-                    resist_scale=1., key=subkeys[2]
+                    resist_scale=1., key=subkeys[2], batch_size=batch_size
                 )
+                '''
                 ## since this model will operate with batches, we need to
                 ## configure its batch-size here before compiling with the loop-scan
                 self.e0.batch_size = batch_size
                 self.z1.batch_size = batch_size
                 self.W1.batch_size = batch_size
                 self.E1.batch_size = batch_size
+                '''
 
                 ## wire z1.zF to e0.mu via W1
                 self.z1.zF >> self.W1.inputs
@@ -166,7 +179,7 @@ class SparseCoding():
             params_only: if True, save only param arrays to disk (and not JSON sim/model structure)
         """
         if params_only:
-            model_dir = "{}/{}/custom".format(self.exp_dir, self.model_name)
+            model_dir = f"{self.exp_dir}/{self.model_name}/component/custom"
             self.W1.save(model_dir)
         else:
             self.circuit.save_to_json(self.exp_dir, model_name=self.model_name, overwrite=True)
@@ -249,17 +262,19 @@ class SparseCoding():
         ## pin/tie feedback synapses to transpose of forward ones
         self.E1.weights.set(jnp.transpose(self.W1.weights.get()))
         self.reset.run() ## reset/set all components to their resting values / initial conditions
+
         ## Perform several E-steps
         self.clamp(obs) ## clamp data to z0
         inputs = jnp.array(self.advance.pack_rows(self.T, t=lambda x: x, dt=self.dt))
         stateManager.state, outputs = self.advance.scan(inputs)
+        
         ## Perform (optional) M-step (scheduled synaptic updates)
         if adapt_synapses:
             self.evolve.run(t=(self.T + 1) * self.dt, dt=self.dt) ## run synaptic alteration
             self.norm() ## post-update synaptic normalization step
         ########################################################################
 
-        ## Post-processing / probing desired model outputs
+        ## Post-process / probe desired model outputs
         obs_mu = self.e0.mu.get()  ## get settled prediction
         L0 = self.e0.L.get()  ## calculate prediction loss
 
