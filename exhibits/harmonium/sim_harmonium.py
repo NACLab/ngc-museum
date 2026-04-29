@@ -154,9 +154,12 @@ for i in range(n_iter): ## for every epoch
     energy, error, xR = eval_model(_devX, model, dev_batch_size, store_recon=get_recon)
     delta_energy = jnp.abs(energy - energy_im1) ## calc abs(delta energy)
     energy_im1 = energy
+    if verbosity > 0:
+        print()
     print(
-        f"{i}| Dev:  |d.E(X)| = {delta_energy:.4f}  err(X) = {error:.4f}"
+        f"\r{i}/{n_iter} | Dev: d.E(X)| = {delta_energy:.4f}  err(X) = {error:.4f}", end=""
     )
+print()
 ################################################################################
 model.save_to_disk(params_only=True) ## save final model to disk
 

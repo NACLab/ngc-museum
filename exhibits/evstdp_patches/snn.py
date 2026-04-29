@@ -58,14 +58,35 @@ class SNN():
         else:
             with Context("Circuit") as self.circuit:
                 self.z0 = BernoulliCell("z0", n_units=in_dim, key=subkeys[0])
-                self.k0 = ExpKernel("k0", n_units=in_dim, tau_w=0.5, nu=4., dt=dt, key=subkeys[1])
+                self.k0 = ExpKernel(
+                    "k0", 
+                    n_units=in_dim, 
+                    tau_w=0.5, 
+                    nu=4., 
+                    dt=dt, 
+                    key=subkeys[1]
+                )
                 self.W1 = EventSTDPSynapse(
-                    "W1", shape=(in_dim, hid_dim), eta=eta_w, lmbda=0.01, w_bound=1., presyn_win_len=3.,
-                    weight_init=DistributionGenerator.uniform(0.025, 0.8), resist_scale=1., key=subkeys[2]
+                    "W1", 
+                    shape=(in_dim, hid_dim), 
+                    eta=eta_w, 
+                    lmbda=0.01, 
+                    w_bound=1., 
+                    presyn_win_len=3.,
+                    weight_init=DistributionGenerator.uniform(0.025, 0.8), 
+                    resist_scale=1., 
+                    key=subkeys[2]
                 )
                 self.z1 = WTASCell(
-                    "z1", n_units=hid_dim, tau_m=tau_m, resist_m=1., thr_base=thrBase, thr_gain=thr_gain,
-                    refract_time=5., thr_jitter=0.055, key=subkeys[3]
+                    "z1", 
+                    n_units=hid_dim, 
+                    tau_m=tau_m, 
+                    resist_m=1., 
+                    thr_base=thrBase, 
+                    thr_gain=thr_gain,
+                    refract_time=5., 
+                    thr_jitter=0.055, 
+                    key=subkeys[3]
                 )
 
                 ## wire z0 to z1e via W1 and z1i to z1e via W1ie
@@ -197,3 +218,4 @@ class SNN():
             stateManager.state, outputs = self.advance_proc.scan(inputs)
         spike_out = outputs[0]
         return spike_out
+
