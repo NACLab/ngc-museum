@@ -68,7 +68,6 @@ maze = RatMaze(
 maze.reset()
 import matplotlib.pyplot as plt
 state0 = maze.render(raw_env_pixels=True)
-print("SAVE")
 plt.imsave("ratmaze.png", state0, cmap='gray')
 plt.close()
 

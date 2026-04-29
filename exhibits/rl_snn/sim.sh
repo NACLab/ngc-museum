@@ -12,7 +12,7 @@ do
    echo ">> Running trial $i for SNN agent <<"
    CUDA_VISIBLE_DEVICES=$gpu_id python sim_ratmaze.py --seed=$i --is_random=False \
 	                                                    --results_dir=$results_dir --is_verbose=True
-	 echo ">> Running trial $i for Random agent <<"
+   echo ">> Running trial $i for Random agent <<"
    CUDA_VISIBLE_DEVICES=$gpu_id python sim_ratmaze.py --seed=$i --is_random=True \
 	                                                    --results_dir=$results_dir --is_verbose=True
    trial_id=$((trial_id+1)) # update trial identifier for next experiment
@@ -23,3 +23,4 @@ echo ">> Plotting results to disk..."
 seed_string="${seed_array[*]}"
 python plot_results.py --result_type="returns" --results_dir=$results_dir --seeds="$seed_string"
 python plot_results.py --result_type="completes" --results_dir=$results_dir --seeds="$seed_string"
+
