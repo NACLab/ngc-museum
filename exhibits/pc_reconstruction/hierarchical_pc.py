@@ -292,17 +292,17 @@ class HierarchicalPredictiveCoding():
 
                 ## ═════════════════════════════════════════════════════════════════
                 self.reset_process = (MethodProcess(name="reset_process")
-                                >> self.RGC.batched_reset
-                                >> self.z3.batched_reset
-                                >> self.z2.batched_reset
-                                >> self.z1.batched_reset
-                                >> self.z0.batched_reset
-                                >> self.e2.batched_reset
-                                >> self.e1.batched_reset
-                                >> self.e0.batched_reset
-                                >> self.W1.batched_reset
-                                >> self.W2.batched_reset
-                                >> self.W3.batched_reset
+                                >> self.RGC.reset
+                                >> self.z3.reset
+                                >> self.z2.reset
+                                >> self.z1.reset
+                                >> self.z0.reset
+                                >> self.e2.reset
+                                >> self.e1.reset
+                                >> self.e0.reset
+                                >> self.W1.reset
+                                >> self.W2.reset
+                                >> self.W3.reset
                                 )
                 self.advance_process = (MethodProcess(name="advance_process")
                                 >> self.RGC.advance_state
@@ -340,7 +340,25 @@ class HierarchicalPredictiveCoding():
         self.W2.batch_size = batch_size
         self.W1.batch_size = batch_size
 
+        # Viet: Simply setting the batch size of the components
+        #  does not change the shape of the compartment values, we need
+        #  to reinitialize the compartment values to reflect the new batch size dimension
+        self.RGC.reset()
+        self.z3.reset()
+        self.z2.reset()
+        self.z1.reset()
+        self.z0.reset()
+        self.e2.reset()
+        self.e1.reset()
+        self.e0.reset()
+        self.W1.reset()
+        self.W2.reset()
+        self.W3.reset()
+
+        # print(f"batch setup: {self.RGC.inputs.get().shape}")
+
     def clamp_stimuli(self, x):
+        # print(f"clamp_stimuli: x shape: {x.shape}, RGC input shape: {self.RGC.inputs.get().shape}")
         self.RGC.inputs.set(x)
 
     def norm(self):
@@ -387,15 +405,18 @@ class HierarchicalPredictiveCoding():
             self.advance_process = processes.get("advance_process")
             self.reset_process = processes.get("reset_process")
             self.evolve_process = processes.get("evolve_process")
-            W3, W2, W1, e2, e1, e0, z3, z2, z1 = self.circuit.get_components(
-                "W3", "W2", "W1",
+            RGC, W3, W2, W1, e2, e1, e0, z3, z2, z1 = self.circuit.get_components(
+                "RGC", "W3", "W2", "W1",
                 "e2", "e1", "e0",
                 "z3", "z2", "z1"
             )
+
+            self.RGC = RGC
             self.W3, self.W2, self.W1 = (W3, W2, W1)
             self.z3, self.z2, self.z1 = (z3, z2, z1)
             self.e2, self.e1, self.e0 = (e2, e1, e0)
             self.batch_setup()
+            # print(f"after loading: bs: {self.batch_size}. rgc bs: {self.RGC.outputs.get().shape}")
 
     def get_synapse_stats(self, W_id='W1'):
         """
@@ -597,9 +618,11 @@ class HierarchicalPredictiveCoding():
             # print(" > [PC_Recon] First process call - model components reset to set batch size.")
             # print(f"\t obs shape: {obs.shape}, e0bs: {self.e0.batch_size} e0 dtarget shape: {self.e0.dtarget.get().shape}, e0 dmu shape: {self.e0.dmu.get().shape}, e0 target shape: {self.e0.target.get().shape}")
 
+        # print(f"obs.shape: {obs.shape}")
+
         # ═══════════════════════════════════════════════════════════
         ## reset/set all components to their resting values / initial conditions
-        self.reset_process.run(batch_size=len(obs))
+        self.reset_process.run()
 
         ## Perform several E-steps
         self._advance_process(obs)
