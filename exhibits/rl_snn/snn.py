@@ -95,42 +95,95 @@ class SNN():
             z0 = PoissonCell("z0", n_units=in_dim, target_freq=127.5, key=subkeys[0])
             ## input-to-hidden synapses
             W1 = StaticSynapse(
-                "W1", shape=(in_dim, n_hid), weight_init=DistributionGenerator.uniform(-1., 1.),
-                resist_scale=4., key=subkeys[0]
+                "W1", 
+                shape=(in_dim, n_hid), 
+                weight_init=DistributionGenerator.uniform(-1., 1.),
+                resist_scale=4., 
+                key=subkeys[0]
             )
-            W1.weights.set(init_sparse_syn(subkeys[0], W1.weights.get().shape, n_minus, n_plus))  # jnp.sign(W1.weights.value))
+            W1.weights.set(
+                init_sparse_syn(subkeys[0], W1.weights.get().shape, n_minus, n_plus)
+            )  # jnp.sign(W1.weights.value))
             V1 = StaticSynapse( ## lateral inhibitory synapses for feature layer
-                "V1", shape=(n_hid, n_hid), weight_init=DistributionGenerator.constant(1., hollow=True),
-                resist_scale=-inhR, key=subkeys[1]
+                "V1", 
+                shape=(n_hid, n_hid), 
+                weight_init=DistributionGenerator.constant(1., hollow=True),
+                resist_scale=-inhR, 
+                key=subkeys[1]
             )
             #V1.weights.set(V1.weights.value * random.uniform(subkeys[1], shape=(n_hid, n_hid), minval=0.4, maxval=1.))
             z1 = LIFCell( ## projection/hidden layer
-                "z1", n_units=n_hid, tau_m=tau_m_e, resist_m=1., v_decay=1., thr=-52., v_rest=-65., v_reset=-65.,
-                eps_scale=lif_noise_eps, tau_theta=tau_theta, theta_plus=theta_plus, refract_time=0., enforce_wta=False,
+                "z1", 
+                n_units=n_hid, 
+                tau_m=tau_m_e, 
+                resist_m=1., 
+                v_decay=1., 
+                thr=-52., 
+                v_rest=-65., 
+                v_reset=-65.,
+                eps_scale=lif_noise_eps, 
+                tau_theta=tau_theta, 
+                theta_plus=theta_plus, 
+                refract_time=0., 
+                enforce_wta=False,
                 v_min=None, key=subkeys[2]
             )
             ## hidden-to-place synapses
             V2 = StaticSynapse( ## lateral inhibitory synapses for control layer
-                "V2", shape=(out_dim, out_dim), weight_init=DistributionGenerator.constant(1., hollow=True),
-                resist_scale=-inhR2, key=subkeys[3]
+                "V2", 
+                shape=(out_dim, out_dim), 
+                weight_init=DistributionGenerator.constant(1., hollow=True),
+                resist_scale=-inhR2, 
+                key=subkeys[3]
             )
             #V2.weights.set(V2.weights.value * random.uniform(subkeys[3], shape=(out_dim, out_dim), minval=0.4, maxval=1.))
             W2 = MSTDPETSynapse(
-                "W2", shape=(n_hid, out_dim), A_plus=Aplus2, A_minus=Aminus2, tau_elg=tau_e2, eta=nu2, tau_w=tau_w2,
-                pretrace_target=x_tar2, weight_init=DistributionGenerator.uniform(0.01, w_max_init), resist_scale=1.,
+                "W2", 
+                shape=(n_hid, out_dim), 
+                A_plus=Aplus2, 
+                A_minus=Aminus2, 
+                tau_elg=tau_e2, 
+                eta=nu2, 
+                tau_w=tau_w2,
+                pretrace_target=x_tar2, 
+                weight_init=DistributionGenerator.uniform(0.01, w_max_init), 
+                resist_scale=1.,
                 w_bound=1., key=subkeys[4]
             )
             z2 = LIFCell(
-                "z2", n_units=out_dim, tau_m=tau_m_e, resist_m=1., v_decay=1., thr=-52., v_rest=-65., v_reset=-65.,
-                eps_scale=lif_noise_eps, tau_theta=tau_theta, theta_plus=theta_plus, refract_time=0., enforce_wta=False,
+                "z2", 
+                n_units=out_dim, 
+                tau_m=tau_m_e, 
+                resist_m=1., 
+                v_decay=1., 
+                thr=-52., 
+                v_rest=-65., 
+                v_reset=-65.,
+                eps_scale=lif_noise_eps, 
+                tau_theta=tau_theta, 
+                theta_plus=theta_plus, 
+                refract_time=0., 
+                enforce_wta=False,
                 v_min=None, key=subkeys[5]
             )
             ## set up traces
             W2_p1_tr = VarTrace( ## pre-synaptic trace for W2
-                "W2_p1_tr", n_units=n_hid, tau_tr=tau_p, decay_type="exp", P_scale=p_minus, a_delta=0., key=subkeys[0]
+                "W2_p1_tr", 
+                n_units=n_hid, 
+                tau_tr=tau_p, 
+                decay_type="exp", 
+                P_scale=p_minus, 
+                a_delta=0., 
+                key=subkeys[0]
             )
             W2_p2_tr = VarTrace( ## post-synaptic trace for W2
-                "W2_p2_tr", n_units=out_dim, tau_tr=tau_p, decay_type="exp", P_scale=p_minus, a_delta=0., key=subkeys[0]
+                "W2_p2_tr", 
+                n_units=out_dim, 
+                tau_tr=tau_p, 
+                decay_type="exp", 
+                P_scale=p_minus, 
+                a_delta=0., 
+                key=subkeys[0]
             )
 
             ## wire z0 to z1
