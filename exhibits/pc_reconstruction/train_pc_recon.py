@@ -3,7 +3,7 @@ import os
 from ngclearn import Context, numpy as jnp
 from hierarchical_pc import HierarchicalPredictiveCoding
 import sys, getopt as gopt, optparse, time
-from ngclearn.components.input_encoders.ganglionCell import create_patches
+from ngclearn.components.input_encoders.ganglionCell import _create_patches
 
 import sympy
 
@@ -128,8 +128,8 @@ dt = 1.
 
 ## ══════════════════════════════════════════════════════════════════════════
 ## split the full image into local views for retinal ganglion cells local receptive fields
-x_train = create_patches(img_train, patch_shape=area_shape, step_shape=area_shape) ### shape: (N | n_areas | (area_shape))
-x_test = create_patches(img_test, patch_shape=area_shape, step_shape=area_shape)   ### shape: (N | n_areas | (area_shape))
+x_train = _create_patches(img_train, patch_shape=area_shape, step_shape=area_shape) ### shape: (N | n_areas | (area_shape))
+x_test = _create_patches(img_test, patch_shape=area_shape, step_shape=area_shape)   ### shape: (N | n_areas | (area_shape))
 
 x_train = x_train.reshape(-1, *area_shape)                                      ### shape: (n_total_obs | (area_shape))
 x_test = x_test.reshape(-1, *area_shape)                                        ### shape: (n_total_obs | (area_shape))
