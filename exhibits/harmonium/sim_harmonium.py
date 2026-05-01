@@ -119,6 +119,7 @@ visualize([xR[0:100, :].T], [(px, py)], model.exp_dir + "/filters/{}".format("re
 
 energy_im1 = energy ## energy(i-1)
 n_batches = int(X.shape[0]/train_batch_size)
+epoch_times = []
 for i in range(n_iter): ## for every epoch
     error_i = 0.
     dkey, *subkeys = random.split(dkey, 3)
@@ -129,6 +130,7 @@ for i in range(n_iter): ## for every epoch
     Ns = 0.
     sptr = 0
     eptr = train_batch_size
+    epoch_time = time.time()
     for n in range(n_batches): ## for every batch w/in the epoch
         x_n = _X[sptr:eptr, :]
         Ns += (eptr - sptr)
@@ -143,6 +145,8 @@ for i in range(n_iter): ## for every epoch
             print(f"\r {i}| Train: err(X) = {error_i/Ns:.4f}  ({int(Ns)} samples)", end="")
     #model.gibbs_chain_states = None
     error_i = error_i/Ns
+    epoch_time = time.time() - epoch_time
+    epoch_times.append(epoch_time)
     if verbosity > 0:
         print()
     
@@ -157,10 +161,12 @@ for i in range(n_iter): ## for every epoch
     if verbosity > 0:
         print()
     print(
-        f"\r{i}/{n_iter} | Dev: d.E(X)| = {delta_energy:.4f}  err(X) = {error:.4f}", end=""
+        f"\r{i}/{n_iter} | Dev: d.E(X)| = {delta_energy:.4f}  err(X) = {error:.4f}  ({epoch_time:.3f} s)", end=""
     )
 print()
 ################################################################################
+epoch_times = jnp.array(epoch_times)
+print(f">> Epoch.time stats: {jnp.mean(epoch_times):.3f} +/ {jnp.std(epoch_times):.3f}")
 model.save_to_disk(params_only=True) ## save final model to disk
 
 ## visualize harmonium's receptive/projective fields
