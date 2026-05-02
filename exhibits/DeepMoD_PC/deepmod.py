@@ -100,6 +100,7 @@ class DeepMoD():
         self.solver_name = solver_name
         self.nodes = None
         self.threshold = threshold
+        self.batch_size = batch_size
 
         ## meta-parameters for model dynamics
         self.T = T
@@ -161,44 +162,33 @@ class DeepMoD():
 
         with Context(self.model_name) as self.model:
             ############ L3
-            self.z3 = RateCell("z3", n_units=in_dim, tau_m=tau_m , act_fx="identity")
+            self.z3 = RateCell("z3", n_units=in_dim, tau_m=tau_m , act_fx="identity", batch_size=batch_size)
             self.W3 = HebbianSynapse("W3", shape=(in_dim, h2_dim), eta=eta, w_bound=0., sign_value=-1,
-                                     optim_type=opt_type, weight_init=W3_dist, key=subkeys[0]
+                                     optim_type=opt_type, weight_init=W3_dist, key=subkeys[0], batch_size=batch_size
                                      )
             ############ L2
-            self.e2 = GaussianErrorCell("e2", n_units=h2_dim)
+            self.e2 = GaussianErrorCell("e2", n_units=h2_dim, batch_size=batch_size)
             self.z2 = RateCell("z2", n_units=h2_dim, tau_m=tau_m , act_fx=act_fx, omega_0=self.omega_0,
                                                                                         batch_size=batch_size)
 
             self.W2 = HebbianSynapse("W2", shape=(h2_dim, h1_dim), eta=eta, w_bound=0., sign_value=-1,
-                                     optim_type=opt_type, weight_init=W2_dist, key=subkeys[1])
+                                     optim_type=opt_type, weight_init=W2_dist, key=subkeys[1], batch_size=batch_size)
             self.E2 = StaticSynapse("E2", shape=(h1_dim, h2_dim)
                                     )
             ############ L1
-            self.e1 = GaussianErrorCell("e1", n_units=h1_dim)
-            self.z1 = RateCell("z1", n_units=h1_dim, tau_m=tau_m , act_fx="identity")
+            self.e1 = GaussianErrorCell("e1", n_units=h1_dim, batch_size=batch_size)
+            self.z1 = RateCell("z1", n_units=h1_dim, tau_m=tau_m , act_fx="identity", batch_size=batch_size)
             self.W1 = HebbianSynapse("W1", shape=(h1_dim, out_dim), eta=eta, w_bound=0., sign_value=-1,
-                                     optim_type=opt_type, weight_init=W1_dist, key=subkeys[2])
-            self.E1 = StaticSynapse("E1", shape=(out_dim, h1_dim)
+                                     optim_type=opt_type, weight_init=W1_dist, key=subkeys[2], batch_size=batch_size)
+            self.E1 = StaticSynapse("E1", shape=(out_dim, h1_dim), batch_size=batch_size
                                     )
             ############ input
-            self.e0 = GaussianErrorCell("e0", n_units=out_dim
+            self.e0 = GaussianErrorCell("e0", n_units=out_dim, batch_size=batch_size
                                         )
             # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            self.z3.batch_size= batch_size
-            self.z2.batch_size= batch_size
-            self.z1.batch_size = batch_size
+            self.batch_set(self.batch_size)
+            # print(f"init: batch size set to {self.batch_size}")
 
-            self.e2.batch_size = batch_size
-            self.e1.batch_size = batch_size
-            self.e0.batch_size = batch_size
-
-            self.W3.batch_size = batch_size
-            self.W2.batch_size = batch_size
-            self.W1.batch_size = batch_size
-
-            self.E2.batch_size = batch_size
-            self.E1.batch_size = batch_size
             # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             self.z3.zF >> self.W3.inputs
             self.W3.outputs >> self.e2.mu
@@ -317,8 +307,8 @@ class DeepMoD():
 
 
     def batch_set(self, batch_size):
-        self.z3.batch_size= batch_size
-        self.z2.batch_size= batch_size
+        self.z3.batch_size = batch_size
+        self.z2.batch_size = batch_size
         self.z1.batch_size = batch_size
 
         self.e2.batch_size = batch_size
@@ -332,13 +322,26 @@ class DeepMoD():
         self.E2.batch_size = batch_size
         self.E1.batch_size = batch_size
 
+        self.z3.reset()
+        self.z2.reset()
+        self.z1.reset()
+        self.e2.reset()
+        self.e1.reset()
+        self.e0.reset()
+        self.W3.reset()
+        self.W2.reset()
+        self.W1.reset()
+        self.E2.reset()
+        self.E1.reset()
+
 
     def prediction_process(self, input, target):
         self.batch_set(len(input))
         self.E1.weights.set(self.W1.weights.get().T)
         self.E2.weights.set(self.W2.weights.get().T)
 
-        self.reset_process.run(batch_size=len(input))
+        # self.reset_process.run(batch_size=len(input))
+        self.reset_process.run()
         self.clamps(input, target)
 
         # self.model._process(jnp.array([[self.dt * i, self.dt] for i in range(self.T)]))
