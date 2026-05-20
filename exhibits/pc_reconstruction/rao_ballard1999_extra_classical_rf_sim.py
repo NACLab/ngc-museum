@@ -3,7 +3,7 @@ import os
 from ngclearn import numpy as jnp
 from hierarchical_pc import HierarchicalPredictiveCoding
 import sys, getopt as gopt, optparse, time
-from ngclearn.components.input_encoders.ganglionCell import create_patches
+from ngclearn.components.input_encoders.ganglionCell import _create_patches
 
 
 """
@@ -104,7 +104,7 @@ images = images.reshape(-1, *image_shape)
 
 # ═══════════════════════════════════════════════════════════════════════════
 ## split the full image into local views for retinal ganglion cells local receptive fields
-x_train = create_patches(images, patch_shape=area_shape, step_shape=area_shape)  ### shape: (N | n_areas | (area_shape))
+x_train = _create_patches(images, patch_shape=area_shape, step_shape=area_shape)  ### shape: (N | n_areas | (area_shape))
 x_train = x_train.reshape(-1, *area_shape)                                       ### shape: (n_total_obs | (area_shape))
 
 
@@ -132,7 +132,7 @@ model = HierarchicalPredictiveCoding(dkey,
 
 model.save_to_disk()          # NOTE: save initial model parameters to disk, uncomment this line if we are loading a saved model
 model.load_from_disk(exp_dir) # NOTE: uncomment this line and comment the above lines to load a saved model
-print(model.get_synapse_stats())
+model.get_synapse_stats()
 model.viz_receptive_fields(max_n_vis=81, fname="erf_t0")
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -169,7 +169,7 @@ for i in range(n_iter):
         model.save_to_disk(params_only=True)                                ## save final state of synapses to disk
         model.viz_receptive_fields(max_n_vis=81, fname=f"erf_t{(i+1) // iter_mod}")
 
-print(model.get_synapse_stats())
+model.get_synapse_stats()
 
 ## collect a test sample raster plot
 model.save_to_disk(params_only=True) ## save final model parameters to disk
