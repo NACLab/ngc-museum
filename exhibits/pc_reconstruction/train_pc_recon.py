@@ -107,20 +107,6 @@ h2_dim = p2_size * n_p2                        # = 128 × 1  = 128
 h1_dim = p1_size * n_p1                        # =  32 × 3  = 96
 in_dim = pin_size * n_cells                   # = 256 × 3  = 768
 
-# print("tot_patch_per_image is ", tot_patch_per_image)
-# # print("number of input patches is ", n_inPatch)
-# if tot_patch_per_image / n_inPatch != int(tot_patch_per_image / n_inPatch):
-#     print("recommended mb_size and n_inPatch")
-#     input(sympy.factorint(tot_patch_per_image, multiple=True))
-
-
-# if patch_shape == image_shape:    ## Full image case
-#     images_per_batch = mb_size
-# else:                             ## Patch case
-#     n_samples = 1000              ## reduce computational cost
-#     mb_size = tot_patch_per_image // n_inPatch
-#     images_per_batch = 1
-
 ## ══════════════════════════════════════════════════════════════════════════
 ## Energy Dynamics
 T = 30                                      ## number E-steps
@@ -158,7 +144,7 @@ model = HierarchicalPredictiveCoding(dkey,
 
 model.save_to_disk()          # NOTE: save initial model parameters to disk, uncomment this line if we are loading a saved model
 model.load_from_disk(exp_dir) # NOTE: uncomment this line and comment the above lines to load a saved model
-print(model.get_synapse_stats())
+model.get_synapse_stats()
 model.viz_receptive_fields(max_n_vis=mb_vis_size, fname='erf_t0')
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -222,7 +208,7 @@ for i in range(n_iter):
 
 
 ## ═══════════════════ Show Synapses Statistics  ══════════════════════
-print(model.get_synapse_stats())
+model.get_synapse_stats()
 
 ## ═══════════════════ Save Model  ════════════════════════════════════
 ## collect a test sample raster plot

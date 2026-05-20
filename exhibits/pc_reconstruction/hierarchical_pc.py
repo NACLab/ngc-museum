@@ -118,12 +118,13 @@ class HierarchicalPredictiveCoding():
                  tau_m=20,                    ## time constant for latent trajectories
                  act_fx="identity",           ## neural activation function
                  sigma_e2=1., sigma_e1=1., sigma_e0=1.,
-                 r3_prior=("laplacian", 0.),
-                 r2_prior=("laplacian", 0.),
-                 r1_prior=("laplacian", 0.),
+                 r3_prior=(None, 0.),
+                 r2_prior=(None, 0.),
+                 r1_prior=(None, 0.),
                  # ═══════════   Synaptses parameters  ════════════
                  lr=0.05,                    ## M-step learning rate/step-size
                  synaptic_prior=("gaussian", 0.),
+                 w_opt_type="sgd",
                  # ═════════   Experimental parameters ════════════
                  circuit_name = "Circuit",
                  exp_dir="exp",
@@ -176,12 +177,11 @@ class HierarchicalPredictiveCoding():
 
         ## ═════════════════════ Synaptses parameters ═══════════════════
         w_bound = 0.                                                     ## norm constraint value
-        opt_type = "sgd"                                                 ## synaptic (weights) optimization type
+        opt_type = w_opt_type                                            ## synaptic (weights) optimization type
 
         w3_init = dist.gaussian(mean=0., std=jnp.sqrt(2/h3_dim))         ## He initialization for layer-3 synapses
         w2_init = dist.gaussian(mean=0., std=jnp.sqrt(2/h2_dim))         ## He initialization for layer-2 synapses
         w1_init = dist.gaussian(mean=0., std=jnp.sqrt(2/h1_dim))         ## He initialization for layer-1  synapses
-
 
         # ═════════════════════════════════════════════════════════
         if load_dir is not None:
@@ -201,13 +201,16 @@ class HierarchicalPredictiveCoding():
                 self.z0 = RateCell("z0", n_units=in_dim, tau_m=0.)
                 self.e0 = GaussianErrorCell("e0", n_units=in_dim, sigma=sigma_e0)
 
-                self.z1 = RateCell("z1", n_units=h1_dim, tau_m=tau_m, act_fx=act_fx, prior=r1_prior)
+                self.z1 = RateCell("z1", n_units=h1_dim, tau_m=tau_m, act_fx=act_fx, prior=r1_prior
+                                   )
                 self.e1 = GaussianErrorCell("e1", n_units=h1_dim, sigma=sigma_e1)
 
-                self.z2 = RateCell("z2", n_units=h2_dim, tau_m=tau_m, act_fx=act_fx, prior=r2_prior)
+                self.z2 = RateCell("z2", n_units=h2_dim, tau_m=tau_m, act_fx=act_fx, prior=r2_prior
+                                   )
                 self.e2 = GaussianErrorCell("e2", n_units=h2_dim, sigma=sigma_e2)
 
-                self.z3 = RateCell("z3", n_units=h3_dim, tau_m=tau_m, act_fx=act_fx, prior=r3_prior)
+                self.z3 = RateCell("z3", n_units=h3_dim, tau_m=tau_m, act_fx=act_fx, prior=r3_prior
+                                   )
 
                 # ════════════════════════════════════════════
                 self.W3 = HebbianPatchedSynapse("W3",
@@ -256,7 +259,10 @@ class HierarchicalPredictiveCoding():
                 self.z1.zF >> self.W1.inputs
 
                 # ══════ Top-down prediction ═════════════
-                self.z2.z >> self.e2.mu
+                if self.h3_dim == 1:
+                    self.z2.z >> self.e2.mu
+                else:
+                    self.W3.outputs >> self.e2.mu
                 self.W2.outputs >> self.e1.mu
                 self.W1.outputs >> self.e0.mu
 
@@ -418,7 +424,7 @@ class HierarchicalPredictiveCoding():
             self.batch_setup()
             # print(f"after loading: bs: {self.batch_size}. rgc bs: {self.RGC.outputs.get().shape}")
 
-    def get_synapse_stats(self, W_id='W1'):
+    def get_synapse_stats(self):
         """
         Print basic statistics of the choosed W to string
 
@@ -426,42 +432,29 @@ class HierarchicalPredictiveCoding():
             W_id: the name of the chosen W (synapse); options: "W1" or "W2" or "W3"
 
         Returns:
-            string containing min, max, mean, and L2 norm of Ws
+            string containing min, max, mean, std, L2 norm, and non-zero elements of synapses
         """
-        if W_id == 'W1':
-            _W1 = self.W1.weights.get()
-            msg = ("\n"+"-"*20+"\n"
-                "W1:\n"
-                f"  Sparsity : {100 * (jnp.sum(jnp.where(_W1 == 0, 1, 0)) // _W1.size):6.1f}%\n"
-                f"  min      : {jnp.min(_W1): .4f}\n"
-                f"  max      : {jnp.max(_W1): .4f}\n"
-                f"  mean     : {jnp.mean(_W1): .4f}\n"
-                f"  norm     : {jnp.linalg.norm(_W1): .3f}"
-            "\n"+"-"*20+"\n\n")
-
-        if W_id == 'W2':
-            _W2 = self.W2.weights.get()
-            msg = ("\n"+"-"*20+"\n"
-                "W2:\n"
-                f"  Sparsity : {100 * (jnp.sum(jnp.where(_W2 == 0, 1, 0)) // _W2.size):6.1f}%\n"
-                f"  min      : {jnp.min(_W2): .4f}\n"
-                f"  max      : {jnp.max(_W2): .4f}\n"
-                f"  mean     : {jnp.mean(_W2): .4f}\n"
-                f"  norm     : {jnp.linalg.norm(_W2): .3f}",
-            "\n"+"-"*20+"\n\n")
-
-        if W_id == 'W3':
-            _W3 = self.W3.weights.get()
-            msg = ("\n"+"-"*20+"\n"
-                "W3:\n"
-                f"  Sparsity : {100 * (jnp.sum(jnp.where(_W3 == 0, 1, 0)) // _W3.size):6.1f}%\n"
-                f"  min      : {jnp.min(_W3): .4f}\n"
-                f"  max      : {jnp.max(_W3): .4f}\n"
-                f"  mean     : {jnp.mean(_W3): .4f}\n"
-                f"  norm     : {jnp.linalg.norm(_W3): .3f}"
-            "\n"+"-"*20+"\n\n")
-
-        return msg
+        header = f"  {'W':<4} {'[#patches]':<4} {'non-Zero%':>10} {'min':>10} {'max':>10} {'mean':>10} {'std':>10} {'L2 norm':>12}"
+        sep = "-" * len(header)
+        _W = [(self.W1.name, self.W1.shape[0], self.W1.n_sub_models, self.W1.weights.get()),
+             (self.W2.name, self.W2.shape[0], self.W2.n_sub_models, self.W2.weights.get()),
+             (self.W3.name, self.W3.shape[0], self.W3.n_sub_models, self.W3.weights.get())]
+        print("\n\n" + sep)
+        print(header)
+        print(sep)
+        for W_name, W_dim, n_ptch, W in _W:
+            if W_dim > 1:
+                n_nonzero = float(jnp.sum(jnp.where(W == 0, 0, 1)))
+                size = float(W.size)
+                nonzero_pct = 100.0 * n_nonzero / size
+                w_min = float(jnp.min(W))
+                w_max = float(jnp.max(W))
+                w_mean = float(jnp.mean(W))
+                w_std = float(jnp.std(W))
+                w_norm = float(jnp.linalg.norm(W))
+                print(f"  {W_name:<4}   {n_ptch:<5} {nonzero_pct:>9.2f}% {w_min:>10.4f} {w_max:>10.4f} "
+                      f"{w_mean:>10.4f} {w_std:>10.4f} {w_norm:>12.4f}")
+        print(sep + "\n\n")
 
     def viz_receptive_fields(self, vis_effective_RF=False, vis_brain_in=False, max_n_vis=-1, fname='receptive_fields'):
         """
@@ -517,7 +510,7 @@ class HierarchicalPredictiveCoding():
             visualize([RF1],
                       sizes=[(self.patch_shape)],
                       order=['C'],
-                      prefix=self.exp_dir + "/filters/L1_{}".format(fname))
+                      prefix=self.exp_dir + "/filters/{}".format(fname))
 
             ## ══════════════════════════════════════════════════════════════
             if vis_effective_RF:
@@ -610,25 +603,15 @@ class HierarchicalPredictiveCoding():
             (will be empty; length = 0 if collect_spike_train is False)
         """
 
-        # NOTE: for debugging purposes, we print out the shapes of various model components here
-        # if not self._first:
-            # self.clamp_stimuli(obs)
-            # self.reset_process.run()
-            # self._first = True
-            # print(" > [PC_Recon] First process call - model components reset to set batch size.")
-            # print(f"\t obs shape: {obs.shape}, e0bs: {self.e0.batch_size} e0 dtarget shape: {self.e0.dtarget.get().shape}, e0 dmu shape: {self.e0.dmu.get().shape}, e0 target shape: {self.e0.target.get().shape}")
-
-        # print(f"obs.shape: {obs.shape}")
-
-        # ═══════════════════════════════════════════════════════════
-        ## reset/set all components to their resting values / initial conditions
+        # ══════  Inference  ════════════════════════════════════════
+        #####     Reset
         self.reset_process.run()
 
         ## Perform several E-steps
         self._advance_process(obs)
 
-        # ═══════════════════════════════════════════════════════════
-        ## Perform (optional) M-step (scheduled synaptic updates)
+        # ══════  Learning  ════════════════════════════════════════
+        #####     Perform M-step - (optional)
         if adapt_synapses:
             self.evolve_process.run(t=self.T, dt=self.dt)
             self.norm()
