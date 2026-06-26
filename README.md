@@ -21,7 +21,9 @@ For those contributing models/algorithms in either the `exhibitors/` or `exhibit
 4. A self-supervised spiking neural circuit, trained via contrastive-signal dependent plasticity (CSDP):<br>
    <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibitors/nac_lab/csdp_snn">Model</a> <!--<a href="">Paper</a>-->
 5. A spiking neural network for reinforcement learning, trained via MSTDP-ET: <br>
-   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/rl_snn">Model</a> <!--<a href="">Paper</a>-->
+   <a href="https://github.com/NACLab/ngc-museum/tree/main/exhibits/rl_snn">Model</a>,
+   <a href="https://ngc-learn.readthedocs.io/en/latest/museum/rl_snn.html">Walkthrough / Tutorial </a>
+   <!--<a href="">Paper</a>-->
 <!--
 6. Patch-level spiking neural circuit trained with time-integrated STDP (TI-STDP)
    <a href="">Model</a>, 
