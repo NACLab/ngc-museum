@@ -186,9 +186,9 @@ class HierarchicalPredictiveCoding():
 
         exc, inh = exc_inh
         d3, d2, d1 = h3_dim // n_p3, h2_dim // n_p2, h1_dim // n_p1
-        exc_inh3 = (exc / (d3 - 1), inh / (d3 - 1))  # block_dim(z3) == d3
-        exc_inh2 = (exc / (d2 - 1), inh / (d2 - 1))  # block_dim(z2) == d2
-        exc_inh1 = (exc / (d1 - 1), inh / (d1 - 1))  # block_dim(z1) == d1
+        exc_inh3 = (exc / (d3 - 1), inh / (d3 - 1)) if d3 > 1 else 0   ## block_dim(z3) == d3
+        exc_inh2 = (exc / (d2 - 1), inh / (d2 - 1)) if d2 > 1 else 0   ## block_dim(z2) == d2
+        exc_inh1 = (exc / (d1 - 1), inh / (d1 - 1)) if d1 > 1 else 0   ## block_dim(z1) == d1
 
         ## ═════════════════════ Synaptses parameters ═══════════════════
         w_bound = 0.                                                     ## norm constraint value
@@ -705,11 +705,11 @@ class HierarchicalPredictiveCoding():
         Z, Y = self.load_codes(fname)
         if fname == "latents_init":
             for name, z in Z.items():
-                plot_latents(extract_tsne_latents(np.asarray(z)), np.asarray(Y),
+                plot_latents(extract_tsne_latents(np.asarray(z), verbose=0), np.asarray(Y),
                              plot_fname=f"{self.latents_path}/tsne_{name}_init.jpg", alpha=0.3, cmap='tab10')
         else:
             for name, z in Z.items():
-                plot_latents(extract_tsne_latents(np.asarray(z)), np.asarray(Y),
+                plot_latents(extract_tsne_latents(np.asarray(z), verbose=0), np.asarray(Y),
                              plot_fname=f"{self.latents_path}/tsne_{name}.jpg", alpha=0.3, cmap='tab10')
 
 
@@ -750,6 +750,7 @@ class HierarchicalPredictiveCoding():
         obs_mu = self.e0.mu.get()   ## get reconstructed signal
 
         return obs_mu
+
 
 
 

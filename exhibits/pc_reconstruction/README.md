@@ -1,6 +1,6 @@
 # Hierarchical Predictive Coding
 
-<b>Version</b>: ngclearn==3.0.0, ngcsimlib==3.0.0 <!--2.0.0 1.0.0 -->
+<b>Version</b>: ngclearn==3.1.1, ngcsimlib==3.1.0
 
 This exhibit contains an implementation of the predictive coding (PC) model specialized 
 for the task of reconstruction. This model is effectively a variant that embodies key 
