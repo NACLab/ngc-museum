@@ -39,7 +39,7 @@ dataset_name = "mnist"
 path_data = "../../data/" + dataset_name
 
 n_samples = -1
-n_iter = 10  ## total number passes through dataset
+n_iter = 10        ## total number passes through dataset
 iter_mod = 1
 
 for opt, arg in options:
@@ -54,20 +54,28 @@ for opt, arg in options:
 
 # ═══════════════════════════════════════════════════════════════════════════
 MODEL_CONFIGS = {
+    "pc_mlp": dict(use_lateral=False, adaptive_lateral=False, exc_inh=(0., 0.), r_prior=(None, 0.),
+                          area_shape=None, patch_shape=None, step_shape=None, w_prior=(None, 0.),
+                          p3_size=16, p2_size=32, p1_size=64,
+                          ),
+    "pc_patch": dict(use_lateral=False, adaptive_lateral=False, exc_inh=(0., 0.), r_prior=(None, 0.),
+                            area_shape=None, patch_shape=(14, 14), step_shape=(7, 7), w_prior=(None, 0.),
+                            p3_size=16, p2_size=32, p1_size=64,
+                            ),
     "lateralPC_mlp": dict(use_lateral=True, adaptive_lateral=True, exc_inh=(+5, -5), r_prior=(None, 0.),
-                          area_shape=None, patch_shape=None, step_shape=None,
+                          area_shape=None, patch_shape=None, step_shape=None, w_prior=("ridge", 0.02),
                           p3_size=16, p2_size=32, p1_size=64,
                           ),
     "lateralPC_patch": dict(use_lateral=True, adaptive_lateral=True, exc_inh=(+5, -5), r_prior=(None, 0.),
-                            area_shape=None, patch_shape=(14, 14), step_shape=(7, 7),
+                            area_shape=None, patch_shape=(14, 14), step_shape=(7, 7), w_prior=("ridge", 0.02),
                             p3_size=16, p2_size=32, p1_size=64,
                             ),
     "sparsePC_mlp": dict(use_lateral=False, adaptive_lateral=False, exc_inh=(0., 0.), r_prior=("laplacian", 0.14),
-                         area_shape=None, patch_shape=None, step_shape=None,
+                         area_shape=None, patch_shape=None, step_shape=None, w_prior=("ridge", 0.02),
                          p3_size=16, p2_size=32, p1_size=64,
                          ),
     "sparsePC_patch": dict(use_lateral=False, adaptive_lateral=False, exc_inh=(0., 0.), r_prior=("laplacian", 0.14),
-                           area_shape=None, patch_shape=(14, 14), step_shape=(7, 7),
+                           area_shape=None, patch_shape=(14, 14), step_shape=(7, 7), w_prior=("ridge", 0.02),
                            p3_size=16, p2_size=32, p1_size=64,
                            ),
 }
@@ -170,7 +178,7 @@ model = HierarchicalPredictiveCoding(dkey,
                                      r3_prior=pc_circuit["r_prior"],
                                      r2_prior=pc_circuit["r_prior"],
                                      r1_prior=pc_circuit["r_prior"],
-                                     synaptic_prior=("ridge", 0.02),
+                                     synaptic_prior=pc_circuit["w_prior"],
                                      exp_dir=exp_dir, reset_exp_dir=True
                                      )
 
