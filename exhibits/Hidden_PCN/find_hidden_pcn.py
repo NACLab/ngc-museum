@@ -1,0 +1,224 @@
+from jax import numpy as jnp, random
+import sys, getopt as gopt, optparse, time
+from hidden_pcn import HiddenPCN ## bring in model from museum
+from ngclearn.utils.distribution_generator import DistributionGenerator as dist
+from ngclearn.utils.metric_utils import measure_ACC, measure_CatNLL
+
+"""
+################################################################################
+Hidden Predictive Coding Network (HiddenPCN) Exhibit File:
+
+Fits a PCN classifier with fixed (random) synapses to the MNIST database; only a
+popup score per synapse is learned and each layer uses its top-k% synapses (the
+backprop version is edge-popup algorithm of Ramanujan et al., 2020). 
+
+Usage:
+$ python find_hidden_pcn.py --dataX="/path/to/train_patterns.npy" \
+                            --dataY="/path/to/train_labels.npy" \
+                            --devX="/path/to/dev_patterns.npy" \
+                            --devY="/path/to/dev_labels.npy" \
+                            --verbosity=0
+
+@author: The Neural Adaptive Computing Laboratory
+################################################################################
+"""
+
+# read in general program arguments
+options, remainder = gopt.getopt(sys.argv[1:], '',
+                                 ["dataX=", "dataY=", "devX=", "devY=", "verbosity="]
+                                 )
+# external dataset arguments
+dataX = "../../data/mnist/trainX.npy"
+dataY = "../../data/mnist/trainY.npy"
+devX = "../../data/mnist/validX.npy"
+devY = "../../data/mnist/validY.npy"
+verbosity = 1 ## verbosity level (0 - fairly minimal, 1 - prints multiple lines on I/O)
+for opt, arg in options:
+    if opt in ("--dataX"):
+        dataX = arg.strip()
+    elif opt in ("--dataY"):
+        dataY = arg.strip()
+    elif opt in ("--devX"):
+        devX = arg.strip()
+    elif opt in ("--devY"):
+        devY = arg.strip()
+    elif opt in ("--verbosity"):
+        verbosity = int(arg.strip())
+print("Train-set: X: {} | Y: {}".format(dataX, dataY))
+print("  Dev-set: X: {} | Y: {}".format(devX, devY))
+
+_X = jnp.load(dataX)
+_Y = jnp.load(dataY)
+Xdev = jnp.load(devX)
+Ydev = jnp.load(devY)
+x_dim = _X.shape[1]
+patch_shape = (int(jnp.sqrt(x_dim)), int(jnp.sqrt(x_dim)))
+y_dim = _Y.shape[1]
+
+n_iter = 40
+mb_size = 250
+n_batches = int(_X.shape[0]/mb_size)
+save_point = 1 ## save model params every modulo "save_point"
+k = 0.5
+
+## set up JAX seeding
+dkey = random.PRNGKey(1234)
+dkey, *subkeys = random.split(dkey, 10)
+
+## build model
+print("--- Building Model ---")
+model = HiddenPCN(
+    subkeys[1], 
+    x_dim, 
+    y_dim, 
+    hid1_dim=512, 
+    hid2_dim=512, 
+    T=30,
+    dt=1., 
+    tau_m=25.,
+    k=k,
+    weight_init=dist.fan_in_signed_constant(gain=jnp.sqrt(2.)),
+    act_fx="relu",
+    eta=0.001,
+    exp_dir="exp",
+    model_name="pcn"
+)
+model.save_to_disk() # save final state of synapses to disk
+# model.load_from_disk("exp")
+print("--- Starting Simulation ---")
+
+def eval_model(model, Xdev, Ydev, mb_size): ## evals model's test-time inference performance
+    n_batches = int(Xdev.shape[0]/mb_size)
+
+    n_samp_seen = 0
+    nll = 0. ## negative Categorical log likelihood
+    acc = 0. ## accuracy
+    for j in range(n_batches):
+        ## extract data block/batch
+        idx = j * mb_size
+        Xb = Xdev[idx: idx + mb_size,:]
+        Yb = Ydev[idx: idx + mb_size,:]
+        ## run model inference
+        yMu_0, yMu, _ = model.process(obs=Xb, lab=Yb, adapt_synapses=False)
+        ## record metric measurements
+        _nll = measure_CatNLL(yMu_0, Yb) * Xb.shape[0] ## un-normalize score
+        _acc = measure_ACC(yMu_0, Yb) * Yb.shape[0] ## un-normalize score
+        nll += _nll
+        acc += _acc
+
+        n_samp_seen += Yb.shape[0]
+
+    nll = nll/(Xdev.shape[0]) ## calc full dev-set nll
+    acc = acc/(Xdev.shape[0]) ## calc full dev-set acc
+    return nll, acc
+
+trAcc_set = []
+acc_set = []
+efe_set = []
+
+sim_start_time = time.time() ## start time profiling
+
+_, tr_acc = eval_model(model, _X, _Y, mb_size=1000)
+nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
+print("-1: Dev: Acc = {:.2f}  NLL = {:.3f} | Tr: Acc = {:.2f} EFE = --".format(acc, nll, tr_acc))
+if verbosity >= 2:
+    print(model._get_norm_string())
+trAcc_set.append(tr_acc) ## random guessing is where models typically start
+acc_set.append(acc)
+efe_set.append(-2000.)
+jnp.save("exp/acc.npy", jnp.asarray(acc_set))
+jnp.save("exp/efe.npy", jnp.asarray(efe_set))
+
+epoch_times = []
+for i in range(n_iter):
+    ## shuffle data (to ensure i.i.d. assumption holds)
+    dkey, *subkeys = random.split(dkey, 2)
+    ptrs = random.permutation(subkeys[0],_X.shape[0])
+    X = _X[ptrs,:]
+    Y = _Y[ptrs,:]
+
+    ###############################################################################
+    ## begin a single epoch (includes pass thru data + model evals calls)
+    n_samp_seen = 0
+    train_EFE = 0. ## training free energy (online) estimate
+    trAcc = 0. ## training accuracy score
+    epoch_time = time.time()
+    prev_subnet = None
+    for j in range(n_batches):
+        dkey, *subkeys = random.split(dkey, 2)
+        
+        ## sample mini-batch of patterns
+        idx = j * mb_size #j % 2 # 1
+        Xb = X[idx: idx + mb_size,:]
+        Yb = Y[idx: idx + mb_size,:]
+        
+        ## perform a step of inference/learning
+        yMu_0, yMu, _EFE = model.process(obs=Xb, lab=Yb, adapt_synapses=True)
+        
+        ## track online training EFE and accuracy
+        train_EFE += _EFE * mb_size
+        n_samp_seen += Yb.shape[0]
+        if verbosity >= 1:
+            sub_network = jnp.concatenate([model.W1.subnet.get().ravel(),
+                                           model.W2.subnet.get().ravel(),
+                                           model.W3.subnet.get().ravel()])
+            ## Turnover: Synapse formation (synaptogenesis) and synaptic pruning
+            structural_plasticity = 0. if prev_subnet is None else float(
+                jnp.sum(sub_network != prev_subnet) / 2 / (model.W1.n_keep + model.W2.n_keep + model.W3.n_keep))
+            prev_subnet = sub_network
+            print("\r EFE = {:.3f} over {}/{} samples | kept = {:.0f}% | structural plasticity = {:.4f}".format(
+                (train_EFE / n_samp_seen), n_samp_seen, len(Y), k * 100, structural_plasticity), end=""
+            )
+    if verbosity >= 1:
+        print()
+    
+    ## evaluate current progress of model on dev-set
+    nll, acc = eval_model(model, Xdev, Ydev, mb_size=1000)
+    _, tr_acc = eval_model(model, _X, _Y, mb_size=1000)
+    
+    epoch_time = time.time() - epoch_time
+    epoch_times.append(epoch_time)
+    ###############################################################################
+
+    if (i+1) % save_point == 0 or i == (n_iter-1):
+        model.save_to_disk(params_only=True) # save final state of synapses to disk
+        jnp.save("exp/trAcc.npy", jnp.asarray(trAcc_set))
+        jnp.save("exp/acc.npy", jnp.asarray(acc_set))
+        jnp.save("exp/efe.npy", jnp.asarray(efe_set))
+
+    ## record current generalization stats and print to I/O
+    trAcc_set.append(tr_acc)
+    acc_set.append(acc)
+    efe_set.append((train_EFE/n_samp_seen))
+    io_str = (
+        f"({i+1}/{n_iter}) | Dev: Acc = {acc:.2f}, NLL = {nll:.3f} | "
+        f"Tr: Acc = {tr_acc:.2f}, EFE = {train_EFE/n_samp_seen:.3f} "
+        f"(Epoch.time = {epoch_time:.2f} s)"
+    )
+    if verbosity >= 1:
+        print(io_str)
+    else:
+        print("\r{}".format(io_str), end="")
+    if verbosity >= 2:
+        print(model._get_norm_string())
+if verbosity == 0:
+    print("")
+
+## stop time profiling
+sim_end_time = time.time()
+sim_time = sim_end_time - sim_start_time
+sim_time_hr = (sim_time/3600.0) # convert time to hours
+
+print("------------------------------------")
+vAcc_best = jnp.amax(jnp.asarray(acc_set))
+epoch_time_mu = jnp.mean(jnp.array(epoch_times))
+epoch_time_sig = jnp.std(jnp.array(epoch_times))
+print(
+    f" Trial.sim_time = {sim_time_hr:.3f} h ({sim_time:.2f} sec); "
+    f"Epoch.time = {epoch_time_mu:.2f} +- {epoch_time_sig:.2f}; "
+    f"Best Acc = {vAcc_best:.2f}"
+)
+
+jnp.save("exp/trAcc.npy", jnp.asarray(trAcc_set))
+jnp.save("exp/acc.npy", jnp.asarray(acc_set))
+jnp.save("exp/efe.npy", jnp.asarray(efe_set))
