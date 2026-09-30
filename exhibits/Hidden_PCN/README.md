@@ -51,7 +51,7 @@ default MNIST, just ensure that the targets for `dataX`, `dataY`, `devX`, and
 
 ## Description
 
-This model is effectively made up of four layers -- a sensory input layer,
+This model is effectively made up of four layers, a sensory input layer,
 two internal/hidden layers of graded rate-cells, and one output layer
 for reading out predictions of target values, e.g., one-hot encodings of
 label values. Each layer connects to the next via a `ScorePatchedSynapse`,
