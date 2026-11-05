@@ -242,7 +242,7 @@ class HiddenPredictiveCoding():
 
                 # ════════════════════════════════════════════
                 self.W3 = ScorePatchedSynapse("W3", shape=(h3_dim, h2_dim), batch_size=batch_size,
-                                                 n_sub_models=self.n_p3,      ## number of modules in the layer
+                                                 n_patch=self.n_p3,      ## number of patches in the layer
                                                  prior=synaptic_prior,
                                                  optim_type=w_opt_type,
                                                  k=k, weight_init=weight_init,
@@ -251,7 +251,7 @@ class HiddenPredictiveCoding():
                                                  key=subkeys[2]
                                                  )
                 self.W2 = ScorePatchedSynapse("W2", shape=(h2_dim, h1_dim), batch_size=batch_size,
-                                                n_sub_models=self.n_p2,      ## number of modules in the layer
+                                                n_patch=self.n_p2,      ## number of patches in the layer
                                                 prior=synaptic_prior,
                                                 optim_type=w_opt_type,
                                                 k=k, weight_init=weight_init,
@@ -260,7 +260,7 @@ class HiddenPredictiveCoding():
                                                 key=subkeys[1]
                                                 )
                 self.W1 = ScorePatchedSynapse("W1", shape=(h1_dim, in_dim), batch_size=batch_size,
-                                                 n_sub_models=n_p1,            ## number of modules in the layer
+                                                 n_patch=n_p1,            ## number of patches in the layer
                                                  prior=synaptic_prior,
                                                  optim_type=w_opt_type,
                                                  k=k, weight_init=weight_init,
@@ -446,9 +446,9 @@ class HiddenPredictiveCoding():
         """
         header = f"  {'W':<4} {'[#patches]':<4} {'non-Zero%':>10} {'min':>10} {'max':>10} {'mean':>10} {'std':>10} {'L2 norm':>12}"
         sep = "-" * len(header)
-        _W = [(self.W1.name, self.W1.shape[0], self.W1.n_sub_models, self.W1.weights.get() * self.W1.subnet.get()),
-             (self.W2.name, self.W2.shape[0], self.W2.n_sub_models, self.W2.weights.get() * self.W2.subnet.get()),
-             (self.W3.name, self.W3.shape[0], self.W3.n_sub_models, self.W3.weights.get() * self.W3.subnet.get())]
+        _W = [(self.W1.name, self.W1.shape[0], self.W1.n_patch, self.W1.weights.get() * self.W1.subnet.get()),
+             (self.W2.name, self.W2.shape[0], self.W2.n_patch, self.W2.weights.get() * self.W2.subnet.get()),
+             (self.W3.name, self.W3.shape[0], self.W3.n_patch, self.W3.weights.get() * self.W3.subnet.get())]
         print("\n\n" + sep)
         print(header)
         print(sep)
@@ -489,8 +489,8 @@ class HiddenPredictiveCoding():
 
         RF_list = [_W, _S, _W_S, _W_subnet]
 
-        d2, d1, d0 = (self.W2.sub_shape[0], self.W1.sub_shape[0], self.W1.sub_shape[1])
-        n2, n1, n0 = (self.W3.n_sub_models, self.W2.n_sub_models, self.W1.n_sub_models)
+        d2, d1, d0 = (self.W2.patch_shape[0], self.W1.patch_shape[0], self.W1.patch_shape[1])
+        n2, n1, n0 = (self.W3.n_patch, self.W2.n_patch, self.W1.n_patch)
 
         ix, iy = self.area_shape
         px, py = self.patch_shape
@@ -515,7 +515,7 @@ class HiddenPredictiveCoding():
         ## ═════════════════════════════════════════════════════════════════
         else:
             RF_list_stack = [jnp.hstack([rf[:max_n_vis].T[i * d0: (i + 1) * d0, i * d1: (i + 1) * d1
-                                         ] for i in range(self.W1.n_sub_models)]
+                                         ] for i in range(self.W1.n_patch)]
                                        )[:, :max_n_vis]
                              for rf in RF_list]
 
