@@ -13,8 +13,10 @@ This mode is fit to learn latent representations of the input and reconstructs
 input data sampled from the MNIST database. 
 
 Usage:
-$ python train_pc.py --model_name="sparsePC_patch" --path_data="/path/to/dataset_arrays/"                                                                                                                                                                                                                                               
-                   --n_samples=-1 --n_iter=10
+$ python train_pc.py --model_name="sparsePC_patch"
+                     --path_data="/path/to/dataset_arrays/"                                                                                                                                                                                                                                               
+                     --n_samples=-1 
+                     --n_iter=10
 
 Note that there is an optional argument "--n_samples", which allows you to choose a
 number less than your argument dataset's total size N for cases where you are
@@ -34,7 +36,7 @@ options, remainder = gopt.getopt(sys.argv[1:], '', ["dataset_name=",
                                                     "n_samples=",
                                                     "n_iter="])
 
-experiment_circuit_name = "lateralPC_mlp"  ## lateralPC_patch, sparsePC_patch, lateralPC_mlp, sparsePC_mlp,
+experiment_circuit_name = "vicregPC_mlp"  ## lateralPC_patch, sparsePC_patch, lateralPC_mlp, sparsePC_mlp,
 dataset_name = "mnist"
 path_data = "../../data/" + dataset_name
 
@@ -75,6 +77,14 @@ MODEL_CONFIGS = {
                          p3_size=16, p2_size=32, p1_size=64,
                          ),
     "sparsePC_patch": dict(use_lateral=False, adaptive_lateral=False, exc_inh=(0., 0.), r_prior=("laplacian", 0.14),
+                           area_shape=None, patch_shape=(14, 14), step_shape=(7, 7), w_prior=("ridge", 0.02),
+                           p3_size=16, p2_size=32, p1_size=64,
+                           ),
+    "vicregPC_mlp": dict(use_lateral=False, adaptive_lateral=False, exc_inh=(0., 0.), r_prior=("vicreg", (1., 1.)),
+                         area_shape=None, patch_shape=None, step_shape=None, w_prior=("ridge", 0.02),
+                         p3_size=16, p2_size=32, p1_size=64,
+                         ),
+    "vicregPC_patch": dict(use_lateral=False, adaptive_lateral=False, exc_inh=(0., 0.), r_prior=("vicreg", (1., 1.)),
                            area_shape=None, patch_shape=(14, 14), step_shape=(7, 7), w_prior=("ridge", 0.02),
                            p3_size=16, p2_size=32, p1_size=64,
                            ),
